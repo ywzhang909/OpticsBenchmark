@@ -1,0 +1,91 @@
+# =============================================================================
+# Research Overview Task Configuration
+# OptiS Benchmark
+# =============================================================================
+
+task:
+  id: "research_overview"
+  name: "Research Field Overview"
+  description: "Summarize and categorize research directions within a specific field"
+  category: "research_overview"
+  difficulty: 4
+  estimated_time: 20
+  tags:
+    - "research"
+    - "overview"
+    - "survey"
+    - "categorization"
+
+dataset:
+  path: "dataset/processed/research_overview.jsonl"
+  num_samples: 30
+  shuffle: false
+  
+  format:
+    input_field: "research_topic"
+    output_field: "expected_overview"
+    metadata_fields:
+      - "task_id"
+      - "field"
+      - "subfields"
+      - "time_range"
+
+environment:
+  type: "local"
+  
+  software:
+    required:
+      - name: "python"
+        version: "3.10+"
+  
+  sandbox:
+    timeout: 600
+    max_steps: 50
+    memory_limit: "4GB"
+
+evaluation:
+  scoring_method: "metric_based"
+  
+  metrics:
+    - name: "coverage_completeness"
+      type: "numeric"
+      description: "Coverage of research directions (0-1)"
+    - name: "categorization_accuracy"
+      type: "numeric"
+      description: "Accuracy of research categorization (0-1)"
+    - name: "key_papers_identification"
+      type: "numeric"
+      description: "Quality of key paper identification (0-1)"
+    - name: "timeline_accuracy"
+      type: "numeric"
+      description: "Accuracy of research timeline (0-1)"
+    - name: "trend_analysis"
+      type: "numeric"
+      description: "Quality of trend analysis (0-1)"
+  
+  success_criteria:
+    - metric: "coverage_completeness"
+      operator: ">="
+      value: 0.65
+    - metric: "categorization_accuracy"
+      operator: ">="
+      value: 0.75
+    - metric: "key_papers_identification"
+      operator: ">="
+      value: 0.7
+
+prompt:
+  system_file: "prompts/system/research_agent.txt"
+  template_file: "prompts/templates/research_overview.txt"
+  
+  variables:
+    overview_structure:
+      - "research_directions"
+      - "key_contributions"
+      - "evolution_timeline"
+      - "current_trends"
+      - "future_directions"
+
+cost:
+  max_cost_per_task: 5.0
+  budget_per_task: 15.0

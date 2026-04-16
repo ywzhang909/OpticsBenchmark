@@ -1,0 +1,42 @@
+# =============================================================================
+# Ollama Configuration (Local, free)
+# OptiS Benchmark - Agent Settings
+# =============================================================================
+
+agent:
+  name: "optis-ollama"
+  version: "1.0.0"
+  description: "Ollama Local LLM Agent"
+
+model:
+  provider: "ollama"
+  name: "llama3.1:70b"
+  
+  # No API key needed for local
+  api_key: ""
+  
+  # Model Parameters
+  temperature: 0.0
+  max_tokens: 4096
+  top_p: 1.0
+
+# Ollama-specific settings
+provider_settings:
+  ollama_host: "http://localhost:11434"
+
+system_prompt_file: "prompts/system/optical_agent.txt"
+
+tools:
+  enabled:
+    - "file_read"
+    - "file_write"
+    - "python_execute"
+
+execution:
+  max_retries: 1  # No retries for local
+  timeout: 600  # Local may be slower
+  cache_enabled: false
+
+cost_tracking:
+  enabled: true
+  log_api_usage: false  # No API usage for local

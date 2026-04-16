@@ -1,0 +1,75 @@
+# =============================================================================
+# OptiS Benchmark - Requirements
+# =============================================================================
+
+# Core dependencies
+openai>=1.3.0
+anthropic>=0.8.0
+pydantic>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+
+# Logging and monitoring
+loguru>=0.7.0
+tqdm>=4.65.0
+
+# API clients
+httpx>=0.25.0
+aiohttp>=3.9.0
+
+# -----------------------------------------------------------------------------
+# LLM Provider Support
+# -----------------------------------------------------------------------------
+
+# OpenAI (GPT-4, GPT-3.5)
+openai>=1.3.0
+
+# Anthropic (Claude)
+anthropic>=0.8.0
+
+# Google Gemini
+google-genai>=0.3.0
+
+# Groq (Free, fast inference)
+groq>=0.4.0
+
+# AWS Bedrock
+boto3>=1.34.0
+
+# Together AI
+# Note: Using httpx directly, no separate package needed
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.5.0
+
+# -----------------------------------------------------------------------------
+# Code quality
+# -----------------------------------------------------------------------------
+
+black>=23.0.0
+isort>=5.12.0
+ruff>=0.1.0
+mypy>=1.7.0
+pre-commit>=3.5.0
+
+# Type stubs
+types-PyYAML>=6.0.0
+types-requests>=2.31.0
+
+# -----------------------------------------------------------------------------
+# Optional: Optical Software Integration
+# -----------------------------------------------------------------------------
+
+# Python for .NET (for ZOS-API)
+# pythonnet>=3.0.0  # Uncomment if using ZOS-API on Windows

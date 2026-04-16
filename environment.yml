@@ -1,0 +1,76 @@
+name: optis_benchmark
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  # Core Python
+  - python=3.10
+  - pip>=23.0
+
+  # Core dependencies
+  - numpy>=1.24.0
+  - scipy>=1.11.0
+  - pandas>=2.0.0
+  - matplotlib>=3.7.0
+  - scikit-learn>=1.3.0
+
+  # PyTorch (for future ML integration)
+  - pytorch>=2.0.0
+  - torchvision>=0.15.0
+  - torchaudio>=2.0.0
+
+  # Pip-installed packages
+  - pip:
+      # AI/ML APIs
+      - openai>=1.3.0
+      - anthropic>=0.8.0
+      - groq>=0.4.0
+      
+      # Data validation
+      - pydantic>=2.0.0
+      - pydantic-settings>=2.0.0
+      
+      # Configuration
+      - pyyaml>=6.0
+      - python-dotenv>=1.0.0
+      
+      # Async utilities
+      - httpx>=0.25.0
+      - aiohttp>=3.9.0
+      - asyncio-throttle>=1.0.2
+      
+      # Logging
+      - loguru>=0.7.0
+      - tqdm>=4.65.0
+      
+      # Testing
+      - pytest>=7.4.0
+      - pytest-asyncio>=0.21.0
+      - pytest-cov>=4.1.0
+      - pytest-xdist>=3.5.0
+      
+      # Code quality
+      - black>=23.0.0
+      - isort>=5.12.0
+      - ruff>=0.1.0
+      - mypy>=1.7.0
+      - pre-commit>=3.5.0
+      
+      # Type stubs
+      - types-PyYAML>=6.0.0
+      - types-requests>=2.31.0
+
+dev_dependencies:
+  - jupyter>=1.0.0
+  - ipykernel>=6.25.0
+  - nbformat>=5.9.0
+
+variables:
+  # API Keys (set in your environment)
+  OPENAI_API_KEY: ""
+  ANTHROPIC_API_KEY: ""
+  GROQ_API_KEY: ""
+  
+  # Paths
+  OPTIS_DATA_PATH: "./dataset"
+  OPTIS_LOG_PATH: "./logs"

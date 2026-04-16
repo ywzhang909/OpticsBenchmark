@@ -1,0 +1,39 @@
+# =============================================================================
+# Google Gemini Configuration
+# OptiS Benchmark - Agent Settings
+# =============================================================================
+
+agent:
+  name: "optis-gemini"
+  version: "1.0.0"
+  description: "Google Gemini Optical Design Agent"
+
+model:
+  provider: "google"
+  name: "gemini-1.5-pro"
+  
+  # Gemini API Key
+  api_key: "${GOOGLE_API_KEY}"
+  
+  # Model Parameters
+  temperature: 0.0
+  max_tokens: 8192
+  top_p: 1.0
+
+system_prompt_file: "prompts/system/optical_agent.txt"
+
+tools:
+  enabled:
+    - "file_read"
+    - "file_write"
+    - "python_execute"
+
+execution:
+  max_retries: 3
+  timeout: 300
+  cache_enabled: true
+  cache_ttl: 3600
+
+cost_tracking:
+  enabled: true
+  log_api_usage: true

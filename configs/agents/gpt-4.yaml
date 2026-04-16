@@ -1,0 +1,47 @@
+# =============================================================================
+# GPT-4 Configuration
+# OptiS Benchmark - Agent Settings
+# =============================================================================
+
+agent:
+  name: "optis-gpt4"
+  version: "1.0.0"
+  description: "GPT-4 Turbo Optical Design Agent"
+
+model:
+  provider: "openai"
+  name: "gpt-4-turbo"
+  api_base: "https://api.openai.com/v1"
+  api_key: "${OPENAI_API_KEY}"
+  
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 4096
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+
+system_prompt_file: "prompts/system/optical_agent.txt"
+
+tools:
+  enabled:
+    - "file_read"
+    - "file_write"
+    - "bash_execute"
+    - "python_execute"
+    - "optical_api"
+  
+  optical_software:
+    zemax:
+      enabled: true
+      connection: "zosapi"
+      workspace_path: "/tmp/zemax_workspace"
+
+execution:
+  max_retries: 3
+  timeout: 300
+  cache_enabled: true
+  cache_ttl: 3600
+
+cost_tracking:
+  enabled: true
+  log_api_usage: true

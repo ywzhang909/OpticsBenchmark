@@ -1,0 +1,96 @@
+# =============================================================================
+# Task Configuration Template
+# OptiS Benchmark - Task Definition
+# =============================================================================
+
+# Task Metadata
+task:
+  id: "template_task"
+  name: "Template Task"
+  description: "A template task for creating new optical design tasks"
+  category: "lens_design"      # lens_design, system_analysis, tolerance, optimization, ray_tracing
+  
+  # Difficulty level: 1-5
+  difficulty: 2
+  
+  # Estimated completion time (minutes)
+  estimated_time: 10
+  
+  # Tags for filtering
+  tags:
+    - "optical"
+    - "design"
+    - "beginner"
+
+# Dataset Configuration
+dataset:
+  path: "dataset/processed/template_task.jsonl"
+  num_samples: 100             # Number of samples to evaluate
+  shuffle: false
+  
+  # Data format
+  format:
+    input_field: "instruction"
+    output_field: "expected_output"
+    metadata_fields:
+      - "task_id"
+      - "difficulty"
+      - "category"
+
+# Environment Configuration
+environment:
+  type: "optical_sandbox"
+  
+  software:
+    required:
+      - name: "zemax"
+        version: "2023.1+"
+    optional:
+      - name: "python"
+        version: "3.10+"
+  
+  # Sandbox settings
+  sandbox:
+    timeout: 300               # seconds
+    max_steps: 50
+    memory_limit: "4GB"
+
+# Evaluation Configuration
+evaluation:
+  # Scoring method: exact_match, partial_match, metric_based, llm_judge
+  scoring_method: "metric_based"
+  
+  # Metrics to compute
+  metrics:
+    - name: "success_rate"
+      type: "binary"
+      threshold: 0.8
+    - name: "optical_performance"
+      type: "numeric"
+      target: ">0.9"
+      computed_by: "optical_metrics.py"
+  
+  # Success criteria
+  success_criteria:
+    - metric: "optical_performance"
+      operator: ">="
+      value: 0.85
+    - metric: "execution_time"
+      operator: "<="
+      value: 300
+
+# Prompt Configuration
+prompt:
+  system_file: "prompts/system/optical_agent.txt"
+  template_file: "prompts/templates/template_task.txt"
+  
+  # Variables to inject
+  variables:
+    task_description: "${task.description}"
+    constraints: "${task.constraints}"
+    evaluation_criteria: "${evaluation.success_criteria}"
+
+# Cost Configuration
+cost:
+  max_cost_per_task: 5.0       # USD
+  budget_per_task: 10.0        # USD

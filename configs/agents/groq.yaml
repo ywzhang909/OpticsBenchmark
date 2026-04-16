@@ -1,0 +1,39 @@
+# =============================================================================
+# Groq Configuration (Free tier, fast inference)
+# OptiS Benchmark - Agent Settings
+# =============================================================================
+
+agent:
+  name: "optis-groq"
+  version: "1.0.0"
+  description: "Groq LLaMA 3 Agent"
+
+model:
+  provider: "groq"
+  name: "llama-3.1-70b-versatile"
+  
+  # Groq API Key
+  api_key: "${GROQ_API_KEY}"
+  
+  # Model Parameters
+  temperature: 0.0
+  max_tokens: 4096
+  top_p: 1.0
+
+system_prompt_file: "prompts/system/optical_agent.txt"
+
+tools:
+  enabled:
+    - "file_read"
+    - "file_write"
+    - "python_execute"
+
+execution:
+  max_retries: 3
+  timeout: 120  # Groq is fast, shorter timeout
+  cache_enabled: true
+  cache_ttl: 3600
+
+cost_tracking:
+  enabled: true
+  log_api_usage: true

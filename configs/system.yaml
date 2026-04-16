@@ -1,0 +1,106 @@
+# =============================================================================
+# System Configuration
+# OptiS Benchmark - Global System Settings
+# =============================================================================
+
+# Logging Configuration
+logging:
+  level: "INFO"              # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
+  file: "logs/optis_benchmark.log"
+  rotation: "100 MB"         # Rotate log file when it reaches 100MB
+  retention: "30 days"       # Keep logs for 30 days
+  compression: "zip"         # Compress rotated logs
+  console: true              # Enable console output
+  file_enabled: true         # Enable file output
+
+# Parallel Execution
+parallel:
+  max_workers: 4             # Maximum number of parallel evaluation tasks
+  batch_size: 1              # Number of tasks per batch
+  retry_attempts: 3          # Number of retry attempts on failure
+  retry_delay: 5             # Delay between retries (seconds)
+
+# Sandbox Environment
+sandbox:
+  timeout: 300               # Default timeout for sandbox operations (seconds)
+  max_steps: 50              # Maximum number of steps per task
+  memory_limit: "4GB"        # Memory limit per sandbox instance
+  
+  # Docker settings
+  docker:
+    enabled: true
+    image: "optis_benchmark/sandbox:latest"
+    network: "bridge"
+    volumes:
+      - "/tmp/optis:/tmp/optis"
+  
+  # Local settings
+  local:
+    enabled: true
+    workspace: "/tmp/optis_workspace"
+
+# API Rate Limiting
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+  requests_per_hour: 1000
+  
+  # Per-provider limits
+  providers:
+    openai:
+      rpm: 500
+      tpm: 150000
+    anthropic:
+      rpm: 50
+      tpm: 100000
+    groq:
+      rpm: 100
+      tpm: 600000
+
+# Evaluation Settings
+evaluation:
+  save_intermediate: true    # Save intermediate results
+  intermediate_dir: "results/intermediate"
+  final_results_dir: "results/final"
+  
+  # Metrics to compute
+  metrics:
+    - "success_rate"
+    - "avg_steps"
+    - "avg_time"
+    - "cost_per_task"
+    - "total_cost"
+
+# Result Export
+export:
+  format: "jsonl"             # jsonl, json, csv
+  pretty: false              # Pretty print JSON
+  include_metadata: true     # Include task metadata
+  include_prompts: true       # Include full prompts in results
+  
+  # Compression
+  compress: false
+  compression_format: "gz"    # gz, zip, zst
+
+# Security
+security:
+  allow_file_operations: false  # Allow sandbox to read/write files
+  allow_network: true         # Allow network access in sandbox
+  allow_subprocess: false     # Allow spawning subprocesses
+  max_file_size: "10MB"       # Maximum file size for uploads/downloads
+
+# Development Settings
+development:
+  debug_mode: false
+  trace_api_calls: false
+  save_api_keys: false        # NEVER set to true in production
+  mock_api: false             # Use mock API responses
+
+# Paths
+paths:
+  dataset: "./dataset"
+  prompts: "./prompts"
+  scripts: "./scripts"
+  docs: "./docs"
+  website: "./website"

@@ -1,0 +1,85 @@
+# =============================================================================
+# Paper Retrieval Evaluation Task Configuration
+# OptiS Benchmark
+# =============================================================================
+
+task:
+  id: "paper_retrieval_eval"
+  name: "Paper Retrieval Evaluation"
+  description: "Evaluate LLM ability to retrieve and cite relevant academic papers"
+  category: "paper_retrieval"
+  difficulty: 2
+  estimated_time: 5
+  tags:
+    - "retrieval"
+    - "citation"
+    - "academic"
+    - "knowledge"
+
+dataset:
+  path: "dataset/processed/paper_retrieval_eval.jsonl"
+  num_samples: 100
+  shuffle: false
+  
+  format:
+    input_field: "query"
+    output_field: "expected_papers"
+    metadata_fields:
+      - "task_id"
+      - "topic"
+      - "difficulty"
+
+environment:
+  type: "local"
+  
+  software:
+    required:
+      - name: "python"
+        version: "3.10+"
+  
+  sandbox:
+    timeout: 120
+    max_steps: 10
+    memory_limit: "2GB"
+
+evaluation:
+  scoring_method: "metric_based"
+  
+  metrics:
+    - name: "recall"
+      type: "numeric"
+      description: "Fraction of relevant papers retrieved (0-1)"
+    - name: "precision"
+      type: "numeric"
+      description: "Fraction of retrieved papers that are relevant (0-1)"
+    - name: "citation_accuracy"
+      type: "numeric"
+      description: "Accuracy of paper citations (0-1)"
+    - name: "relevance_ranking"
+      type: "numeric"
+      description: "Quality of paper ranking by relevance (0-1)"
+  
+  success_criteria:
+    - metric: "recall"
+      operator: ">="
+      value: 0.6
+    - metric: "precision"
+      operator: ">="
+      value: 0.7
+    - metric: "citation_accuracy"
+      operator: ">="
+      value: 0.9
+
+prompt:
+  system_file: "prompts/system/research_agent.txt"
+  template_file: "prompts/templates/paper_retrieval.txt"
+  
+  variables:
+    retrieval_aspects:
+      - "key_contributions"
+      - "methodology"
+      - "related_work"
+
+cost:
+  max_cost_per_task: 1.0
+  budget_per_task: 2.0

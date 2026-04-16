@@ -1,0 +1,89 @@
+# =============================================================================
+# Paper Review Task Configuration
+# OptiS Benchmark
+# =============================================================================
+
+task:
+  id: "paper_review"
+  name: "Academic Paper Review"
+  description: "Review and critique academic papers on optical design and related topics"
+  category: "paper_review"
+  difficulty: 3
+  estimated_time: 10
+  tags:
+    - "paper-review"
+    - "academic"
+    - "critique"
+    - "optical"
+
+dataset:
+  path: "dataset/processed/paper_review.jsonl"
+  num_samples: 50
+  shuffle: false
+  
+  format:
+    input_field: "paper_content"
+    output_field: "review"
+    metadata_fields:
+      - "paper_id"
+      - "title"
+      - "authors"
+      - "venue"
+      - "year"
+
+environment:
+  type: "local"
+  
+  software:
+    required:
+      - name: "python"
+        version: "3.10+"
+  
+  sandbox:
+    timeout: 300
+    max_steps: 20
+    memory_limit: "2GB"
+
+evaluation:
+  scoring_method: "metric_based"
+  
+  metrics:
+    - name: "summary_quality"
+      type: "numeric"
+      description: "Quality of paper summary (0-1)"
+    - name: "critique_depth"
+      type: "numeric"
+      description: "Depth of critique (0-1)"
+    - name: "technical_accuracy"
+      type: "numeric"
+      description: "Accuracy of technical comments (0-1)"
+    - name: "coverage_completeness"
+      type: "numeric"
+      description: "Coverage of paper aspects (0-1)"
+  
+  success_criteria:
+    - metric: "summary_quality"
+      operator: ">="
+      value: 0.7
+    - metric: "technical_accuracy"
+      operator: ">="
+      value: 0.8
+    - metric: "coverage_completeness"
+      operator: ">="
+      value: 0.6
+
+prompt:
+  system_file: "prompts/system/research_agent.txt"
+  template_file: "prompts/templates/paper_review.txt"
+  
+  variables:
+    review_aspects:
+      - "summary"
+      - "methodology"
+      - "results"
+      - "limitations"
+      - "future_work"
+
+cost:
+  max_cost_per_task: 2.0
+  budget_per_task: 5.0

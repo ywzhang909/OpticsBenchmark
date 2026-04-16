@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiS Benchmark - Leaderboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e4e4e7;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            padding: 3rem 0;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #71717a;
+            font-size: 1.1rem;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1.5rem;
+            border: 1px solid #3f3f46;
+            background: transparent;
+            color: #a1a1aa;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+            color: white;
+        }
+        
+        .leaderboard-table {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #a1a1aa;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .rank {
+            font-weight: bold;
+            color: #71717a;
+        }
+        
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+        
+        .model-name {
+            font-weight: 600;
+            color: #e4e4e7;
+        }
+        
+        .provider {
+            font-size: 0.8rem;
+            color: #71717a;
+        }
+        
+        .score {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .metric {
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-new {
+            background: #22c55e;
+            color: #052e16;
+        }
+        
+        .badge-improved {
+            background: #3b82f6;
+            color: #1e3a5f;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            color: #52525b;
+            font-size: 0.875rem;
+        }
+        
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>OptiS Benchmark</h1>
+            <p class="subtitle">Open-Source Optical Design Agent Evaluation Leaderboard</p>
+        </header>
+        
+        <div class="filters">
+            <button class="filter-btn active">All Tasks</button>
+            <button class="filter-btn">Lens Design</button>
+            <button class="filter-btn">System Analysis</button>
+            <button class="filter-btn">Tolerance</button>
+        </div>
+        
+        <div class="leaderboard-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Model</th>
+                        <th>Success Rate</th>
+                        <th>Avg Score</th>
+                        <th>Avg Time</th>
+                        <th>Cost/Task</th>
+                        <th>Tasks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="rank rank-1">🥇 1</td>
+                        <td>
+                            <div class="model-name">GPT-4 Turbo</div>
+                            <div class="provider">OpenAI</div>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">87.5%</span>
+                        </td>
+                        <td class="score">92.3</td>
+                        <td class="metric">
+                            <span class="metric-value">45.2s</span>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">$0.32</span>
+                        </td>
+                        <td>All</td>
+                    </tr>
+                    <tr>
+                        <td class="rank rank-2">🥈 2</td>
+                        <td>
+                            <div class="model-name">Claude 3.5 Sonnet</div>
+                            <div class="provider">Anthropic</div>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">85.2%</span>
+                        </td>
+                        <td class="score">89.7</td>
+                        <td class="metric">
+                            <span class="metric-value">52.1s</span>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">$0.28</span>
+                        </td>
+                        <td>All</td>
+                    </tr>
+                    <tr>
+                        <td class="rank rank-3">🥉 3</td>
+                        <td>
+                            <div class="model-name">GPT-4o</div>
+                            <div class="provider">OpenAI</div>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">83.8%</span>
+                        </td>
+                        <td class="score">88.1</td>
+                        <td class="metric">
+                            <span class="metric-value">38.9s</span>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">$0.25</span>
+                        </td>
+                        <td>All</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">4</td>
+                        <td>
+                            <div class="model-name">Gemini 1.5 Pro</div>
+                            <div class="provider">Google</div>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">78.4%</span>
+                        </td>
+                        <td class="score">82.5</td>
+                        <td class="metric">
+                            <span class="metric-value">61.3s</span>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">$0.19</span>
+                        </td>
+                        <td>All</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">5</td>
+                        <td>
+                            <div class="model-name">Llama 3.1 70B</div>
+                            <div class="provider">Meta</div>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">72.1%</span>
+                            <span class="badge badge-new">New</span>
+                        </td>
+                        <td class="score">76.8</td>
+                        <td class="metric">
+                            <span class="metric-value">89.2s</span>
+                        </td>
+                        <td class="metric">
+                            <span class="metric-value">$0.12</span>
+                        </td>
+                        <td>All</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <footer>
+            <p>OptiS Benchmark v1.0.0 | <a href="https://github.com/your-org/optis_benchmark">GitHub</a> | <a href="docs/contribution.md">Submit Your Model</a></p>
+        </footer>
+    </div>
+</body>
+</html>
