@@ -9,15 +9,10 @@ from __future__ import annotations
 
 import json
 import math
-import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Optional
-
-import yaml
-
+from typing import Any
 
 # =============================================================================
 # Data Classes
@@ -33,7 +28,7 @@ class EvaluationResult:
     score: float
     metrics: dict[str, float] = field(default_factory=dict)
     details: dict[str, Any] = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
     execution_time: float = 0.0
     cost: float = 0.0
     latency: float = 0.0
@@ -99,7 +94,7 @@ class BaseEvaluator(ABC):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """
         Evaluate a single prediction.
@@ -156,7 +151,7 @@ class MetricBasedEvaluator(BaseEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Evaluate using numeric metrics."""
         start_time = time.time()
@@ -204,7 +199,7 @@ class MetricBasedEvaluator(BaseEvaluator):
         self,
         predicted: dict[str, Any],
         expected: dict[str, Any],
-        metadata: Optional[dict[str, Any]],
+        metadata: dict[str, Any] | None,
     ) -> dict[str, float]:
         """Compute metrics based on configuration."""
         metrics = {}
@@ -345,7 +340,7 @@ class ExactMatchEvaluator(BaseEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Check for exact match."""
         start_time = time.time()
@@ -391,7 +386,7 @@ class PartialMatchEvaluator(BaseEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Check for partial match."""
         start_time = time.time()
@@ -599,7 +594,7 @@ class SummarizationEvaluator(MetricBasedEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Evaluate summarization using ROUGE metrics."""
         start_time = time.time()
@@ -683,7 +678,7 @@ class CitationEvaluator(MetricBasedEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Evaluate citation accuracy."""
         start_time = time.time()
@@ -847,7 +842,7 @@ class CompositeScore:
     def calculate(
         cls,
         results: list[EvaluationResult],
-        weights: Optional[dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
     ) -> dict[str, float]:
         """
         Calculate composite score from results.
@@ -1048,7 +1043,7 @@ class ResultAnalyzer:
             # Approximate degrees of freedom
             num = (var_a / n_a + var_b / n_b) ** 2
             denom = (var_a / n_a) ** 2 / (n_a - 1) + (var_b / n_b) ** 2 / (n_b - 1)
-            df = num / denom if denom > 0 else min(n_a, n_b) - 1
+            num / denom if denom > 0 else min(n_a, n_b) - 1
 
             # Approximate p-value using normal distribution
             p_value = 2 * (1 - ResultAnalyzer._normal_cdf(abs(t_stat)))
@@ -1274,7 +1269,7 @@ class ReportGenerator:
         results: list[EvaluationResult],
         model_name: str,
         task_name: str,
-        aggregated: Optional[AggregatedResults] = None,
+        aggregated: AggregatedResults | None = None,
     ) -> str:
         """
         Generate HTML evaluation report.
@@ -1291,7 +1286,7 @@ class ReportGenerator:
         stats = ResultAnalyzer.compute_statistics(results)
 
         # Get composite score
-        composite = CompositeScore.calculate(results)
+        CompositeScore.calculate(results)
 
         # Categorize errors
         errors = ErrorAnalyzer.categorize_errors(results)
@@ -1330,12 +1325,12 @@ class ReportGenerator:
         <div class="card">
             <h1>OptiS Benchmark Report</h1>
             <div class="meta">
-                <strong>Model:</strong> {model_name} | 
-                <strong>Task:</strong> {task_name} | 
+                <strong>Model:</strong> {model_name} |
+                <strong>Task:</strong> {task_name} |
                 <strong>Generated:</strong> {time.strftime("%Y-%m-%d %H:%M:%S")}
             </div>
         </div>
-        
+
         <div class="card">
             <h2>Summary Statistics</h2>
             <div class="stats-grid">
@@ -1357,7 +1352,7 @@ class ReportGenerator:
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
             <h2>Score Distribution</h2>
             <table>
@@ -1371,7 +1366,7 @@ class ReportGenerator:
                 <tr><td>P75</td><td>{stats.get("p75_score", 0):.4f}</td></tr>
             </table>
         </div>
-        
+
         <div class="card">
             <h2>Error Summary</h2>
             <div class="error-summary">

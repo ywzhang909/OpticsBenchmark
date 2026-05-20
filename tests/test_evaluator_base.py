@@ -5,14 +5,13 @@ Tests for MetricBasedEvaluator, ExactMatchEvaluator, and PartialMatchEvaluator.
 """
 
 import pytest
-import asyncio
-from src.core.evaluator import (
-    MetricBasedEvaluator,
-    ExactMatchEvaluator,
-    PartialMatchEvaluator,
-    EvaluationResult,
-)
 
+from src.core.evaluator import (
+    EvaluationResult,
+    ExactMatchEvaluator,
+    MetricBasedEvaluator,
+    PartialMatchEvaluator,
+)
 
 # =============================================================================
 # MetricBasedEvaluator Tests

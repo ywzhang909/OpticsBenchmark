@@ -5,7 +5,7 @@ Tests for ROGUEScorer and SummarizationEvaluator.
 """
 
 import pytest
-import asyncio
+
 from src.core.evaluator import ROGUEScorer, SummarizationEvaluator
 
 

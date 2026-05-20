@@ -4,20 +4,20 @@ OptiS Benchmark - Test Configuration
 Pytest fixtures and configuration for evaluation tests.
 """
 
-import pytest
 import asyncio
-from typing import Any
 from dataclasses import dataclass, field
+from typing import Any
+
+import pytest
 
 from src.core.evaluator import (
+    CitationEvaluator,
     EvaluationResult,
-    MetricBasedEvaluator,
     ExactMatchEvaluator,
+    MetricBasedEvaluator,
     PartialMatchEvaluator,
     SummarizationEvaluator,
-    CitationEvaluator,
 )
-
 
 # =============================================================================
 # Fixtures

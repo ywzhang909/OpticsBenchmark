@@ -8,14 +8,13 @@ from .agent import (
     AgentConfig,
     AgentProvider,
     AgentResponse,
+    AnthropicAgent,
     BaseAgent,
     Message,
     OpenAIAgent,
-    AnthropicAgent,
     ToolCall,
     create_agent,
 )
-
 from .evaluator import (
     AggregatedResults,
     BaseEvaluator,
@@ -25,7 +24,6 @@ from .evaluator import (
     PartialMatchEvaluator,
     create_evaluator,
 )
-
 from .runner import (
     EvaluationRunner,
     RunnerConfig,
@@ -37,7 +35,7 @@ from .runner import (
 __all__ = [
     # Agent
     "AgentConfig",
-    "AgentProvider", 
+    "AgentProvider",
     "AgentResponse",
     "BaseAgent",
     "Message",

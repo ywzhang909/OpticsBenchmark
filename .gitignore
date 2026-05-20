@@ -151,3 +151,18 @@ data/external/
 *.parquet
 .zemax/
 .zos/
+
+# opencode
+.opencode/
+
+# Ruff
+.ruff_cache/
+
+# Package info
+optis_benchmark.egg-info/
+
+# Lock files
+uv.lock
+
+# temp files
+.scrpts/citation_correctness_eval.py

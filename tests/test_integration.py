@@ -5,15 +5,15 @@ End-to-end integration tests for the evaluation system.
 """
 
 import pytest
-import asyncio
+
 from src.core.evaluator import (
-    MetricBasedEvaluator,
-    SummarizationEvaluator,
     CitationEvaluator,
     CompositeScore,
-    ResultAnalyzer,
-    create_evaluator,
     EvaluationResult,
+    MetricBasedEvaluator,
+    ResultAnalyzer,
+    SummarizationEvaluator,
+    create_evaluator,
 )
 
 

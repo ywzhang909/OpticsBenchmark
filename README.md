@@ -62,15 +62,19 @@ OptiS Benchmark 是一个模块化、可扩展的开源评测框架，用于评�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-org/optis_benchmark.git
+git clone https://github.com/ywzhang909/OpticsBenchmark.git
 cd optis_benchmark
 
-# 使用 Conda (推荐)
-conda env create -f environment.yml
-conda activate optis_benchmark
+# 使用 pip venv (推荐)
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
 
-# 或使用 pip
-pip install -r requirements.txt
+# 或使用 uv (更快)
+uv sync
+
+# 或使用 poetry
+poetry install
 ```
 
 ### 2. 环境变量配置

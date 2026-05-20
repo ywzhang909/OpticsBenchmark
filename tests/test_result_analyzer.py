@@ -5,15 +5,13 @@ Tests for ResultAnalyzer, ErrorAnalyzer, CompositeScore, and EvaluationQA.
 """
 
 import pytest
-import math
+
 from src.core.evaluator import (
-    ResultAnalyzer,
-    ErrorAnalyzer,
     CompositeScore,
+    ErrorAnalyzer,
     EvaluationQA,
     EvaluationResult,
-    ModelComparisonResult,
-    ValidationReport,
+    ResultAnalyzer,
 )
 
 

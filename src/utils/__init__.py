@@ -4,14 +4,14 @@ OptiS Benchmark - Utils Module
 This module exports utility functions and classes.
 """
 
-from .logger import setup_logger, get_logger, DEFAULT_FORMAT
+from .logger import DEFAULT_FORMAT, get_logger, setup_logger
 from .parser import (
-    JSONLParser,
-    YAMLParser,
     ConfigParser,
-    ResultsParser,
+    JSONLParser,
     OpticalDataParser,
     ParsedLens,
+    ResultsParser,
+    YAMLParser,
 )
 
 __all__ = [

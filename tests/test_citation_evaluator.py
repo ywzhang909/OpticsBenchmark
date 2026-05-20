@@ -4,9 +4,11 @@ OptiS Benchmark - Citation Evaluator Tests
 Tests for CitationEvaluator and retrieval-related functionality.
 """
 
-import pytest
 import json
-from src.core.evaluator import CitationEvaluator, EvaluationResult
+
+import pytest
+
+from src.core.evaluator import CitationEvaluator
 
 
 class TestCitationEvaluator:

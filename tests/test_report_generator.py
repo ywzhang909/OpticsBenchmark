@@ -4,8 +4,7 @@ OptiS Benchmark - Report Generator Tests
 Tests for ReportGenerator.
 """
 
-import pytest
-from src.core.evaluator import ReportGenerator, EvaluationResult
+from src.core.evaluator import EvaluationResult, ReportGenerator
 
 
 class TestReportGenerator:

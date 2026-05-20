@@ -8,22 +8,22 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
+import loguru
 from loguru import logger
 
 
 def setup_logger(
-    log_file: Optional[str | Path] = None,
+    log_file: str | Path | None = None,
     level: str = "INFO",
-    format_string: Optional[str] = None,
+    format_string: str | None = None,
     rotation: str = "100 MB",
     retention: str = "30 days",
     compression: str = "zip",
 ) -> None:
     """
     Set up the logger for the application.
-    
+
     Args:
         log_file: Path to log file (if None, only console logging)
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -34,7 +34,7 @@ def setup_logger(
     """
     # Remove default handler
     logger.remove()
-    
+
     # Default format
     if format_string is None:
         format_string = (
@@ -43,7 +43,7 @@ def setup_logger(
             "<cyan>{name}</cyan>:<cyan>{function}</cyan> - "
             "<level>{message}</level>"
         )
-    
+
     # Console handler
     logger.add(
         sys.stderr,
@@ -51,12 +51,12 @@ def setup_logger(
         level=level,
         colorize=True,
     )
-    
+
     # File handler (if log_file specified)
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         logger.add(
             log_path,
             format=format_string,
@@ -68,13 +68,13 @@ def setup_logger(
         )
 
 
-def get_logger(name: Optional[str] = None) -> "loguru.Logger":
+def get_logger(name: str | None = None) -> loguru.Logger:
     """
     Get a logger instance.
-    
+
     Args:
         name: Logger name (usually __name__)
-        
+
     Returns:
         Logger instance
     """

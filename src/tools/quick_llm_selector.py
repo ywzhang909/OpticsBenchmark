@@ -13,7 +13,6 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -66,12 +65,12 @@ class QuickLLMSelector:
                 continue
 
             try:
-                with open(config_file, "r", encoding="utf-8") as f:
+                with open(config_file, encoding="utf-8") as f:
                     data = yaml.safe_load(f)
 
                 # Extract provider info
                 model_cfg = data.get("model", {})
-                agent_cfg = data.get("agent", {})
+                data.get("agent", {})
                 tools_cfg = data.get("tools", {})
 
                 provider = model_cfg.get("provider", "unknown")
@@ -120,7 +119,7 @@ class QuickLLMSelector:
 
         return sorted(providers, key=lambda p: p.name)
 
-    def select_provider(self, provider_id: str) -> Optional[ProviderInfo]:
+    def select_provider(self, provider_id: str) -> ProviderInfo | None:
         """Select a provider by ID."""
         return self.providers.get(provider_id)
 

@@ -4,14 +4,13 @@ OptiS Benchmark - Quick LLM Selector Tests
 Tests for the QuickLLMSelector tool.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+
+import pytest
 
 from src.tools.quick_llm_selector import (
-    QuickLLMSelector,
     ProviderInfo,
-    OutputFormat,
+    QuickLLMSelector,
 )
 
 

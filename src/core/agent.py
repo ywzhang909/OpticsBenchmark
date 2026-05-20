@@ -7,13 +7,13 @@ for different LLM providers (OpenAI, Anthropic, Google Gemini, Groq, Ollama, etc
 
 from __future__ import annotations
 
-import os
 import json
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -51,13 +51,13 @@ class AgentConfig:
     max_retries: int = 3
 
     # Provider-specific settings
-    thinking_budget: Optional[int] = None  # Anthropic specific
+    thinking_budget: int | None = None  # Anthropic specific
     ollama_host: str = "http://localhost:11434"  # Ollama specific
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "AgentConfig":
+    def from_yaml(cls, path: str | Path) -> AgentConfig:
         """Load configuration from YAML file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         # Expand environment variables
@@ -119,9 +119,9 @@ class Message:
 
     role: str  # "system", "user", "assistant", "tool"
     content: str
-    name: Optional[str] = None
-    tool_call_id: Optional[str] = None
-    tool_calls: Optional[list[dict]] = None
+    name: str | None = None
+    tool_call_id: str | None = None
+    tool_calls: list[dict] | None = None
 
 
 @dataclass
@@ -131,8 +131,8 @@ class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
-    result: Optional[Any] = None
-    error: Optional[str] = None
+    result: Any | None = None
+    error: str | None = None
 
 
 @dataclass
@@ -166,7 +166,7 @@ class BaseAgent(ABC):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """
         Send a chat request to the agent.
@@ -226,7 +226,7 @@ class OpenAIAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to OpenAI API."""
         import time
@@ -292,7 +292,7 @@ class OpenAIAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
@@ -335,7 +335,7 @@ class AnthropicAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to Anthropic API."""
         import time
@@ -415,7 +415,7 @@ class AnthropicAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
@@ -455,7 +455,7 @@ class GeminiAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to Google Gemini API."""
         import time
@@ -513,7 +513,7 @@ class GeminiAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
@@ -552,7 +552,7 @@ class GroqAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to Groq API."""
         import time
@@ -612,7 +612,7 @@ class GroqAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
@@ -652,7 +652,7 @@ class OllamaAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to Ollama API."""
         import time
@@ -706,7 +706,7 @@ class OllamaAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
@@ -741,7 +741,7 @@ class BedrockAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to AWS Bedrock API."""
         import time
@@ -801,7 +801,7 @@ class BedrockAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
@@ -848,7 +848,7 @@ class TogetherAIAgent(BaseAgent):
     async def chat(
         self,
         messages: list[Message],
-        tools: Optional[list[dict]] = None,
+        tools: list[dict] | None = None,
     ) -> AgentResponse:
         """Send chat request to Together AI API."""
         import time
@@ -897,7 +897,7 @@ class TogetherAIAgent(BaseAgent):
                 cost=cost,
                 latency=latency,
             )
-        except Exception as e:
+        except Exception:
             return AgentResponse(
                 content="",
                 tool_calls=[],
