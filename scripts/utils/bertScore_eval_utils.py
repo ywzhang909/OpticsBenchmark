@@ -8,10 +8,7 @@ answer and one or more reference answers, returning precision, recall, and F1.
 
 from bert_score import score as bert_score
 
-_MODEL_TYPE = "albert-base-v2"
-
-
-def compute_bertscore(pred_answer: str, gold_answer: list[str]) -> dict[str, float]:
+def compute_bert_score(pred_answer: str, gold_answer: list[str], model_name: str = "albert-base-v2") -> dict[str, float]:
     """Compute BERTScore between a prediction and multiple reference answers.
 
     When multiple references are provided, the best F1 score (and its
@@ -25,7 +22,7 @@ def compute_bertscore(pred_answer: str, gold_answer: list[str]) -> dict[str, flo
         dict with keys 'precision', 'recall', 'f1' containing the best scores.
     """
     candidates = [pred_answer] * len(gold_answer)
-    P, R, F1 = bert_score(candidates, gold_answer, lang='en', verbose=False, model_type=_MODEL_TYPE)
+    P, R, F1 = bert_score(candidates, gold_answer, lang='en', verbose=False, model_type=model_name)
 
     best_idx = F1.argmax().item()
     return {

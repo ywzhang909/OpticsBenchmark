@@ -44,14 +44,12 @@ def compute_rouge(pred_answer, gold_answer):
             metrics = ["rougeL"]
         scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
         rouge_score = 0
-        reference_idx = None
         for idx, ref in enumerate(references):
             score = scorer.score(ref, hypotheses)
             if score["rougeL"].fmeasure > rouge_score:
                 rouge_score = score["rougeL"].fmeasure
-                reference_idx = idx
 
-        return rouge_score, reference_idx
+        return rouge_score
 
     # sentence evaluation
     # h = '\n'.join(nltk.sent_tokenize(pred_answer.lower()))
@@ -60,11 +58,11 @@ def compute_rouge(pred_answer, gold_answer):
     # document evaluation
     h = pred_answer.lower()
     r1 = [g.lower() for g in gold_answer]
-    rouge_score, reference_idx = _rouge_calculation(h, r1)
+    rouge_score = _rouge_calculation(h, r1)
 
-    return rouge_score, reference_idx
+    return rouge_score
 
 pred_answer = "The cat is on the mat."
 gold_answer = ["The cat is on the mat.", "The cat sat on the mat."]
 
-rouge_score, reference_idx = compute_rouge(pred_answer, gold_answer)
+rouge_score = compute_rouge(pred_answer, gold_answer)

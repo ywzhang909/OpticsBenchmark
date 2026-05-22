@@ -5,8 +5,10 @@ from collections import Counter
 import numpy as np
 from utils.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
 from utils.rouge_eval_utils import compute_rouge
-
-extract_entrys = [
+from utils.sentence_similarity_utils import SentenceEmbedder
+from utils.hungarian_algorithm_utils import hungarian_match
+from utils.bertScore_eval_utils import compute_bert_score
+ENTRY_NAMES = frozenset({
     "title",
     "publication year",
     "doi",
@@ -15,7 +17,7 @@ extract_entrys = [
     "contact author",
     "affiliations",
     "abstract",
-]
+})
 
 
 def main():
@@ -35,6 +37,7 @@ def main():
     )
     parser.add_argument("--rouge", action="store_true", help="Evaluate ROUGE score")
     parser.add_argument("--match", action="store_true", help="Evaluate exact match score")
+    parser.add_argument("--bertScore", action="store_true", help="Evaluate BERTScore score")
     parser.add_argument(
         "--bertScore-model",
         type=str,
@@ -51,15 +54,23 @@ def main():
         with open(args.gold_file) as f:
             gold_data = json.load(f)
 
+    if args.bertScore or args.rouge:
+        embedder = SentenceEmbedder()
+
+    all_scores = {}
     if args.match:
         exact_match_scores = []
+        rouge_score_all = []
+        bert_score_all = []
         for idx, pred in enumerate(pred_data):
             exact_match = []
             rouge_scores = []
+            bert_scores = []
             gold = gold_data[idx]
             for entry, pred_answer in pred:
                 gold_answer = gold[entry]
-                if normalize_text(entry) in extract_entrys:
+                norm_entry = normalize_text(entry)
+                if norm_entry in ENTRY_NAMES:
                     if isinstance(pred_answer, str) and isinstance(gold_answer, str):
                         match_result = compute_exact_match(pred_answer, gold_answer)
                         if match_result:
@@ -80,21 +91,47 @@ def main():
                         else:
                             exact_match.append(0.0)
                     elif isinstance(pred_answer, list) and isinstance(gold_answer, list):
-                        pred_nomalized_answer = [normalize_text(p) for p in pred_answer]
-                        gold_nomalized_answer = [normalize_text(g) for g in gold_answer]
-                        if Counter(pred_nomalized_answer) == Counter(gold_nomalized_answer):
+                        pred_normalized_answer = [normalize_text(p) for p in pred_answer]
+                        gold_normalized_answer = [normalize_text(g) for g in gold_answer]
+                        if Counter(pred_normalized_answer) == Counter(gold_normalized_answer):
                             exact_match.append(1.0)
                         else:
                             exact_match.append(0.0)
                 else:
+                    if args.rouge or args.bertScore:
+                        continue
+                    pred_embs = embedder.encode(pred_answer)
+                    gold_embs = embedder.encode(gold_answer)
+                    sim_matrix = np.dot(pred_embs, gold_embs.T).astype(np.float32)
+                    assignments, total_score = hungarian_match(sim_matrix)
                     temp_rouge_scores = []
-                    for p in pred_answer:
-                        rouge_score, reference_idx = compute_rouge(p, gold_answer)
-                        temp_rouge_scores.append(rouge_score)
-                        del gold_answer[reference_idx]
-                    rouge_scores.append(np.mean(temp_rouge_scores))
+                    temp_bert_scores = []
+                    for pred_idx, gold_idx in assignments:
+                        if args.rouge:
+                            rouge_score = compute_rouge(pred_answer[pred_idx], gold_answer[gold_idx])
+                            temp_rouge_scores.append(rouge_score)
+                        if args.bertScore:
+                            bert_score = compute_bert_score(
+                                pred_answer[pred_idx],
+                                gold_answer[gold_idx],
+                                model_name=args.bertScore_model,
+                            )
+                            temp_bert_scores.append(bert_score['f1'])
+                    if temp_rouge_scores:
+                        rouge_scores.append(np.mean(temp_rouge_scores))
+                    if temp_bert_scores:
+                        bert_scores.append(np.mean(temp_bert_scores))
+
             exact_match_scores.append(np.mean(exact_match))
-            rouge_scores.append(np.mean(rouge_scores))
+            if rouge_scores:
+                rouge_score_all.append(np.mean(rouge_scores))
+            if bert_scores:
+                bert_score_all.append(np.mean(bert_scores))
+
+        all_scores["exact_match"] = np.mean(exact_match_scores) if exact_match_scores else 0.0
+        all_scores["rouge"] = np.mean(rouge_score_all) if rouge_score_all else 0.0
+        all_scores["bertScore"] = np.mean(bert_score_all) if bert_score_all else 0.0
+    
 
 
 if __name__ == "__main__":
