@@ -43,16 +43,60 @@ class SentenceEmbedder:
         max_length: int = 512,
     ) -> None:
         import torch
-        from transformers import AutoModel, AutoTokenizer
 
         self.model_name = model_name
         self.batch_size = batch_size
         self.max_length = max_length
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name).to(self.device)
+        self.tokenizer = self._load_tokenizer(model_name)
+        self.model = self._load_model(model_name).to(self.device)
         self.model.eval()
+
+    @staticmethod
+    def _load_tokenizer(model_name: str):
+        """Load tokenizer with fallback for transformers 5.x compatibility."""
+        from transformers import AutoTokenizer
+
+        try:
+            return AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        except (ValueError, OSError):
+            pass
+        # Fallback: some older models (e.g. prajjwal1/bert-tiny) don't have
+        # config.model_type needed by AutoTokenizer in transformers 5.x.
+        from transformers import BertTokenizer, AlbertTokenizer, RobertaTokenizer
+
+        for cls in [BertTokenizer, AlbertTokenizer, RobertaTokenizer]:
+            try:
+                return cls.from_pretrained(model_name)
+            except Exception:
+                continue
+        raise ImportError(
+            f"Could not load tokenizer for model '{model_name}'. "
+            "Try installing tiktoken or sentencepiece, or use a different model."
+        )
+
+    @staticmethod
+    def _load_model(model_name: str):
+        """Load model with fallback for transformers 5.x compatibility."""
+        from transformers import AutoModel
+
+        try:
+            return AutoModel.from_pretrained(model_name, trust_remote_code=True)
+        except (ValueError, OSError):
+            pass
+        # Fallback: try specific model classes
+        from transformers import BertModel, AlbertModel, RobertaModel
+
+        for cls in [BertModel, AlbertModel, RobertaModel]:
+            try:
+                return cls.from_pretrained(model_name)
+            except Exception:
+                continue
+        raise ImportError(
+            f"Could not load model '{model_name}'. "
+            "Try a different model name."
+        )
 
     def encode(self, sentences: list[str]) -> np.ndarray:
         """Encode sentences into L2-normalized embeddings.

@@ -95,11 +95,11 @@ class TestROGUEScorer:
 
         result = ROGUEScorer.rouge_l(pred, ref)
 
-        # LCS = "the quick fox" = 4 words
-        # Precision = 4/4 = 1.0
-        # Recall = 4/6 = 0.667
+        # LCS = "the quick fox" = 3 words
+        # Precision = 3/3 = 1.0
+        # Recall = 3/5 = 0.6
         assert result["precision"] == 1.0
-        assert result["recall"] == pytest.approx(4 / 6)
+        assert result["recall"] == pytest.approx(3 / 5)
 
     def test_rouge_l_no_overlap(self):
         """Test ROUGE-L with no overlap."""

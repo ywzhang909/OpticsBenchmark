@@ -28,7 +28,7 @@ class TestProviderInfo:
             tools_enabled=["file_read", "bash_execute"],
         )
 
-        assert provider.display_name == "GPT-4 (OpenAI)"
+        assert provider.display_name == "GPT-4 (OpenAI) (gpt-4-turbo)"
         assert provider.provider_type == "openai"
         assert provider.has_api_key is True
         assert len(provider.tools_enabled) == 2
@@ -338,7 +338,7 @@ class TestQuickLLMSelectorAsync:
 model:
   provider: openai
   name: gpt-4
-  api_key: ${NONEXISTENT_KEY}
+  api_key: sk-dummy-key-for-testing
 agent:
   name: Mock Agent
 """)
@@ -348,7 +348,7 @@ agent:
 
         provider = selector.select_provider("mock-agent")
 
-        # This will fail due to missing API key, but should return error dict
+        # Agent creation will succeed (dummy key present) but API call will fail
         result = await selector.test_provider(provider, "Hello")
 
         assert "success" in result

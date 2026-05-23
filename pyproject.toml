@@ -45,6 +45,8 @@ dependencies = [
     "aiohttp>=3.9.0",
     "bert-score>=0.3.13",
     "rouge-score>=0.1.2",
+    "sentencepiece>=0.2.1",
+    "tiktoken>=0.13.0",
 ]
 
 [project.optional-dependencies]
@@ -133,3 +135,34 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+# ==============================================================
+# PyTorch / CUDA 自适应配置
+# 参考: https://uv.doczh.com/guides/integration/pytorch/#_3
+# ==============================================================
+# 定义 PyTorch 专用索引（explicit=true 确保仅 torch 系列包走此索引）
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+# 默认使用 CPU 索引（跨平台安全）；运行 scripts/install_torch.py 后自动切换为 GPU 索引
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+torchaudio = [{ index = "pytorch-cpu" }]

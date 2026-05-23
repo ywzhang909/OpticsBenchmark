@@ -7,9 +7,9 @@ Tests for text normalization utilities in em_eval_utils.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "utils"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from em_eval_utils import normalize_text, record_doi_punctuation
+from utils.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
 
 
 class TestNormalizeText:
@@ -102,3 +102,52 @@ class TestRecordDoiPunctuation:
     def test_mixed_punctuation(self):
         result = record_doi_punctuation("10.test/foo.bar-baz.")
         assert result == {"/": [4], ".": [8], "-": [12]}
+
+
+class TestComputeExactMatch:
+    """Tests for compute_exact_match function."""
+
+    def test_exact_match_identical(self):
+        result = compute_exact_match("hello world", "hello world")
+        assert result == 1
+
+    def test_exact_match_normalized_equal(self):
+        result = compute_exact_match("  Hello,   World!!  ", "hello world")
+        assert result == 1
+
+    def test_exact_match_different(self):
+        result = compute_exact_match("hello world", "goodbye world")
+        assert result == 0
+
+    def test_exact_match_case_difference(self):
+        result = compute_exact_match("Hello World", "hello world")
+        assert result == 1
+
+    def test_exact_match_punctuation_difference(self):
+        result = compute_exact_match("hello, world!", "hello world")
+        assert result == 1
+
+    def test_exact_match_empty_strings(self):
+        result = compute_exact_match("", "")
+        assert result == 1
+
+    def test_exact_match_one_empty(self):
+        result = compute_exact_match("", "hello")
+        assert result == 0
+
+    def test_exact_match_numbers(self):
+        result = compute_exact_match("Item #1 costs $99.99", "Item 1 costs 9999")
+        assert result == 1
+
+    def test_exact_match_whitespace_differences(self):
+        result = compute_exact_match("hello\tworld\nfoo  bar", "hello world foo bar")
+        assert result == 1
+
+    def test_exact_match_returns_int(self):
+        result = compute_exact_match("a", "b")
+        assert isinstance(result, int)
+        assert result == 0
+
+    def test_exact_match_unicode(self):
+        result = compute_exact_match("café", "café")
+        assert result == 1

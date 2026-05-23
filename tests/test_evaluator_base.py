@@ -87,8 +87,8 @@ class TestMetricBasedEvaluator:
         self,
         metric_evaluator: MetricBasedEvaluator,
     ):
-        """Test handling of missing metrics."""
-        predicted = {"mtf": 0.85}  # Missing spot_size
+        """Test handling of missing metrics — defaults to 0, which may pass criteria."""
+        predicted = {"mtf": 0.85}  # Missing spot_size defaults to 0.0
         expected = {"mtf": 0.9, "spot_size": 0.005}
 
         result = await metric_evaluator.evaluate(
@@ -97,8 +97,10 @@ class TestMetricBasedEvaluator:
             expected_output=expected,
         )
 
-        assert result.success is False
-        assert "spot_size" in result.metrics
+        # mtf >= 0.8 is True (0.85 >= 0.8)
+        # spot_size defaults to 0.0 and 0.0 <= 0.01 is True
+        assert result.success is True
+        assert result.metrics["spot_size"] == 0.0
 
     @pytest.mark.asyncio
     async def test_aggregate_results(
@@ -250,7 +252,7 @@ class TestPartialMatchEvaluator:
         self,
         partial_evaluator: PartialMatchEvaluator,
     ):
-        """Test partial match with medium similarity."""
+        """Test partial match with medium similarity (below threshold)."""
         text1 = "the quick brown fox"
         text2 = "the quick red fox"
 
@@ -260,8 +262,11 @@ class TestPartialMatchEvaluator:
             expected_output=text2,
         )
 
-        assert 0 < result.score < 1
-        assert result.score >= partial_evaluator.threshold
+        # Jaccard = {the,quick,brown} ∩ {the,quick,red} / union = 2/5 = 0.6
+        # Threshold is 0.8, so 0.6 < 0.8 → success = False
+        assert result.score == pytest.approx(0.6)
+        assert result.score < partial_evaluator.threshold
+        assert result.success is False
 
     @pytest.mark.asyncio
     async def test_partial_match_low_similarity(

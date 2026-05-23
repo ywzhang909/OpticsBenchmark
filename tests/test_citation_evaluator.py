@@ -207,11 +207,11 @@ class TestCitationEvaluator:
         assert "paper_1" in papers
 
     def test_extract_papers_nested(self):
-        """Test paper extraction from nested structure."""
+        """Test paper extraction from nested dict with 'papers' key."""
         evaluator = CitationEvaluator({})
 
         data = {
-            "results": [
+            "papers": [
                 {"doi": "10.1234/test.001"},
                 {"doi": "10.1234/test.002"},
             ]
@@ -311,10 +311,10 @@ class TestCitationEvaluator:
         accuracy = evaluator._calculate_citation_accuracy(pred, ref)
 
         # paper1 exact match
-        # "deep learning optics" vs "deep learning systems": 3 common / 4 total = 0.75
-        # partial match with 0.5 weight = 0.375
-        # Total = (1 + 0.375) / 2 = 0.6875
-        assert 0.5 < accuracy < 0.8
+        # "deep learning optics" vs "deep learning systems": 2 common / 4 total = 0.50
+        # partial match threshold is > 0.8, so no partial match
+        # Total = (1 + 0) / 2 = 0.5
+        assert accuracy == pytest.approx(0.5)
 
 
 class TestCitationEvaluatorIntegration:

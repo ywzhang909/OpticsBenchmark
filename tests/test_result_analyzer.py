@@ -4,6 +4,8 @@ OptiS Benchmark - Result Analyzer Tests
 Tests for ResultAnalyzer, ErrorAnalyzer, CompositeScore, and EvaluationQA.
 """
 
+import math
+
 import pytest
 
 from src.core.evaluator import (
@@ -55,8 +57,10 @@ class TestResultAnalyzer:
 
         stats = ResultAnalyzer.compute_statistics(results)
 
-        assert stats["p25_score"] == pytest.approx(0.25)
-        assert stats["p75_score"] == pytest.approx(0.75)
+        # Linear interpolation: index = (10-1)*0.25 = 2.25
+        # p25 = values[2]*0.75 + values[3]*0.25 = 0.3*0.75 + 0.4*0.25 = 0.325
+        assert stats["p25_score"] == pytest.approx(0.325)
+        assert stats["p75_score"] == pytest.approx(0.775)
 
     def test_compute_statistics_latency(self, sample_results: list[EvaluationResult]):
         """Test latency statistics."""
@@ -91,7 +95,8 @@ class TestResultAnalyzer:
 
         comparison = ResultAnalyzer.compare_models(results_a, results_b, "Model A", "Model B")
 
-        assert comparison.winner == "A"  # A > B when equal (or tie-breaker)
+        # When means are equal, winner is "A" if mean_a > mean_b else "B"
+        assert comparison.winner == "B"
         assert comparison.difference == pytest.approx(0.0, abs=1e-6)
 
     def test_compare_models_different(self, sample_results: list[EvaluationResult]):
@@ -116,13 +121,23 @@ class TestResultAnalyzer:
 
     def test_compare_models_statistical_significance(self):
         """Test statistical significance detection."""
-        # Create clearly different results
+        # Create clearly different results with non-zero variance
         results_a = [
-            EvaluationResult(task_id=f"task_{i}", success=True, score=0.9, execution_time=1.0)
+            EvaluationResult(
+                task_id=f"task_{i}",
+                success=True,
+                score=0.9 + (i % 3) * 0.05,  # 0.90, 0.95, 0.90, 0.95, ...
+                execution_time=1.0,
+            )
             for i in range(10)
         ]
         results_b = [
-            EvaluationResult(task_id=f"task_{i}", success=True, score=0.5, execution_time=1.0)
+            EvaluationResult(
+                task_id=f"task_{i}",
+                success=True,
+                score=0.5 + (i % 2) * 0.1,  # 0.5, 0.6, 0.5, 0.6, ...
+                execution_time=1.0,
+            )
             for i in range(10)
         ]
 

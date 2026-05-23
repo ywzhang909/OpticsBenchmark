@@ -45,6 +45,37 @@ source .venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
+### PyTorch / CUDA 自动配置
+
+本项目使用 **BERTScore** 作为评估指标之一，需要 PyTorch 运行时。`uv sync` 默认安装 **CPU 版本** PyTorch（跨平台兼容）。
+
+如果你有 **NVIDIA GPU**，可自动检测 CUDA 驱动版本并安装对应的 GPU 加速 PyTorch：
+
+```bash
+# 方式一：自动检测并安装（推荐）
+uv run python scripts/install_torch.py
+
+# 方式二：直接使用 uv 内置自动检测
+UV_TORCH_BACKEND=auto uv pip install torch torchvision torchaudio --upgrade
+
+# 方式三：手动指定 CUDA 版本
+uv pip install torch --torch-backend=cu130 --upgrade
+```
+
+> **说明**：`uv sync` 后再次运行 `install_torch.py` 不会丢失配置——脚本会自动更新 `pyproject.toml` 的 `[tool.uv.sources]`，确保后续 `uv sync` 使用正确的 PyTorch 索引。
+>
+> 支持的后端值：`auto`, `cpu`, `cu118`, `cu121`, `cu124`, `cu126`, `cu128`, `cu130`
+
+#### 当前环境
+
+| 项目 | 值 |
+|------|-----|
+| PyTorch | `2.12.0+cu130` |
+| CUDA Driver | `13.2` |
+| GPU | `NVIDIA GeForce RTX 5080` |
+
+---
+
 ### Environment Setup
 
 ```bash
