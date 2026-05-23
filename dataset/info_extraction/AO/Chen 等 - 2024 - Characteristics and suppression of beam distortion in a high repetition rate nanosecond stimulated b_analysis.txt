@@ -1,0 +1,67 @@
+============================================================
+文献调研辅助工具 - 分析报告
+============================================================
+
+DOI: 10.1017/hpl.2024.4
+标题: Characteristics and suppression of beam distortion in a high repetition rate nanosecond stimulated Brillouin scattering phase conjugation mirror
+期刊: High Power Laser Science and Engineering
+年份: 2024
+作者: Yifu Chen, Bowen Tan, Duo Jin, Bin Chen, Zhenxu Bai, Kun Wang, Yulei Wang, Zhiwei Lü
+
+============================================================
+
+分析结果:
+
+
+以下是基于您提供的论文内容提取并总结的关键信息，已严格按照学术规范与您的格式要求整理：
+
+## 论文基本信息
+- **标题**：Characteristics and suppression of beam distortion in a high repetition rate nanosecond stimulated Brillouin scattering phase conjugation mirror（高重频纳秒受激布里渊散射相位共轭镜的束畸变特性及抑制）
+- **出版年份**：2024
+- **DOI**：10.1017/hpl.2024.4
+- **期刊名称**：High Power Laser Science and Engineering
+- **10个关键词**：光束轮廓 (Beam profile)；高功率 (High power)；高重频 (High repetition rate)；受激布里渊散射相位共轭镜 (SBS-PCM)；热对流 (Thermal convection)；液体介质 (Liquid medium)；束畸变 (Beam distortion)；介质粘度 (Medium viscosity)；残余平方和 (RSS)；流体动力学分析 (Hydrodynamic analysis)
+- **作者**：Yifu Chen, Bowen Tan, Duo Jin, Bin Chen, Zhenxu Bai, Kun Wang, Yulei Wang, Zhiwei Lü
+- **通讯作者**：Zhenxu Bai (Email: baizhenxu@hotmail.com)
+- **所属机构**：
+  1. School of Astronautics, Harbin Institute of Technology, Harbin, China
+  2. Center for Advanced Laser Technology, Hebei University of Technology, Tianjin, China
+  3. Hebei Key Laboratory of Advanced Laser Technology and Equipment, Tianjin, China
+  4. School of Energy and Environmental Engineering, Hebei University of Technology, Tianjin, China
+
+---
+
+## 核心内容
+
+### 背景与目标
+- **研究背景**：高重频高功率激光器在空间探测与测距等领域需求迫切，但液体介质SBS-PCM在重复泵浦下易发生热积累，引发热致光斑展宽、光学击穿及折射率梯度变化，导致Stokes光束严重畸变，现有研究缺乏热场与光束畸变的定量物理模型。
+- **本文目标**：提出基于流体动力学的热对流物理模型 → 通过定量表征泵浦重频/能量/介质粘度对温度场、对流场及光束轮廓的耦合影响机制 → 实现利用高粘度介质有效抑制热对流，恢复高重频SBS-PCM的高质量高斯光束。
+
+### 研究内容
+- **技术路线**：泵浦激光输入 → 热-流耦合参数建模（吸收热+声场耗散热） → Fluent三维流体动力学仿真 → CCD同步采集泵浦/Stokes光斑轮廓 → 高斯拟合与残余平方和(RSS)定量量化畸变 → 介质粘度与液池几何尺寸优化 → 输出低畸变、高光束质量的Stokes光束。
+- **关键方法**：
+  1. **热-流耦合物理模型构建**：突破传统仅考虑介质线性吸收的热积累模型，将总热源定义为“泵浦吸收热 + SBS声场热松弛耗散热”。结合流体连续性、动量与能量方程建立三维仿真模型，揭示了重频升高→热对流加剧→折射率非均匀分布→光束弯曲畸变的内在物理机制。
+  2. **RSS定量表征与粘度抑制策略**：引入高斯拟合残余平方和(RSS)作为光束畸变程度的标准化定量指标；提出“以流阻抑对流”策略，通过阶梯式提高介质粘度（0.25~4.35 cSt）削弱浮力驱动的热对流速度，从源头切断畸变诱因。
+
+### 实验内容
+- **数据**：
+  - **介质**：3M™Fluorinert™系列（FC-72, FC-770, FC-43）与Galden® HT-230，粘度覆盖0.25~4.35 cSt梯度。
+  - **泵浦参数**：波长1064 nm，脉宽7 ns，光束腰斑3.5 mm；重频覆盖10/50/100/250/500 Hz；脉冲能量覆盖10/15/20/25 mJ。
+  - **特点**：介质经40 nm有机微滤膜除杂以提升损伤阈值；光斑采集采用高精度CCD光束质量分析仪。
+- **实验设计**：
+  - **设备组成**：单池SBS-PCM系统（1 m长闭式圆柱石英液池，1064 nm高透膜）；声光Q开关Nd:YVO4 MOPA激光源；λ/2波片（调能）；λ/4波片；光学隔离器(ISO)；分束楔形板；两片高反镜(HR)；CCD面阵相机。
+  - **环境/参数**：聚焦透镜焦距固定400 mm；液池竖直放置；仿真采用Fluent软件，边界条件设为自然对流+导热；数据采集同步触发。
+  - **实验分组**：①固定能量(10 mJ)变重频(10-500 Hz)测试低粘度介质畸变演化；②固定重频(500 Hz)变能量(10-25 mJ)测试高功率热累积；③固定参数测不同粘度介质抑制效果；④改变液池直径(10-20 mm)测试边界约束作用。
+- **实验结果**：
+
+| 实验分组/变量 | 核心数据与参数设置 | 关键结果与性能评估 |
+|:---|:---|:---|
+| **重频影响** (FC-72, 10 mJ) | 重频：10 Hz → 500 Hz<br>仿真温度升高：约11 K | 热对流速度峰值达2.85 mm/s；垂直方向RSS由0.8升至3.3，光束上部分出现明显凸胀，畸变随重频非线性增长并趋饱和。 |
+| **脉冲能量影响** (FC-72, 500 Hz) | 能量：10 mJ → 25 mJ | 热对流形成完整环流；垂直RSS由3.2激增至7.8，水平RSS由0.6升至3.7，畸变呈线性恶化，中心高斯核仍稳定但外围展宽显著。 |
+| **介质粘度影响** (25 mJ, 500 Hz) | 粘度：0.25 cSt → 4.35 cSt (FC-72→HT-230)<br>对流速度降低：66.7% | RSS从7.0骤降至0.7，光束轮廓恢复理想TEM₀₀高斯分布；高粘度介质有效抑制对流，畸变消除效果显著。 |
+| **液池直径影响** (固定热源) | 直径：10 mm → 20 mm<br>边界约束条件变化 | 对流速度由7.52降至5.32 mm/s，峰值温度由316.7 K降至313 K；大直径削弱了边界对流剪切力，辅助降低畸变程度。 |
+
+### 核心结论
+1. **机理验证**：高重频SBS-PCM的束畸变主要由热对流引发，非单纯的温度升高；泵浦重频/能量增加会强化浮力驱动对流，导致介质折射率梯度弯曲光束，热-流耦合模型成功定量解释了该现象。
+2. **定量评估**：引入RSS指标可精准量化畸变程度，实验证实500 Hz/25 mJ泵浦下低粘度介质中RSS高达7.8，且垂直方向（热对流主导方向）畸变始终强于水平方向。
+3. **抑制方案**：提高介质粘度（提升至4.35 cSt）可使热对流速度降低66.7%，RSS恢复至0.7，彻底消除高重频热畸变；结合增大液池直径可进一步衰减对流，为高重频高功率SBS-PCM的介质选型与系统设计提供了简单高效的跨学科解决方案。

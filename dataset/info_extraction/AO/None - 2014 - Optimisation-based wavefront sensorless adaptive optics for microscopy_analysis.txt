@@ -1,0 +1,14 @@
+============================================================
+文献调研辅助工具 - 分析报告
+============================================================
+
+DOI: 10.1117/12.2312260
+标题: Slope-based wavefront sensor optimisation with multi-resolution analysis
+期刊: Adaptive Optics Systems VI
+年份: 2018
+作者: Saloni Pal, Richard Clare, Andrew J. Lambert, Stephen J. Weddell
+
+============================================================
+
+分析结果:
+无结果
