@@ -1444,6 +1444,158 @@ class ReportGenerator:
 
 
 # =============================================================================
+# Composite Evaluator (multi-dimensional weighted scoring)
+# =============================================================================
+
+
+class CompositeEvaluator(BaseEvaluator):
+    """Evaluator that blends multiple metric dimensions into a weighted
+    composite score, with anti-pattern penalties.
+
+    Inspired by Vercel Labs benchmark-agents / PluginEval's layered
+    evaluation methodology.
+
+    The evaluator takes a ``CompositeScorer`` instance and runs it against
+    the metric scores extracted from the predicted output.
+
+    Usage in task YAML::
+
+        scoring_method: composite
+        dimensions:
+          optical_accuracy: 0.25
+          metric_correctness: 0.20
+          ...
+    """
+
+    def __init__(self, config: dict[str, Any], scorer: Any = None):
+        super().__init__(config)
+        if scorer is not None:
+            self._scorer = scorer
+        else:
+            from .composite_scorer import CompositeScoreConfig, CompositeScorer
+
+            self._scorer = CompositeScorer(CompositeScoreConfig.default_optical())
+
+        # Allow per-config dimension overrides
+        dim_overrides = config.get("dimensions", {})
+        if dim_overrides and hasattr(self._scorer.config, "dimensions"):
+            for d in self._scorer.config.dimensions:
+                if d.name in dim_overrides:
+                    d.weight = dim_overrides[d.name]
+
+    async def evaluate(
+        self,
+        task_id: str,
+        predicted_output: Any,
+        expected_output: Any,
+        metadata: dict[str, Any] | None = None,
+    ) -> EvaluationResult:
+        """Evaluate and produce a weighted composite score."""
+        start_time = time.time()
+        try:
+            pred = predicted_output if isinstance(predicted_output, dict) else {}
+            static = {}
+            for d in self._scorer.config.dimensions:
+                if d.name in pred:
+                    static[d.name] = float(pred[d.name])
+                # Fallback: look for a matching metric key
+                for key in ("mtf", "spot_size", "distortion"):
+                    if key in pred and d.name == "optical_accuracy":
+                        static[d.name] = max(static.get(d.name, 0.0), float(pred[key]))
+
+            ap_triggered = []
+            if metadata:
+                ap_triggered = metadata.get("anti_patterns", [])
+
+            report = self._scorer.score(
+                static_scores=static,
+                anti_patterns_triggered=ap_triggered,
+            )
+
+            return EvaluationResult(
+                task_id=task_id,
+                success=report.final_composite >= 0.5,
+                score=report.final_composite,
+                metrics={
+                    d.name: d.blended_score for d in report.dimension_scores
+                },
+                details={
+                    "composite_report": {
+                        "raw_composite": report.raw_composite,
+                        "final_composite": report.final_composite,
+                        "grade": report.grade,
+                        "anti_pattern_penalty": report.anti_pattern_penalty,
+                        "anti_patterns_triggered": report.anti_patterns_triggered,
+                        "dimension_scores": {
+                            d.name: {
+                                "static": d.static_score,
+                                "judge": d.judge_score,
+                                "blended": d.blended_score,
+                                "weight_contribution": d.weight_contribution,
+                            }
+                            for d in report.dimension_scores
+                        },
+                    }
+                },
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return EvaluationResult(
+                task_id=task_id,
+                success=False,
+                score=0.0,
+                error=str(e),
+                execution_time=time.time() - start_time,
+            )
+
+    async def aggregate(
+        self,
+        results: list[EvaluationResult],
+    ) -> AggregatedResults:
+        """Aggregate multiple composite evaluation results."""
+        if not results:
+            return AggregatedResults(
+                total_tasks=0,
+                successful_tasks=0,
+                success_rate=0.0,
+                avg_score=0.0,
+                avg_execution_time=0.0,
+                total_cost=0.0,
+            )
+        total = len(results)
+        successful = sum(1 for r in results if r.success)
+        scores = [r.score for r in results]
+        times = [r.execution_time for r in results]
+
+        return AggregatedResults(
+            total_tasks=total,
+            successful_tasks=successful,
+            success_rate=successful / total,
+            avg_score=sum(scores) / total,
+            avg_execution_time=sum(times) / total,
+            total_cost=sum(getattr(r, "cost", 0.0) for r in results),
+            metrics_summary=self._build_metrics_summary(results),
+            per_task_results=results,
+        )
+
+    @staticmethod
+    def _build_metrics_summary(results: list[EvaluationResult]) -> dict[str, dict[str, float]]:
+        """Build a summary of all metrics across results."""
+        all_metrics: dict[str, list[float]] = {}
+        for r in results:
+            for k, v in r.metrics.items():
+                all_metrics.setdefault(k, []).append(v)
+        summary = {}
+        for k, vals in all_metrics.items():
+            summary[k] = {
+                "mean": sum(vals) / len(vals),
+                "min": min(vals),
+                "max": max(vals),
+            }
+        return summary
+
+
+# =============================================================================
 # Factory Function
 # =============================================================================
 
@@ -1470,5 +1622,10 @@ def create_evaluator(config: dict[str, Any]) -> BaseEvaluator:
         return SummarizationEvaluator(config)
     elif scoring_method == "citation" or scoring_method == "retrieval":
         return CitationEvaluator(config)
+    elif scoring_method == "composite":
+        # Composite scoring (requires composite_scorer module)
+        from .composite_scorer import CompositeScoreConfig, CompositeScorer
+
+        return CompositeEvaluator(config, scorer=CompositeScorer(CompositeScoreConfig.default_optical()))
     else:
         raise ValueError(f"Unknown scoring method: {scoring_method}")

@@ -1,0 +1,80 @@
+# =============================================================================
+# OptiS Benchmark — Evaluation Scoring Configuration
+#
+# Inspired by Vercel Labs benchmark-agents / PluginEval evaluation
+# methodology: multi-dimensional scoring with configurable weights,
+# layer blending, and anti-pattern penalties.
+#
+# Reference:
+#   https://www.skills.sh/vercel-labs/vercel-plugin/benchmark-agents
+# =============================================================================
+
+# --- Layer blend weights ---
+# Static layer:  scores from automated metrics (exact match, ROUGE, BERTScore, etc.)
+# Judge layer:   scores from an LLM-based judge using structured rubrics
+llm_judge_weight: 0.3
+static_weight: 0.7
+
+# --- Evaluation dimensions ---
+# Each dimension represents one quality axis with a configurable weight.
+# Weights must sum to 1.0.
+dimensions:
+  - name: optical_accuracy
+    weight: 0.25
+    description: "Accuracy of optical design outputs (MTF, spot size, etc.)"
+    rubric: "Higher is better. 1.0 = design meets all optical criteria."
+
+  - name: metric_correctness
+    weight: 0.20
+    description: "Correct computation of evaluation metrics"
+    rubric: "1.0 = all metrics computed correctly with proper normalization."
+
+  - name: output_completeness
+    weight: 0.15
+    description: "All required fields and task elements present in output"
+    rubric: "1.0 = every requested field is present and non-empty."
+
+  - name: citation_accuracy
+    weight: 0.12
+    description: "Correctness and relevance of citations and references"
+    rubric: "1.0 = all citations are real and correctly attributed."
+
+  - name: reasoning_quality
+    weight: 0.10
+    description: "Quality of reasoning in explanations and justifications"
+    rubric: "1.0 = clear, logical, well-structured reasoning."
+
+  - name: robustness
+    weight: 0.08
+    description: "Handles edge cases gracefully without crashing"
+    rubric: "1.0 = performs correctly on all tested edge cases."
+
+  - name: efficiency
+    weight: 0.05
+    description: "Computational efficiency of the solution"
+    rubric: "1.0 = completes within reasonable time/memory bounds."
+
+  - name: reproducibility
+    weight: 0.05
+    description: "Results are reproducible with the same inputs"
+    rubric: "1.0 = identical inputs produce identical outputs."
+
+# --- Anti-pattern penalties ---
+# When triggered, the worst penalty is applied as a multiplicative factor
+# to the raw composite score.
+anti_patterns:
+  - name: empty_output
+    description: "Agent returned empty or null output"
+    penalty: 0.6     # -40 %
+
+  - name: hallucinated_citation
+    description: "Citation to a non-existent or irrelevant paper"
+    penalty: 0.7     # -30 %
+
+  - name: incorrect_calculation
+    description: "Fundamentally incorrect numerical calculation"
+    penalty: 0.75    # -25 %
+
+  - name: parse_failure
+    description: "Output could not be parsed or decoded"
+    penalty: 0.5     # -50 %

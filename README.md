@@ -193,6 +193,53 @@ OpticsBenchmark/
 | PartialMatchEvaluator | `partial_match` | Jaccard similarity for strings, key matching for dicts |
 | SummarizationEvaluator | `summarization` / `rouge` | ROUGE-1/2/L weighted composite |
 | CitationEvaluator | `citation` / `retrieval` | Precision, recall, F1 for citation accuracy |
+| CompositeEvaluator | `composite` | Multi-dimensional weighted scoring with LLM judge and anti-pattern penalties |
+
+## Evaluation Methodology
+
+OptiS Benchmark implements a **three-layer evaluation architecture** inspired by [Vercel Labs benchmark-agents / PluginEval](https://www.skills.sh/vercel-labs/vercel-plugin/benchmark-agents):
+
+### Composite Weighted Scoring
+
+The composite scoring engine (`CompositeScorer`) blends scores across 8 optical-design dimensions:
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| `optical_accuracy` | 0.25 | Accuracy of optical design outputs (MTF, spot size, etc.) |
+| `metric_correctness` | 0.20 | Correct computation of evaluation metrics |
+| `output_completeness` | 0.15 | All required output fields present |
+| `citation_accuracy` | 0.12 | Correctness and relevance of citations |
+| `reasoning_quality` | 0.10 | Quality of reasoning in explanations |
+| `robustness` | 0.08 | Handles edge cases gracefully |
+| `efficiency` | 0.05 | Computational efficiency |
+| `reproducibility` | 0.05 | Results are reproducible |
+
+**Three-layer formula:**
+```
+blended_score = static_weight × static_score + judge_weight × judge_score
+raw_composite = Σ (dim_weight × blended_score)
+final_score   = raw_composite × anti_pattern_penalty
+```
+
+**Anti-pattern penalties** apply multiplicative reductions when common failure modes are detected (empty output → 0.6×, hallucinated citation → 0.7×, parse failure → 0.5×).
+
+### LLM Judge
+
+The `LLMJudge` provides structured rubric-based scoring when an LLM callable is configured. It builds a prompt containing the task, agent output, and anchored rubrics (5 levels per dimension, 0.0–1.0), then parses the LLM's JSON response into per-dimension scores with justifications.
+
+### Verification Coverage
+
+The `build_coverage_report()` function aggregates multiple `ScoreReport` objects into a coverage report showing which dimensions were evaluated, how many tasks had judge-layer scoring, anti-pattern breakdowns, and coverage gaps — mirroring PluginEval's coverage reporting concept.
+
+### Eval Loop
+
+The reference methodology describes a **setup → launch → monitor → verify → fix → release → repeat** loop:
+1. Configure tasks, agents, and scoring dimensions via YAML
+2. Launch parallel agent sessions (semaphore-based concurrency in `EvaluationRunner`)
+3. Score outputs with automated metrics and optional LLM judge
+4. Aggregate into composite score reports with anti-pattern detection
+5. Generate verification coverage reports to identify gaps
+6. Iterate on prompts, agents, or evaluation dimensions
 
 ## Quick LLM Selector
 
@@ -276,5 +323,6 @@ MIT License — see [LICENSE](LICENSE).
 
 ## Acknowledgments
 
+- [Vercel Labs benchmark-agents / PluginEval](https://www.skills.sh/vercel-labs/vercel-plugin/benchmark-agents) — Composite weighted scoring, LLM judge evaluation, anti-pattern penalties, and coverage reporting methodology ([MIT License](https://github.com/vercel-labs/skills))
 - [AgentBench](https://github.com/OpenGVLab/AgentBench) — Evaluation framework design inspiration
 - [Zemax OpticStudio](https://www.zemax.com/) — Optical design software

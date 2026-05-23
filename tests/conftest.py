@@ -158,6 +158,57 @@ def sample_paper_retrieval() -> tuple[dict, dict]:
 
 
 # =============================================================================
+# Composite Scorer fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def sample_composite_config() -> dict[str, Any]:
+    """Sample composite scoring configuration."""
+    from src.core.composite_scorer import CompositeScoreConfig
+
+    return CompositeScoreConfig.default_optical().to_dict()
+
+
+@pytest.fixture
+def sample_composite_scorer():
+    """Create a composite scorer instance."""
+    from src.core.composite_scorer import CompositeScorer
+
+    return CompositeScorer()
+
+
+@pytest.fixture
+def mock_judge_scores() -> dict[str, float]:
+    """Sample judge scores for testing blend logic."""
+    return {
+        "optical_accuracy": 0.8,
+        "metric_correctness": 0.75,
+        "output_completeness": 0.9,
+        "citation_accuracy": 0.7,
+        "reasoning_quality": 0.85,
+        "robustness": 0.6,
+        "efficiency": 0.95,
+        "reproducibility": 1.0,
+    }
+
+
+@pytest.fixture
+def mock_static_scores() -> dict[str, float]:
+    """Sample static (automated) metric scores."""
+    return {
+        "optical_accuracy": 0.85,
+        "metric_correctness": 0.8,
+        "output_completeness": 0.95,
+        "citation_accuracy": 0.75,
+        "reasoning_quality": 0.7,
+        "robustness": 0.65,
+        "efficiency": 0.9,
+        "reproducibility": 0.95,
+    }
+
+
+# =============================================================================
 # Mock Data Classes
 # =============================================================================
 
