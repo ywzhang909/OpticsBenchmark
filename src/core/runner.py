@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
-from tqdm import tqdm
 
 from .agent import AgentConfig, BaseAgent, create_agent
 from .evaluator import (
@@ -34,6 +34,34 @@ class TaskInstance:
     instruction: str
     expected_output: Any
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AgentOutput:
+    """Raw output from running an agent on a single task."""
+
+    task_id: str
+    instruction: str
+    response: str
+    expected_output: Any
+    metadata: dict[str, Any] = field(default_factory=dict)
+    cost: float = 0.0
+    execution_time: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "task_id": self.task_id,
+            "instruction": self.instruction,
+            "response": self.response,
+            "expected_output": self.expected_output,
+            "metadata": self.metadata,
+            "cost": self.cost,
+            "execution_time": self.execution_time,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AgentOutput:
+        return cls(**data)
 
 
 @dataclass
@@ -190,155 +218,130 @@ class EvaluationRunner:
 
         return tasks
 
-    async def run_single_task(self, task: TaskInstance) -> EvaluationResult:
-        """Run a single task evaluation."""
-        async with self._semaphore:
-            return await self._evaluate_task(task)
-
-    async def _evaluate_task(self, task: TaskInstance) -> EvaluationResult:
-        """Evaluate a single task."""
-        from loguru import logger
-
-        try:
-            # Create user message with task instruction
-            user_message = task.instruction
-
-            # Add metadata if available
-            if task.metadata:
-                metadata_str = "\n\nTask Metadata:\n"
-                for key, value in task.metadata.items():
-                    if key != "task_id":
-                        metadata_str += f"- {key}: {value}\n"
-                user_message += metadata_str
-
-            # Reset agent conversation and add user message
-            self.agent.reset()
-            self.agent.add_user_message(user_message)
-
-            # Get response from agent
-            messages = self.agent.conversation_history.copy()
-            response = await self.agent.chat(messages)
-
-            # Evaluate the response
-            result = await self.evaluator.evaluate(
-                task_id=task.task_id,
-                predicted_output=response.content,
-                expected_output=task.expected_output,
-                metadata=task.metadata,
-            )
-
-            # Add cost information
-            result.cost = response.cost
-
-            return result
-
-        except asyncio.TimeoutError:
-            return EvaluationResult(
-                task_id=task.task_id,
-                success=False,
-                score=0.0,
-                error="Task timeout",
-            )
-        except Exception as e:
-            from loguru import logger
-
-            logger.error(f"Error evaluating task {task.task_id}: {e}")
-            return EvaluationResult(
-                task_id=task.task_id,
-                success=False,
-                score=0.0,
-                error=str(e),
-            )
-
-    async def run(self) -> AggregatedResults:
-        """
-        Run the full evaluation.
+    async def run_agent(self) -> list[AgentOutput]:
+        """Phase 1: Run agent on all tasks without evaluation.
 
         Returns:
-            AggregatedResults with summary statistics
+            List of AgentOutput with raw agent responses.
         """
         from loguru import logger
 
-        # Set up
         await self.setup()
 
-        # Load tasks
         tasks = self.load_tasks()
         logger.info(f"Loaded {len(tasks)} task instances")
 
         if not tasks:
             raise ValueError("No tasks loaded")
 
-        # Create output directory
-        output_path = Path(self.config.output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        Path(self.config.output_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # Run evaluations
-        self.results = []
+        sem = asyncio.Semaphore(self.config.max_concurrency)
 
-        if self.config.verbose:
-            pbar = tqdm(total=len(tasks), desc="Evaluating")
-        else:
-            pbar = None
+        async def run_one(task: TaskInstance) -> AgentOutput:
+            async with sem:
+                return await self._execute_agent(task)
 
-        # Create tasks for parallel execution
-        async def run_and_update(task: TaskInstance) -> EvaluationResult:
-            result = await self.run_single_task(task)
-            if pbar:
-                pbar.update(1)
+        coros = [run_one(t) for t in tasks]
+        outputs = await asyncio.gather(*coros)
 
-            # Save intermediate result
-            if self.config.save_intermediate:
-                self._save_result(result)
-
-            return result
-
-        # Execute all tasks
-        task_coroutines = [run_and_update(task) for task in tasks]
-
-        # Use semaphore-controlled execution
-        results = await asyncio.gather(*task_coroutines)
-
-        if pbar:
-            pbar.close()
-
-        self.results = results
-
-        # Aggregate results
-        aggregated = await self.evaluator.aggregate(self.results)
-
-        # Save final results
-        self._save_final_results(aggregated)
-
-        # Clean up
         await self.teardown()
+        return outputs
 
-        return aggregated
+    async def _execute_agent(self, task: TaskInstance) -> AgentOutput:
+        """Run agent on a single task without evaluation."""
+        from loguru import logger
 
-    def _save_result(self, result: EvaluationResult) -> None:
-        """Save an individual result to the output file."""
-        output_path = Path(self.config.output_path)
+        start = time.time()
+        try:
+            user_message = task.instruction
+            if task.metadata:
+                meta_str = "\n\nTask Metadata:\n"
+                for k, v in task.metadata.items():
+                    if k != "task_id":
+                        meta_str += f"- {k}: {v}\n"
+                user_message += meta_str
 
-        with open(output_path, "a", encoding="utf-8") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "task_id": result.task_id,
-                        "success": result.success,
-                        "score": result.score,
-                        "metrics": result.metrics,
-                        "details": result.details,
-                        "error": result.error,
-                        "execution_time": result.execution_time,
-                        "cost": result.cost,
-                    },
-                    ensure_ascii=False,
-                )
-                + "\n"
+            self.agent.reset()
+            self.agent.add_user_message(user_message)
+            messages = self.agent.conversation_history.copy()
+            response = await self.agent.chat(messages)
+
+            return AgentOutput(
+                task_id=task.task_id,
+                instruction=task.instruction,
+                response=response.content,
+                expected_output=task.expected_output,
+                metadata=task.metadata,
+                cost=response.cost,
+                execution_time=time.time() - start,
             )
+        except asyncio.TimeoutError:
+            return AgentOutput(
+                task_id=task.task_id,
+                instruction=task.instruction,
+                response="",
+                expected_output=task.expected_output,
+                metadata=task.metadata,
+                cost=0.0,
+                execution_time=time.time() - start,
+            )
+        except Exception as e:
+            logger.error(f"Error running agent on task {task.task_id}: {e}")
+            return AgentOutput(
+                task_id=task.task_id,
+                instruction=task.instruction,
+                response="",
+                expected_output=task.expected_output,
+                metadata=task.metadata,
+                cost=0.0,
+                execution_time=time.time() - start,
+            )
+
+    async def evaluate_outputs(self, agent_outputs: list[AgentOutput]) -> AggregatedResults:
+        """Phase 2: Evaluate agent outputs using the evaluator.
+
+        Args:
+            agent_outputs: Raw agent outputs from run_agent()
+
+        Returns:
+            AggregatedResults with evaluation metrics
+        """
+        from loguru import logger
+
+        self.evaluator = create_evaluator(self.config.task_config.evaluation_config)
+        logger.info(f"Evaluating {len(agent_outputs)} agent outputs")
+
+        results = []
+        for ao in agent_outputs:
+            result = await self.evaluator.evaluate(
+                task_id=ao.task_id,
+                predicted_output=ao.response,
+                expected_output=ao.expected_output,
+                metadata=ao.metadata,
+            )
+            result.cost = ao.cost
+            results.append(result)
+
+        return await self.evaluator.aggregate(results)
+
+    async def run(self) -> AggregatedResults:
+        """
+        Run the full evaluation (Phase 1 + Phase 2).
+
+        Returns:
+            AggregatedResults with summary statistics
+        """
+        outputs = await self.run_agent()
+        aggregated = await self.evaluate_outputs(outputs)
+        self.results = aggregated.per_task_results
+        self._save_final_results(aggregated)
+        return aggregated
 
     def _save_final_results(self, aggregated: AggregatedResults) -> None:
         """Save aggregated results."""
+        from loguru import logger
+
         output_path = Path(self.config.output_path)
 
         # Save as JSON
@@ -363,9 +366,40 @@ class EvaluationRunner:
                 ensure_ascii=False,
             )
 
-        print("\nResults saved to:")
-        print(f"  - Individual results: {output_path}")
-        print(f"  - Aggregated results: {json_path}")
+        logger.info("Results saved to:")
+        logger.info(f"  - Individual results: {output_path}")
+        logger.info(f"  - Aggregated results: {json_path}")
+
+    @staticmethod
+    def save_agent_outputs(outputs: list[AgentOutput], path: str | Path) -> None:
+        """Save agent outputs to a JSONL file.
+
+        Args:
+            outputs: List of agent outputs to save
+            path: Output file path (JSONL format)
+        """
+        out_path = Path(path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            for o in outputs:
+                f.write(json.dumps(o.to_dict(), ensure_ascii=False) + "\n")
+
+    @staticmethod
+    def load_agent_outputs(path: str | Path) -> list[AgentOutput]:
+        """Load agent outputs from a JSONL file.
+
+        Args:
+            path: Input file path (JSONL format)
+
+        Returns:
+            List of AgentOutput loaded from file
+        """
+        outputs = []
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    outputs.append(AgentOutput.from_dict(json.loads(line)))
+        return outputs
 
     def get_statistics(self) -> dict[str, Any]:
         """Get run statistics."""
@@ -376,38 +410,3 @@ class EvaluationRunner:
             "agent_stats": self.agent.get_statistics(),
             "num_results": len(self.results),
         }
-
-
-async def run_evaluation(
-    agent_config_path: str | Path,
-    task_config_path: str | Path,
-    output_path: str = "results/output.jsonl",
-    max_concurrency: int = 1,
-    timeout: int = 300,
-    verbose: bool = True,
-) -> AggregatedResults:
-    """
-    Convenience function to run an evaluation.
-
-    Args:
-        agent_config_path: Path to agent configuration file
-        task_config_path: Path to task configuration file
-        output_path: Path for output results
-        max_concurrency: Maximum parallel tasks
-        timeout: Task timeout in seconds
-        verbose: Show progress bar
-
-    Returns:
-        AggregatedResults with summary statistics
-    """
-    config = RunnerConfig.from_files(
-        agent_config_path=agent_config_path,
-        task_config_path=task_config_path,
-        output_path=output_path,
-        max_concurrency=max_concurrency,
-        timeout=timeout,
-        verbose=verbose,
-    )
-
-    runner = EvaluationRunner(config)
-    return await runner.run()

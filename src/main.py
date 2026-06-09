@@ -15,7 +15,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import run_evaluation
+from src.core.runner import EvaluationRunner, RunnerConfig
 from src.utils.logger import logger, setup_logger
 from src.utils.parser import ConfigParser
 
@@ -23,18 +23,21 @@ from src.utils.parser import ConfigParser
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="OptiS Benchmark - Optical Design Agent Evaluation Framework",
+        description="OptiS Benchmark - Agent Output Generator (Phase 1)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run evaluation with default settings
-  python src/main.py --agent-config configs/agents/gpt-4.yaml --task-set lens_design
+  # Run agent on dataset to generate outputs
+  python src/main.py -a configs/agents/gpt-4.yaml -t lens_design
 
-  # Run with custom output and concurrency
-  python src/main.py -a configs/agents/claude-3.yaml -t lens_design -o results/my_eval.jsonl -c 4
+  # Run agent with custom output and concurrency
+  python src/main.py -a configs/agents/claude-3.yaml -t lens_design -o results/my_outputs.jsonl -c 4
 
   # Run all task sets with a specific agent
-  python src/main.py -a configs/agents/gpt-4.yaml --all-tasks -o results/all_results.jsonl
+  python src/main.py -a configs/agents/gpt-4.yaml --all-tasks -o results/all_outputs.jsonl
+
+  # Then evaluate outputs (Phase 2):
+  python src/eval.py -i results/outputs.jsonl -t configs/tasks/lens_design.yaml
         """,
     )
 
@@ -46,12 +49,6 @@ Examples:
         type=str,
         required=True,
         help="Path to agent configuration file (YAML)",
-    )
-    agent_group.add_argument(
-        "--agent-overrides",
-        type=str,
-        nargs="+",
-        help="Override agent config values (format: key=value)",
     )
 
     # Task configuration
@@ -67,12 +64,6 @@ Examples:
         action="store_true",
         help="Run all task sets in configs/tasks/",
     )
-    task_group.add_argument(
-        "--task-overrides",
-        type=str,
-        nargs="+",
-        help="Override task config values (format: key=value)",
-    )
 
     # Output configuration
     output_group = parser.add_argument_group("Output Configuration")
@@ -80,19 +71,8 @@ Examples:
         "-o",
         "--output",
         type=str,
-        default="results/output.jsonl",
-        help="Output path for results (default: results/output.jsonl)",
-    )
-    output_group.add_argument(
-        "--save-intermediate",
-        action="store_true",
-        default=True,
-        help="Save intermediate results (default: True)",
-    )
-    output_group.add_argument(
-        "--no-intermediate",
-        action="store_true",
-        help="Disable intermediate result saving",
+        default="results/agent_outputs.jsonl",
+        help="Output path for agent outputs (JSONL, default: results/agent_outputs.jsonl)",
     )
 
     # Execution configuration
@@ -143,12 +123,6 @@ Examples:
     # Misc
     misc_group = parser.add_argument_group("Miscellaneous")
     misc_group.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Verbose output",
-    )
-    misc_group.add_argument(
         "--dry-run",
         action="store_true",
         help="Show configuration without running evaluation",
@@ -196,42 +170,42 @@ def resolve_task_configs(
     return []
 
 
-async def run_single_evaluation(
+async def run_agent_output(
     agent_config_path: Path,
     task_config_path: Path,
     output_path: str,
     concurrency: int,
     timeout: int,
-    verbose: bool,
     max_samples: int | None,
 ) -> int:
-    """Run a single evaluation task."""
-    logger.info("Running Evaluation")
+    """Phase 1: Run agent on dataset and save raw outputs."""
+    logger.info("Agent Output Generation")
     logger.info(f"Agent:  {agent_config_path}")
     logger.info(f"Task:   {task_config_path}")
     logger.info(f"Output: {output_path}")
 
     try:
-        results = await run_evaluation(
+        config = RunnerConfig.from_files(
             agent_config_path=agent_config_path,
             task_config_path=task_config_path,
             output_path=output_path,
             max_concurrency=concurrency,
             timeout=timeout,
-            verbose=verbose,
         )
 
-        logger.info("EVALUATION COMPLETE")
-        logger.info(f"Total Tasks:       {results.total_tasks}")
-        logger.info(f"Successful:        {results.successful_tasks} ({results.success_rate * 100:.1f}%)")
-        logger.info(f"Average Score:    {results.avg_score * 100:.1f}%")
-        logger.info(f"Total Cost:       ${results.total_cost:.4f}")
-        logger.info(f"Avg Time/Task:    {results.avg_execution_time:.1f}s")
+        runner = EvaluationRunner(config)
+        agent_outputs = await runner.run_agent()
+        EvaluationRunner.save_agent_outputs(agent_outputs, output_path)
 
-        return 0 if results.success_rate >= 0.5 else 1
+        total_cost = sum(o.cost for o in agent_outputs)
+        logger.info("Agent Output Complete")
+        logger.info(f"Total Tasks:  {len(agent_outputs)}")
+        logger.info(f"Total Cost:   ${total_cost:.4f}")
+
+        return 0
 
     except Exception as e:
-        logger.error(f"Error during evaluation: {e}")
+        logger.error(f"Error during agent output generation: {e}")
         return 1
 
 
@@ -269,9 +243,6 @@ async def main_async(args: argparse.Namespace) -> int:
         logger.error("Error: No task configurations specified")
         return 1
 
-    # Apply overrides
-    # TODO: Implement config overrides
-
     # Dry run mode
     if args.dry_run:
         logger.info("Dry Run Mode - Configuration:")
@@ -292,13 +263,12 @@ async def main_async(args: argparse.Namespace) -> int:
         else:
             output_path = args.output
 
-        code = await run_single_evaluation(
+        code = await run_agent_output(
             agent_config_path=agent_config_path,
             task_config_path=task_path,
             output_path=str(output_path),
             concurrency=args.concurrency,
             timeout=args.timeout,
-            verbose=args.verbose or True,
             max_samples=args.max_samples,
         )
 

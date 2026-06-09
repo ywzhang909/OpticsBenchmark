@@ -21,7 +21,7 @@ OptiS Benchmark is a modular, extensible evaluation framework for assessing LLM-
 - **Pluggable LLM backends** — 7 providers: OpenAI, Anthropic, Google Gemini, Groq, Ollama, AWS Bedrock, Together AI
 - **Multi-dimensional evaluation** — Exact match, ROUGE, BERTScore, citation accuracy, sentence similarity, Hungarian matching
 - **Configuration-driven** — YAML-based agent and task configs; no code changes to switch models or tasks
-- **Parallel execution** — Async concurrency with intermediate result saving
+- **Parallel execution** — Async concurrency with semaphore-based task control
 - **Report generation** — Automatic HTML/Markdown reports with statistics and model comparison
 
 ---
@@ -45,41 +45,30 @@ source .venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-### PyTorch / CUDA 自动配置
+### PyTorch / CUDA Auto-Configuration
 
-本项目使用 **BERTScore** 作为评估指标之一，需要 PyTorch 运行时。`uv sync` 默认安装 **CPU 版本** PyTorch（跨平台兼容）。
+This project uses **BERTScore** which requires PyTorch. `uv sync` installs the **CPU version** by default.
 
-如果你有 **NVIDIA GPU**，可自动检测 CUDA 驱动版本并安装对应的 GPU 加速 PyTorch：
+If you have an **NVIDIA GPU**, auto-detect and install the GPU-accelerated version:
 
 ```bash
-# 方式一：自动检测并安装（推荐）
+# Recommended: auto-detect CUDA driver and install matching PyTorch
 uv run python scripts/install_torch.py
 
-# 方式二：直接使用 uv 内置自动检测
-UV_TORCH_BACKEND=auto uv pip install torch torchvision torchaudio --upgrade
-
-# 方式三：手动指定 CUDA 版本
+# Or manually specify a CUDA version
 uv pip install torch --torch-backend=cu130 --upgrade
 ```
 
-> **说明**：`uv sync` 后再次运行 `install_torch.py` 不会丢失配置——脚本会自动更新 `pyproject.toml` 的 `[tool.uv.sources]`，确保后续 `uv sync` 使用正确的 PyTorch 索引。
+> The `install_torch.py` script updates `pyproject.toml` so subsequent `uv sync` calls use the correct PyTorch index.
 >
-> 支持的后端值：`auto`, `cpu`, `cu118`, `cu121`, `cu124`, `cu126`, `cu128`, `cu130`
-
-#### 当前环境
-
-| 项目 | 值 |
-|------|-----|
-| PyTorch | `2.12.0+cu130` |
-| CUDA Driver | `13.2` |
-| GPU | `NVIDIA GeForce RTX 5080` |
+> Supported backends: `auto`, `cpu`, `cu118`, `cu121`, `cu124`, `cu126`, `cu128`, `cu130`
 
 ---
 
 ### Environment Setup
 
 ```bash
-# Create .env file with your API keys
+# Create .env file with your API keys (Linux/Mac/Git Bash)
 cat > .env << EOF
 OPENAI_API_KEY=sk-your-key
 ANTHROPIC_API_KEY=sk-ant-your-key
@@ -97,17 +86,29 @@ EOF
 bash scripts/download_data.sh
 ```
 
-### Run an Evaluation
+### Run an Evaluation (Two-Phase Pipeline)
+
+**Phase 1** — Run agent to generate output dataset:
 
 ```bash
 # Single task
-python src/main.py --agent-config configs/agents/gpt-4.yaml --task-set lens_design
+python src/main.py -a configs/agents/gpt-4.yaml -t lens_design
 
 # All tasks with 4 concurrent workers
 python src/main.py -a configs/agents/claude-3.yaml --all-tasks -c 4
 
 # Specify output path
-python src/main.py -a configs/agents/gpt-4.yaml -t lens_design -o results/eval.jsonl
+python src/main.py -a configs/agents/gpt-4.yaml -t lens_design -o results/agent_outputs.jsonl
+```
+
+**Phase 2** — Evaluate agent outputs with scoring metrics:
+
+```bash
+# Evaluate agent outputs using task config
+python src/eval.py -i results/agent_outputs.jsonl -t configs/tasks/lens_design.yaml
+
+# Specify output path for evaluation results
+python src/eval.py -i results/agent_outputs.jsonl -t configs/tasks/lens_design.yaml -o results/eval_results.json
 ```
 
 ---
@@ -121,11 +122,14 @@ OpticsBenchmark/
 │   ├── agents/                    # Agent configs (7 providers + template)
 │   └── tasks/                     # Task configs (6 task types + template)
 ├── src/                           # Core source
-│   ├── main.py                    # CLI entry point
+│   ├── main.py                    # Phase 1: Agent output generator
+│   ├── eval.py                    # Phase 2: Evaluation engine
 │   ├── core/
 │   │   ├── agent.py              # Base agent + 7 LLM providers
+│   │   ├── composite_scorer.py   # Multi-dimensional weighted scoring
 │   │   ├── evaluator.py          # Evaluators + scorers + analyzers
-│   │   └── runner.py             # Async parallel runner
+│   │   ├── llm_judge.py          # LLM judge for rubric-based scoring
+│   │   └── runner.py             # Async parallel runner + AgentOutput
 │   ├── environments/
 │   │   ├── base_env.py           # Base + local environment
 │   │   └── zos_env.py           # Zemax ZOS-API integration
@@ -135,17 +139,12 @@ OpticsBenchmark/
 │   └── tools/
 │       └── quick_llm_selector.py # Interactive LLM testing tool
 ├── scripts/                       # Evaluation and utility scripts
+│   ├── install_torch.py          # PyTorch CUDA auto-installation
 │   ├── optics_paper_extract_eval.py
 │   ├── generate_report.py
 │   ├── download_data.sh
 │   ├── run_eval.sh
-│   └── utils/
-│       ├── em_eval_utils.py       # Exact match evaluation
-│       ├── rouge_eval_utils.py    # ROUGE score computation
-│       ├── bertScore_eval_utils.py
-│       ├── sentence_similarity_utils.py
-│       ├── hungarian_algorithm_utils.py
-│       └── citation_eval_utils.py
+│   └── utils/                    # Evaluation utility modules
 ├── dataset/                       # Evaluation datasets (via download_data.sh)
 ├── prompts/                       # Prompt templates
 │   ├── system/                   # System prompts (optical_agent, research_agent)
@@ -231,15 +230,22 @@ The `LLMJudge` provides structured rubric-based scoring when an LLM callable is 
 
 The `build_coverage_report()` function aggregates multiple `ScoreReport` objects into a coverage report showing which dimensions were evaluated, how many tasks had judge-layer scoring, anti-pattern breakdowns, and coverage gaps — mirroring PluginEval's coverage reporting concept.
 
-### Eval Loop
+### Eval Loop (Two-Phase Pipeline)
 
-The reference methodology describes a **setup → launch → monitor → verify → fix → release → repeat** loop:
-1. Configure tasks, agents, and scoring dimensions via YAML
-2. Launch parallel agent sessions (semaphore-based concurrency in `EvaluationRunner`)
-3. Score outputs with automated metrics and optional LLM judge
+The evaluation is split into **two independent phases**, allowing re-evaluation with different metrics without re-running the LLM:
+
+**Phase 1 — Agent Output (`src/main.py`):**
+1. Load agent config and task config from YAML
+2. Load task instances from the dataset JSONL
+3. Launch parallel agent sessions (semaphore-based concurrency in `EvaluationRunner`)
+4. Save raw agent outputs as a JSONL file (`AgentOutput`)
+
+**Phase 2 — Evaluation (`src/eval.py`):**
+1. Load agent outputs from the saved JSONL file
+2. Create evaluator from task config's evaluation config
+3. Score outputs with automated metrics (and optional LLM judge)
 4. Aggregate into composite score reports with anti-pattern detection
-5. Generate verification coverage reports to identify gaps
-6. Iterate on prompts, agents, or evaluation dimensions
+5. Save aggregated results as JSON + per-task results as JSONL
 
 ## Quick LLM Selector
 
@@ -273,9 +279,10 @@ python scripts/optics_paper_extract_eval.py \
 ### Report Generation
 
 ```bash
-python scripts/generate_report.py results/output.jsonl --format html
-python scripts/generate_report.py results/output.jsonl --format markdown
-python scripts/generate_report.py results/output.jsonl --format both
+# Generate report from evaluation results (output of eval.py)
+python scripts/generate_report.py results/eval_results.json --format html
+python scripts/generate_report.py results/eval_results.json --format markdown
+python scripts/generate_report.py results/eval_results.json --format both
 ```
 
 ## Testing
@@ -315,7 +322,7 @@ pytest tests/ --cov=src --cov-report=html
 
 Core: `openai`, `anthropic`, `pydantic`, `pyyaml`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`
 
-Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `black`, `isort`, `ruff`, `mypy`, `pre-commit`
+Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `black`, `isort`, `ruff`, `mypy`
 
 ## License
 
