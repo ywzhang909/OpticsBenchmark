@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.runner import run_evaluation
-from src.utils.logger import setup_logger
+from src.utils.logger import logger, setup_logger
 from src.utils.parser import ConfigParser
 
 
@@ -206,13 +206,10 @@ async def run_single_evaluation(
     max_samples: int | None,
 ) -> int:
     """Run a single evaluation task."""
-    print(f"\n{'=' * 60}")
-    print("Running Evaluation")
-    print(f"{'=' * 60}")
-    print(f"Agent:  {agent_config_path}")
-    print(f"Task:   {task_config_path}")
-    print(f"Output: {output_path}")
-    print(f"{'=' * 60}\n")
+    logger.info("Running Evaluation")
+    logger.info(f"Agent:  {agent_config_path}")
+    logger.info(f"Task:   {task_config_path}")
+    logger.info(f"Output: {output_path}")
 
     try:
         results = await run_evaluation(
@@ -224,50 +221,52 @@ async def run_single_evaluation(
             verbose=verbose,
         )
 
-        # Print summary
-        print(f"\n{'=' * 60}")
-        print("EVALUATION COMPLETE")
-        print(f"{'=' * 60}")
-        print(f"Total Tasks:       {results.total_tasks}")
-        print(f"Successful:        {results.successful_tasks} ({results.success_rate * 100:.1f}%)")
-        print(f"Average Score:    {results.avg_score * 100:.1f}%")
-        print(f"Total Cost:       ${results.total_cost:.4f}")
-        print(f"Avg Time/Task:    {results.avg_execution_time:.1f}s")
-        print(f"{'=' * 60}\n")
+        logger.info("EVALUATION COMPLETE")
+        logger.info(f"Total Tasks:       {results.total_tasks}")
+        logger.info(f"Successful:        {results.successful_tasks} ({results.success_rate * 100:.1f}%)")
+        logger.info(f"Average Score:    {results.avg_score * 100:.1f}%")
+        logger.info(f"Total Cost:       ${results.total_cost:.4f}")
+        logger.info(f"Avg Time/Task:    {results.avg_execution_time:.1f}s")
 
         return 0 if results.success_rate >= 0.5 else 1
 
     except Exception as e:
-        print(f"\nError during evaluation: {e}", file=sys.stderr)
+        logger.error(f"Error during evaluation: {e}")
         return 1
 
 
 async def main_async(args: argparse.Namespace) -> int:
     """Async main function."""
-    # Setup logging
-    setup_logger(
-        log_file=args.log_file,
-        level=args.log_level,
-    )
+    # Load system config first
+    sys_configs = load_system_config(args.system_config)
+    logging_config = sys_configs.get("logging", {})
 
-    # Load system config
-    load_system_config(args.system_config)
+    # Then setup logger with system config + CLI overrides
+    setup_logger(
+        level=args.log_level or logging_config.get("level", "INFO"),
+        log_file=args.log_file or logging_config.get("file"),
+        console=logging_config.get("console", True),
+        format=logging_config.get("format"),
+        rotation=logging_config.get("rotation", "100 MB"),
+        retention=logging_config.get("retention", "30 days"),
+        compression=logging_config.get("compression", "zip"),
+    )
 
     # Get agent config path
     agent_config_path = Path(args.agent_config)
     if not agent_config_path.exists():
-        print(f"Error: Agent config not found: {agent_config_path}", file=sys.stderr)
+        logger.error(f"Error: Agent config not found: {agent_config_path}")
         return 1
 
     # Get task config paths
     try:
         task_config_paths = resolve_task_configs(args.task_set, args.all_tasks)
     except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         return 1
 
     if not task_config_paths:
-        print("Error: No task configurations specified", file=sys.stderr)
+        logger.error("Error: No task configurations specified")
         return 1
 
     # Apply overrides
@@ -275,11 +274,11 @@ async def main_async(args: argparse.Namespace) -> int:
 
     # Dry run mode
     if args.dry_run:
-        print("Dry Run Mode - Configuration:")
-        print(f"  Agent Config: {agent_config_path}")
-        print(f"  Task Configs: {task_config_paths}")
-        print(f"  Output: {args.output}")
-        print(f"  Concurrency: {args.concurrency}")
+        logger.info("Dry Run Mode - Configuration:")
+        logger.info(f"  Agent Config: {agent_config_path}")
+        logger.info(f"  Task Configs: {task_config_paths}")
+        logger.info(f"  Output: {args.output}")
+        logger.info(f"  Concurrency: {args.concurrency}")
         return 0
 
     # Run evaluations
@@ -317,10 +316,10 @@ def main() -> int:
         exit_code = asyncio.run(main_async(args))
         return exit_code
     except KeyboardInterrupt:
-        print("\nEvaluation interrupted by user", file=sys.stderr)
+        logger.warning("Evaluation interrupted by user")
         return 130
     except Exception as e:
-        print(f"\nFatal error: {e}", file=sys.stderr)
+        logger.error(f"Fatal error: {e}")
         import traceback
 
         traceback.print_exc()

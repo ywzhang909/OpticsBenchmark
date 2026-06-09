@@ -15,7 +15,7 @@ from loguru import logger as _logger
 
 _CONSOLE_FMT = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-    "<level>{level: <8}</level> | "
+    "<level>{level: <4}</level> | "
     "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
     "<level>{message}</level>"
 )
@@ -43,6 +43,7 @@ def setup_logger(
     log_file: str | Path | None = None,
     level: str = "INFO",
     console: bool = True,
+    format: str | None = None,
     rotation: str = "100 MB",
     retention: str = "30 days",
     compression: str = "zip",
@@ -64,7 +65,7 @@ def setup_logger(
     if console:
         _logger.add(
             sys.stderr,
-            format=_CONSOLE_FMT,
+            format= format or _CONSOLE_FMT,
             level=level,
             colorize=True,
         )
@@ -74,7 +75,7 @@ def setup_logger(
         log_path.parent.mkdir(parents=True, exist_ok=True)
         _logger.add(
             log_path,
-            format=_FILE_FMT,
+            format=format or _FILE_FMT,
             level=level,
             rotation=rotation,
             retention=retention,
