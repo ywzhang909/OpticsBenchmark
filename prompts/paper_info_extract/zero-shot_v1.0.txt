@@ -1,0 +1,23 @@
+# OptiS Benchmark - Paper info extract Prompt Template
+
+***TASK***
+The objective is to extract information for 13 specific fields from optical science paper: Title, Publication Year, DOI, Journal, Ten Keywords, Authors, Corresponding Authors, Affiliations, Abstract, Objectives, Novelty, Methods, and Performance Metrics. The extracted information must be returned in JSON format.
+***INPUT***
+The input is the full text of an optical science paper, automatically extracted from an uploaded PDF. It may contain a title page, main text, figure captions, and references. Please note that if the original includes images, complex equations, or scanned content, they may be converted into caption text, LaTeX code, or placeholders during parsing.
+***OUTPUT***
+The output consists of 13 key fields extracted from the literature. Specifically, Title, Publication Year, DOI, Journal, Authors, Corresponding Author(s), Affiliations, and Abstract must be directly extracted from the paper and remain completely identical to the original text. In contrast, Ten Keywords, Objectives, Novelty, Methods, and Performance Metrics should be summarized after reading the full text. The final result must be formatted as a JSON string, using the aforementioned field names as keys and their corresponding content from the literature as values.
+***DOCUMENTATION***
+Title: Extract the title of the paper. If no valid information is available and it cannot be clearly inferred, use an empty string "".
+Publication Year: Extract the year the paper was published. If no valid information is available and it cannot be clearly inferred, use an empty string "".
+DOI: Extract the DOI of the paper. If no valid information is available and it cannot be clearly inferred, use an empty string "".
+Journal: Extract the name of the journal or conference where the paper was published. If no valid information is available and it cannot be clearly inferred, use an empty string "".
+Ten Keywords: Extract ten keywords for the paper. If the document provides fewer than ten, retain all of them and read the full text to summarize the remaining ones. If there are more than ten, select the ten that best represent the content of the paper. Ensure there are no duplicate keywords.
+Authors: Extract the authors for the paper. If no valid information is available and it cannot be clearly inferred, use an empty list [].
+Corresponding Authors: Extract the corresponding authors for the paper. If no valid information is available and it cannot be clearly inferred, use an empty list [].
+Affiliations: Extract the institutional affiliations of the authors for the paper. Deduplicate the list so each affiliation appears only once. If no valid information is available and it cannot be clearly inferred, use an empty list [].
+Abstract: Extract the abstract exactly as it appears in the original text. If no valid information is available and it cannot be clearly inferred, use an empty string "".
+Objective: Summarize the research objectives in multiple bullet points. Each point must be a concise declarative sentence, with the total word count not exceeding 300 words.If no valid information is available and it cannot be clearly inferred, use an empty list [].
+Novelty: Summarize the novelty and innovations of the study in multiple bullet points. Each point must be a concise declarative sentence, with the total word count not exceeding 300 words.If no valid information is available and it cannot be clearly inferred, use an empty list [].
+Method: Summarize the research methods in multiple bullet points. Each point must be a concise declarative sentence, with the total word count not exceeding 300 words.If no valid information is available and it cannot be clearly inferred, use an empty list [].
+Performance Metrics: Summarize the quantitative performance metrics in multiple bullet points. Each point must be a concise declarative sentence, with the total word count not exceeding 300 words. If no valid information is available and it cannot be clearly inferred, use an empty list [].
+All extracted fields must be exact quotes from the original text or explicitly derived from it; subjective assumptions are strictly prohibited. Focus exclusively on the provided literature. Any inference or summarization must be strictly based on explicitly stated facts for reorganization and refinement. Do not introduce any external hypotheses or conclusions not present in the source document.

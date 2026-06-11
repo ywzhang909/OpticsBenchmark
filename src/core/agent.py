@@ -228,55 +228,93 @@ class OpenAIAgent(BaseAgent):
         messages: list[Message],
         tools: list[dict] | None = None,
     ) -> AgentResponse:
-        """Send chat request to OpenAI API."""
+        """Send chat request to OpenAI Responses API."""
         import time
 
         start_time = time.time()
 
-        # Convert messages to API format
-        api_messages = []
+        # Extract system instructions and build input items
+        instructions_parts = []
+        input_items = []
         for msg in messages:
-            msg_dict = {"role": msg.role, "content": msg.content}
-            if msg.name:
-                msg_dict["name"] = msg.name
-            if msg.tool_call_id:
-                msg_dict["tool_call_id"] = msg.tool_call_id
-                msg_dict["role"] = "tool"
-            api_messages.append(msg_dict)
+            if msg.role == "system":
+                instructions_parts.append(msg.content)
+            elif msg.role == "assistant":
+                if msg.content:
+                    input_items.append({"role": "assistant", "content": msg.content})
+                if msg.tool_calls:
+                    for tc in msg.tool_calls:
+                        arguments = tc.get("arguments", "")
+                        if isinstance(arguments, dict):
+                            arguments = json.dumps(arguments)
+                        input_items.append({
+                            "type": "function_call",
+                            "call_id": tc.get("id", tc.get("call_id", "")),
+                            "name": tc["name"],
+                            "arguments": arguments,
+                        })
+            else:
+                input_items.append({"role": msg.role, "content": msg.content})
+
+        instructions = "\n".join(instructions_parts) if instructions_parts else None
+
+        # Convert tools from Chat Completions format to Responses API format
+        converted_tools = None
+        if tools:
+            converted_tools = []
+            for tool in tools:
+                if "function" in tool:
+                    converted_tools.append({
+                        "type": "function",
+                        "name": tool["function"]["name"],
+                        "description": tool["function"].get("description", ""),
+                        "parameters": tool["function"].get("parameters", {}),
+                    })
+                else:
+                    converted_tools.append(tool)
 
         # Prepare request kwargs
         kwargs = {
             "model": self.config.model_name,
-            "messages": api_messages,
+            "input": input_items,
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
+            "max_output_tokens": self.config.max_tokens,
             "top_p": self.config.top_p,
-            "frequency_penalty": self.config.frequency_penalty,
-            "presence_penalty": self.config.presence_penalty,
         }
 
-        if tools:
-            kwargs["tools"] = tools
+        if instructions:
+            kwargs["instructions"] = instructions
+
+        if converted_tools:
+            kwargs["tools"] = converted_tools
             kwargs["tool_choice"] = "auto"
 
         try:
-            response = await self.client.chat.completions.create(**kwargs)
+            response = await self.client.responses.create(**kwargs)
 
             latency = time.time() - start_time
-            choice = response.choices[0]
 
             # Parse response
-            content = choice.message.content or ""
+            content = response.output_text
             tool_calls = []
-            if choice.message.tool_calls:
-                for tc in choice.message.tool_calls:
+            for item in response.output:
+                if item.type == "function_call":
                     tool_calls.append(
                         ToolCall(
-                            id=tc.id,
-                            name=tc.function.name,
-                            arguments=json.loads(tc.function.arguments),
+                            id=item.id or item.call_id,
+                            name=item.name,
+                            arguments=json.loads(item.arguments),
                         )
                     )
+
+            # Map status to finish_reason
+            finish_reason_map = {
+                "completed": "stop",
+                "failed": "error",
+                "incomplete": "length",
+                "cancelled": "stop",
+            }
+            finish_reason = finish_reason_map.get(response.status or "", "stop")
 
             # Calculate cost
             usage = response.usage.model_dump() if response.usage else {}
@@ -287,7 +325,7 @@ class OpenAIAgent(BaseAgent):
             return AgentResponse(
                 content=content,
                 tool_calls=tool_calls,
-                finish_reason=choice.finish_reason or "stop",
+                finish_reason=finish_reason,
                 usage=usage,
                 cost=cost,
                 latency=latency,
@@ -307,8 +345,8 @@ class OpenAIAgent(BaseAgent):
         input_cost_per_1k = 0.01
         output_cost_per_1k = 0.03
 
-        input_tokens = usage.get("prompt_tokens", 0)
-        output_tokens = usage.get("completion_tokens", 0)
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
 
         return (input_tokens / 1000) * input_cost_per_1k + (
             output_tokens / 1000

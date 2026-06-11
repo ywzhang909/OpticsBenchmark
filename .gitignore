@@ -147,6 +147,7 @@ logs/
 .checkpoints/
 data/raw/
 data/external/
+dataset/paper_info_extract/
 *.hdf5
 *.parquet
 .zemax/
@@ -154,6 +155,7 @@ data/external/
 
 # opencode
 .opencode/
+opencode.json
 
 # Ruff
 .ruff_cache/

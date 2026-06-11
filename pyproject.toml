@@ -47,6 +47,8 @@ dependencies = [
     "rouge-score>=0.1.2",
     "sentencepiece>=0.2.1",
     "tiktoken>=0.13.0",
+    "pypdf2>=3.0.1",
+    "python-docx>=1.2.0",
 ]
 
 [project.optional-dependencies]

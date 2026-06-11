@@ -147,7 +147,7 @@ class EvaluationRunner:
         self._semaphore: asyncio.Semaphore | None = None
 
     async def setup(self) -> None:
-        """Set up agent and evaluator."""
+        """Set up agent"""
         self.agent = create_agent(self.config.agent_config)
         self.evaluator = create_evaluator(self.config.task_config.evaluation_config)
 
