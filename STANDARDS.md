@@ -196,7 +196,7 @@ from .evaluator import (
 )
 
 from .runner import (
-    EvaluationRunner,
+    AgentRunner,
     run_evaluation,
 )
 

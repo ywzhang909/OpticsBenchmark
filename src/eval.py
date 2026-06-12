@@ -17,7 +17,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import EvaluationRunner, TaskConfig
+from src.core.runner import AgentRunner, TaskConfig
 from src.utils.logger import logger, setup_logger
 from src.utils.parser import ConfigParser
 
@@ -107,7 +107,7 @@ async def run_evaluation(
 
     try:
         # Load agent outputs
-        agent_outputs = EvaluationRunner.load_agent_outputs(input_path)
+        agent_outputs = AgentRunner.load_agent_outputs(input_path)
         logger.info(f"Loaded {len(agent_outputs)} agent outputs")
 
         if not agent_outputs:

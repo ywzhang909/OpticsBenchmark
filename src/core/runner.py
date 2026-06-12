@@ -1,8 +1,8 @@
 """
 OptiS Benchmark - Runner Module
 
-This module defines the main evaluation runner that coordinates
-agents, environments, and evaluators.
+This module defines the main runner that coordinates
+agents across task instances.
 """
 
 from __future__ import annotations
@@ -11,19 +11,12 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from .agent import AgentConfig, BaseAgent, create_agent
-from .evaluator import (
-    AggregatedResults,
-    BaseEvaluator,
-    EvaluationResult,
-    create_evaluator,
-)
 
 
 @dataclass
@@ -70,8 +63,8 @@ class TaskConfig:
 
     task_id: str
     name: str
-    dataset_path: str
-    evaluation_config: dict[str, Any]
+    dataset_config: dict[str, Any]
+    prompt_config: dict[str, Any]
     max_samples: int | None = None
     shuffle: bool = False
 
@@ -83,13 +76,13 @@ class TaskConfig:
 
         task_data = data.get("task", {})
         dataset_data = data.get("dataset", {})
-        eval_data = data.get("evaluation", {})
+        prompt_data = data.get("prompt", {})
 
         return cls(
             task_id=task_data.get("id", "unknown"),
             name=task_data.get("name", "Unknown Task"),
-            dataset_path=dataset_data.get("path", ""),
-            evaluation_config=eval_data,
+            dataset_config=dataset_data,
+            prompt_config=prompt_data,
             max_samples=dataset_data.get("num_samples"),
             shuffle=dataset_data.get("shuffle", False),
         )
@@ -127,31 +120,26 @@ class RunnerConfig:
         )
 
 
-class EvaluationRunner:
+class AgentRunner:
     """
-    Main evaluation runner that coordinates the evaluation process.
+    Main runner that coordinates agent execution across task instances.
 
     The runner:
     1. Loads task instances from the dataset
-    2. Creates agent and evaluator instances
-    3. Runs evaluations in parallel (with configurable concurrency)
-    4. Aggregates and saves results
+    2. Creates agent instance
+    3. Runs agent on tasks in parallel (with configurable concurrency)
+    4. Saves agent outputs
     """
 
     def __init__(self, config: RunnerConfig):
-        """Initialize the runner with configuration."""
         self.config = config
         self.agent: BaseAgent | None = None
-        self.evaluator: BaseEvaluator | None = None
-        self.results: list[EvaluationResult] = []
         self._semaphore: asyncio.Semaphore | None = None
 
     async def setup(self) -> None:
         """Set up agent"""
         self.agent = create_agent(self.config.agent_config)
-        self.evaluator = create_evaluator(self.config.task_config.evaluation_config)
 
-        # Add system prompt
         if self.config.agent_config.system_prompt:
             self.agent.add_system_message(self.config.agent_config.system_prompt)
 
@@ -165,52 +153,41 @@ class EvaluationRunner:
 
     def load_tasks(self) -> list[TaskInstance]:
         """Load task instances from dataset file."""
-        dataset_path = Path(self.config.task_config.dataset_path)
+        dataset_path = Path(self.config.task_config.dataset_config.get("path", ""))
 
         if not dataset_path.exists():
             raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 
         tasks = []
-        dataset_format = self.config.task_config.evaluation_config.get("dataset", {}).get(
-            "format", {}
-        )
-
-        input_field = dataset_format.get("input_field", "instruction")
-        output_field = dataset_format.get("output_field", "expected_output")
-        metadata_fields = dataset_format.get("metadata_fields", [])
+        task_id_prefix = self.config.task_config.task_id
 
         with open(dataset_path, encoding="utf-8") as f:
-            for line_num, line in enumerate(f, 1):
-                if not line.strip():
-                    continue
+            records = json.load(f)
 
-                try:
-                    data = json.loads(line)
+        if not isinstance(records, list):
+            raise ValueError(f"Expected JSON array in dataset, got {type(records).__name__}")
 
-                    metadata = {
-                        "task_id": data.get("task_id", f"task_{line_num}"),
-                    }
-                    for field in metadata_fields:
-                        if field in data:
-                            metadata[field] = data[field]
+        for i, record in enumerate(records):
+            task_id = f"{task_id_prefix}_{i + 1:03d}"
+            title = record.get("title", "")
+            location = record.get("location", "")
 
-                    tasks.append(
-                        TaskInstance(
-                            task_id=metadata["task_id"],
-                            instruction=data.get(input_field, ""),
-                            expected_output=data.get(output_field, ""),
-                            metadata=metadata,
-                        )
-                    )
-                except json.JSONDecodeError as e:
-                    print(f"Warning: Skipping invalid JSON at line {line_num}: {e}")
-                    continue
+            tasks.append(
+                TaskInstance(
+                    task_id=task_id,
+                    instruction=title,
+                    expected_output="",
+                    metadata={
+                        "task_id": task_id,
+                        "title": title,
+                        "location": location,
+                    },
+                )
+            )
 
-        # Limit number of samples
         if self.config.task_config.max_samples:
             tasks = tasks[: self.config.task_config.max_samples]
 
-        # Shuffle if requested
         if self.config.task_config.shuffle:
             import random
 
@@ -298,78 +275,6 @@ class EvaluationRunner:
                 execution_time=time.time() - start,
             )
 
-    async def evaluate_outputs(self, agent_outputs: list[AgentOutput]) -> AggregatedResults:
-        """Phase 2: Evaluate agent outputs using the evaluator.
-
-        Args:
-            agent_outputs: Raw agent outputs from run_agent()
-
-        Returns:
-            AggregatedResults with evaluation metrics
-        """
-        from loguru import logger
-
-        self.evaluator = create_evaluator(self.config.task_config.evaluation_config)
-        logger.info(f"Evaluating {len(agent_outputs)} agent outputs")
-
-        results = []
-        for ao in agent_outputs:
-            result = await self.evaluator.evaluate(
-                task_id=ao.task_id,
-                predicted_output=ao.response,
-                expected_output=ao.expected_output,
-                metadata=ao.metadata,
-            )
-            result.cost = ao.cost
-            results.append(result)
-
-        return await self.evaluator.aggregate(results)
-
-    async def run(self) -> AggregatedResults:
-        """
-        Run the full evaluation (Phase 1 + Phase 2).
-
-        Returns:
-            AggregatedResults with summary statistics
-        """
-        outputs = await self.run_agent()
-        aggregated = await self.evaluate_outputs(outputs)
-        self.results = aggregated.per_task_results
-        self._save_final_results(aggregated)
-        return aggregated
-
-    def _save_final_results(self, aggregated: AggregatedResults) -> None:
-        """Save aggregated results."""
-        from loguru import logger
-
-        output_path = Path(self.config.output_path)
-
-        # Save as JSON
-        json_path = output_path.with_suffix(".json")
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "timestamp": datetime.now().isoformat(),
-                    "task_id": self.config.task_config.task_id,
-                    "agent_name": self.config.agent_config.name,
-                    "model": self.config.agent_config.model_name,
-                    "total_tasks": aggregated.total_tasks,
-                    "successful_tasks": aggregated.successful_tasks,
-                    "success_rate": aggregated.success_rate,
-                    "avg_score": aggregated.avg_score,
-                    "avg_execution_time": aggregated.avg_execution_time,
-                    "total_cost": aggregated.total_cost,
-                    "metrics_summary": aggregated.metrics_summary,
-                },
-                f,
-                indent=2,
-                ensure_ascii=False,
-            )
-
-        logger.info("Results saved to:")
-        logger.info(f"  - Individual results: {output_path}")
-        logger.info(f"  - Aggregated results: {json_path}")
-
     @staticmethod
     def save_agent_outputs(outputs: list[AgentOutput], path: str | Path) -> None:
         """Save agent outputs to a JSONL file.
@@ -402,11 +307,9 @@ class EvaluationRunner:
         return outputs
 
     def get_statistics(self) -> dict[str, Any]:
-        """Get run statistics."""
         if not self.agent:
             return {}
 
         return {
             "agent_stats": self.agent.get_statistics(),
-            "num_results": len(self.results),
         }

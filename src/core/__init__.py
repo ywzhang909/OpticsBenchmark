@@ -36,7 +36,7 @@ from .evaluator import (
 from .llm_judge import DEFAULT_RUBRICS, JudgePromptBuilder, JudgeResult, LLMJudge, Rubric
 from .runner import (
     AgentOutput,
-    EvaluationRunner,
+    AgentRunner,
     RunnerConfig,
     TaskConfig,
     TaskInstance,
@@ -77,7 +77,7 @@ __all__ = [
     "Rubric",
     # Runner
     "AgentOutput",
-    "EvaluationRunner",
+    "AgentRunner",
     "RunnerConfig",
     "TaskConfig",
     "TaskInstance",

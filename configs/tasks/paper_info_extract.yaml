@@ -27,8 +27,8 @@ dataset:
     output_field: "expected_output"
     metadata_fields:
       - "task_id"
-      - "difficulty"
-      - "category"
+      - "title"
+      - "location"
 
 # Environment Configuration
 environment:

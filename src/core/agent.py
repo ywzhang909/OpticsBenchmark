@@ -290,6 +290,10 @@ class OpenAIAgent(BaseAgent):
             kwargs["tool_choice"] = "auto"
 
         try:
+            file = await self.client.files.create(
+                file=open("draconomicon.pdf", "rb"),
+                purpose="user_data"
+            )
             response = await self.client.responses.create(**kwargs)
 
             latency = time.time() - start_time

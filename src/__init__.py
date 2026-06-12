@@ -10,10 +10,10 @@ __author__ = "OptiS Benchmark Contributors"
 from .core import (
     AgentConfig,
     AgentOutput,
+    AgentRunner,
     BaseAgent,
     BaseEvaluator,
     EvaluationResult,
-    EvaluationRunner,
     create_agent,
     create_evaluator,
 )
@@ -41,7 +41,7 @@ __all__ = [
     "BaseAgent",
     "BaseEvaluator",
     "EvaluationResult",
-    "EvaluationRunner",
+    "AgentRunner",
     "create_agent",
     "create_evaluator",
     # Environments

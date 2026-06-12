@@ -237,7 +237,7 @@ The evaluation is split into **two independent phases**, allowing re-evaluation 
 **Phase 1 — Agent Output (`src/main.py`):**
 1. Load agent config and task config from YAML
 2. Load task instances from the dataset JSONL
-3. Launch parallel agent sessions (semaphore-based concurrency in `EvaluationRunner`)
+3. Launch parallel agent sessions (semaphore-based concurrency in `AgentRunner`)
 4. Save raw agent outputs as a JSONL file (`AgentOutput`)
 
 **Phase 2 — Evaluation (`src/eval.py`):**

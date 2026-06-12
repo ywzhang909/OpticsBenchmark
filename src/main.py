@@ -15,7 +15,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import EvaluationRunner, RunnerConfig
+from src.core.runner import AgentRunner, RunnerConfig
 from src.utils.logger import logger, setup_logger
 from src.utils.parser import ConfigParser
 
@@ -193,9 +193,9 @@ async def run_agent_output(
             timeout=timeout,
         )
 
-        runner = EvaluationRunner(config)
+        runner = AgentRunner(config)
         agent_outputs = await runner.run_agent()
-        EvaluationRunner.save_agent_outputs(agent_outputs, output_path)
+        AgentRunner.save_agent_outputs(agent_outputs, output_path)
 
         total_cost = sum(o.cost for o in agent_outputs)
         logger.info("Agent Output Complete")
