@@ -2,6 +2,9 @@
 # Agent Configuration Template
 # OptiS Benchmark - Agent Settings
 # =============================================================================
+#
+# Copy this file and customize for your agent/provider.
+# Remove or comment out sections that don't apply.
 
 # Agent Identity
 agent:
@@ -11,22 +14,31 @@ agent:
 
 # Model Configuration
 model:
-  provider: "openai"          # openai, anthropic, groq, local
-  name: "gpt-4-turbo"        # Model name
+  # Supported providers: openai, anthropic, google, groq, ollama, bedrock, together
+  provider: "openai"
+  name: "gpt-4-turbo"
   api_base: "https://api.openai.com/v1"
-  
+
   # Authentication (use environment variables in production)
   api_key: "${OPENAI_API_KEY}"
-  
+
   # Model Parameters
   temperature: 0.0
-  top_p: 1.0
   max_tokens: 4096
+  top_p: 1.0
   frequency_penalty: 0.0
   presence_penalty: 0.0
-  
-  # Stop sequences
-  stop: null
+
+  # Extra params passed directly to the API client call.
+  # Supports any provider-specific API parameter.
+  # Example for OpenAI Responses API:
+  #   See: https://developers.openai.com/api/reference/resources/responses/methods/create
+  # api_params:
+  #   store: true
+  #   metadata:
+  #     session: "optis-benchmark"
+  #   include:
+  #     - "message.input_image.image_url"
 
 # System Prompt
 system_prompt_file: "prompts/system/optical_agent.txt"
@@ -39,18 +51,13 @@ tools:
     - "bash_execute"
     - "python_execute"
     - "optical_api"
-  
+
   # Optical software integration
   optical_software:
     zemax:
       enabled: true
       connection: "zosapi"     # zosapi, com
       workspace_path: "/tmp/zemax_workspace"
-    code_v:
-      enabled: false
-      connection: "api"
-    asap:
-      enabled: false
 
 # Execution Settings
 execution:

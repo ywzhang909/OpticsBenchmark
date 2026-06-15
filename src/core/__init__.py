@@ -6,8 +6,8 @@ This module exports the main classes and functions for the benchmark.
 
 from .agent import (
     AgentConfig,
+    AgentOutput,
     AgentProvider,
-    AgentResponse,
     AnthropicAgent,
     BaseAgent,
     Message,
@@ -35,7 +35,6 @@ from .evaluator import (
 )
 from .llm_judge import DEFAULT_RUBRICS, JudgePromptBuilder, JudgeResult, LLMJudge, Rubric
 from .runner import (
-    AgentOutput,
     AgentRunner,
     RunnerConfig,
     TaskConfig,
@@ -46,7 +45,7 @@ __all__ = [
     # Agent
     "AgentConfig",
     "AgentProvider",
-    "AgentResponse",
+    "AgentOutput",
     "BaseAgent",
     "Message",
     "OpenAIAgent",

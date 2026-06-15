@@ -218,6 +218,6 @@ class MockTask:
     """Mock task for testing."""
 
     task_id: str
-    instruction: str
+    prompt: str
     expected_output: dict[str, Any]
     metadata: dict[str, Any] = field(default_factory=dict)

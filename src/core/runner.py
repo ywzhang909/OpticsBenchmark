@@ -14,9 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from .agent import AgentConfig, BaseAgent, create_agent
+from src.core.agent import AgentConfig, AgentOutput, BaseAgent, create_agent
+from src.core.config import TaskConfig
 
 
 @dataclass
@@ -24,69 +23,9 @@ class TaskInstance:
     """A single task instance to be evaluated."""
 
     task_id: str
-    instruction: str
+    prompt: str
     expected_output: Any
     metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class AgentOutput:
-    """Raw output from running an agent on a single task."""
-
-    task_id: str
-    instruction: str
-    response: str
-    expected_output: Any
-    metadata: dict[str, Any] = field(default_factory=dict)
-    cost: float = 0.0
-    execution_time: float = 0.0
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "task_id": self.task_id,
-            "instruction": self.instruction,
-            "response": self.response,
-            "expected_output": self.expected_output,
-            "metadata": self.metadata,
-            "cost": self.cost,
-            "execution_time": self.execution_time,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> AgentOutput:
-        return cls(**data)
-
-
-@dataclass
-class TaskConfig:
-    """Configuration for a task set."""
-
-    task_id: str
-    name: str
-    dataset_config: dict[str, Any]
-    prompt_config: dict[str, Any]
-    max_samples: int | None = None
-    shuffle: bool = False
-
-    @classmethod
-    def from_yaml(cls, path: str | Path) -> TaskConfig:
-        """Load task configuration from YAML file."""
-        with open(path, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-
-        task_data = data.get("task", {})
-        dataset_data = data.get("dataset", {})
-        prompt_data = data.get("prompt", {})
-
-        return cls(
-            task_id=task_data.get("id", "unknown"),
-            name=task_data.get("name", "Unknown Task"),
-            dataset_config=dataset_data,
-            prompt_config=prompt_data,
-            max_samples=dataset_data.get("num_samples"),
-            shuffle=dataset_data.get("shuffle", False),
-        )
-
 
 @dataclass
 class RunnerConfig:
@@ -138,7 +77,7 @@ class AgentRunner:
 
     async def setup(self) -> None:
         """Set up agent"""
-        self.agent = create_agent(self.config.agent_config)
+        self.agent = create_agent(self.config.agent_config, self.config.task_config)
 
         if self.config.agent_config.system_prompt:
             self.agent.add_system_message(self.config.agent_config.system_prompt)
@@ -159,13 +98,20 @@ class AgentRunner:
             raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 
         tasks = []
-        task_id_prefix = self.config.task_config.task_id
+        task_id_prefix = self.config.task_config.task.get("id", "unknown")
 
         with open(dataset_path, encoding="utf-8") as f:
             records = json.load(f)
 
         if not isinstance(records, list):
             raise ValueError(f"Expected JSON array in dataset, got {type(records).__name__}")
+
+        prompt_template = None
+        task_file = self.config.task_config.prompt_config.get("task_file", "")
+        if task_file:
+            prompt_path = Path(task_file)
+            if prompt_path.exists():
+                prompt_template = "\n".join(prompt_path.read_text(encoding="utf-8").splitlines()[2:])
 
         for i, record in enumerate(records):
             task_id = f"{task_id_prefix}_{i + 1:03d}"
@@ -175,8 +121,8 @@ class AgentRunner:
             tasks.append(
                 TaskInstance(
                     task_id=task_id,
-                    instruction=title,
-                    expected_output="",
+                    prompt=prompt_template,
+                    expected_output=record.get("expected_output", ""),
                     metadata={
                         "task_id": task_id,
                         "title": title,
@@ -231,32 +177,26 @@ class AgentRunner:
 
         start = time.time()
         try:
-            user_message = task.instruction
-            if task.metadata:
-                meta_str = "\n\nTask Metadata:\n"
-                for k, v in task.metadata.items():
-                    if k != "task_id":
-                        meta_str += f"- {k}: {v}\n"
-                user_message += meta_str
-
             self.agent.reset()
-            self.agent.add_user_message(user_message)
+            if self.config.task_config.task.get("file_input", False):
+                self.agent.set_file(task.metadata.get("location"))
+            self.agent.add_user_message(task.prompt)
             messages = self.agent.conversation_history.copy()
-            response = await self.agent.chat(messages)
+            result = await self.agent.chat(messages)
 
             return AgentOutput(
                 task_id=task.task_id,
-                instruction=task.instruction,
-                response=response.content,
+                prompt=task.prompt,
+                response=result.response,
                 expected_output=task.expected_output,
                 metadata=task.metadata,
-                cost=response.cost,
+                cost=result.cost,
                 execution_time=time.time() - start,
             )
         except asyncio.TimeoutError:
             return AgentOutput(
                 task_id=task.task_id,
-                instruction=task.instruction,
+                prompt=task.prompt,
                 response="",
                 expected_output=task.expected_output,
                 metadata=task.metadata,
@@ -267,7 +207,7 @@ class AgentRunner:
             logger.error(f"Error running agent on task {task.task_id}: {e}")
             return AgentOutput(
                 task_id=task.task_id,
-                instruction=task.instruction,
+                prompt=task.prompt,
                 response="",
                 expected_output=task.expected_output,
                 metadata=task.metadata,

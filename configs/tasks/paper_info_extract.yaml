@@ -10,6 +10,14 @@ task:
   category: "paper_info_extract"
   difficulty: 2
   estimated_time: 10
+
+  # Whether the task requires file input (e.g., PDF)
+  file_input: true
+
+  # Structured output settings
+  structured_output: true
+  gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
+
   # Tags for filtering
   tags:
     - "optical"
@@ -50,7 +58,7 @@ environment:
 
 # Prompt Configuration
 prompt:
-  system_file: "prompts/system/optical_agent.txt"
+  task_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
   template_file: "prompts/templates/template_task.txt"
   
   # Variables to inject

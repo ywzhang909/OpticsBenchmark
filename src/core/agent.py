@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 
+from src.core.config import TaskConfig
+
 
 class AgentProvider(Enum):
     """Supported LLM providers."""
@@ -53,6 +55,9 @@ class AgentConfig:
     # Provider-specific settings
     thinking_budget: int | None = None  # Anthropic specific
     ollama_host: str = "http://localhost:11434"  # Ollama specific
+
+    # Generic extra params passed directly to the API call
+    api_params: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> AgentConfig:
@@ -96,6 +101,7 @@ class AgentConfig:
             max_retries=exec_cfg.get("max_retries", 3),
             thinking_budget=provider_cfg.get("thinking_budget"),
             ollama_host=provider_cfg.get("ollama_host", "http://localhost:11434"),
+            api_params=model_cfg.get("api_params", {}),
         )
 
     @staticmethod
@@ -111,6 +117,59 @@ class AgentConfig:
         elif isinstance(data, list):
             return [AgentConfig._expand_env_vars(item) for item in data]
         return data
+
+
+def _dict_to_response_format(
+    name: str, d: dict[str, Any], strict: bool = True
+) -> dict[str, Any]:
+    """Generate a Chat Completions response_format from a Python dict, inferring types."""
+
+    def _infer_type(value: Any) -> dict[str, Any]:
+        if value is None:
+            return {"type": "string"}
+        if isinstance(value, bool):
+            return {"type": "boolean"}
+        if isinstance(value, int):
+            return {"type": "integer"}
+        if isinstance(value, float):
+            return {"type": "number"}
+        if isinstance(value, str):
+            return {"type": "string"}
+        if isinstance(value, list):
+            items = {"type": "string"}
+            for item in value:
+                if isinstance(item, (dict, list)):
+                    items = _infer_type(item)
+                    break
+                t = _infer_type(item)
+                if t != items:
+                    items = {"type": "string"}
+            return {"type": "array", "items": items}
+        if isinstance(value, dict):
+            props = {}
+            required = []
+            for k, v in value.items():
+                props[k] = _infer_type(v)
+                required.append(k)
+            obj: dict[str, Any] = {
+                "type": "object",
+                "properties": props,
+                "required": required,
+            }
+            if strict:
+                obj["additionalProperties"] = False
+            return obj
+        return {"type": "string"}
+
+    schema = _infer_type(d)
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": name,
+            "schema": schema,
+            "strict": strict,
+        },
+    }
 
 
 @dataclass
@@ -136,16 +195,37 @@ class ToolCall:
 
 
 @dataclass
-class AgentResponse:
-    """Response from an agent."""
+class AgentOutput:
+    """Output from running an agent on a single task."""
 
-    content: str
+    task_id: str = ""
+    response: Any = ""
+    finish_reason: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
-    finish_reason: str = "stop"
-    usage: dict[str, int] = field(default_factory=dict)
     cost: float = 0.0
+    usage: dict[str, int] = field(default_factory=dict)
     latency: float = 0.0
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "task_id": self.task_id,
+            "response": self.response,
+            "finish_reason": self.finish_reason,
+            "cost": self.cost,
+            "usage": self.usage,
+            "latency": self.latency,
+        }
+
+    def to_dataset_format(self) -> dict[str, Any]:
+        """Convert to a format suitable for datasets."""
+        return {
+            "id": self.task_id,
+            "data": self.response,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AgentOutput:
+        return cls(**data)
 
 class BaseAgent(ABC):
     """
@@ -155,19 +235,21 @@ class BaseAgent(ABC):
     implementations must follow.
     """
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
         """Initialize the agent with configuration."""
-        self.config = config
+        self.agent_config = agent_config
+        self.task_config = task_config
         self.conversation_history: list[Message] = []
         self.total_cost = 0.0
         self.total_tokens = 0
+        self.file_path: str | None = None
 
     @abstractmethod
     async def chat(
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """
         Send a chat request to the agent.
 
@@ -176,7 +258,7 @@ class BaseAgent(ABC):
             tools: Optional list of available tools
 
         Returns:
-            AgentResponse containing the model's response
+            AgentOutput containing the model's response
         """
         pass
 
@@ -189,9 +271,13 @@ class BaseAgent(ABC):
         """Reset conversation history."""
         self.conversation_history = []
 
-    def add_system_message(self, content: str) -> None:
-        """Add a system message to the conversation."""
-        self.conversation_history.append(Message(role="system", content=content))
+    def set_file(self, path: str | None) -> None:
+        """Set file path for file upload."""
+        self.file_path = path
+
+    def add_developer_message(self, content: str) -> None:
+        """Add a developer message to the conversation."""
+        self.conversation_history.append(Message(role="developer", content=content))
 
     def add_user_message(self, content: str) -> None:
         """Add a user message to the conversation."""
@@ -213,13 +299,13 @@ class BaseAgent(ABC):
 class OpenAIAgent(BaseAgent):
     """Agent implementation for OpenAI models."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
         from openai import AsyncOpenAI
 
-        api_base = self.config.api_base or "https://api.openai.com/v1"
+        api_base = self.agent_config.api_base or "https://api.openai.com/v1"
         self.client = AsyncOpenAI(
-            api_key=self.config.api_key,
+            api_key=self.agent_config.api_key,
             base_url=api_base,
         )
 
@@ -227,117 +313,101 @@ class OpenAIAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
-        """Send chat request to OpenAI Responses API."""
+    ) -> AgentOutput:
+        """Send chat request to OpenAI Chat Completions API."""
         import time
 
         start_time = time.time()
 
-        # Extract system instructions and build input items
-        instructions_parts = []
-        input_items = []
+        # Build messages for Chat Completions
+        chat_messages = []
         for msg in messages:
-            if msg.role == "system":
-                instructions_parts.append(msg.content)
+            if msg.role == "developer":
+                chat_messages.append({"role": "system", "content": msg.content})
             elif msg.role == "assistant":
                 if msg.content:
-                    input_items.append({"role": "assistant", "content": msg.content})
-                if msg.tool_calls:
-                    for tc in msg.tool_calls:
-                        arguments = tc.get("arguments", "")
-                        if isinstance(arguments, dict):
-                            arguments = json.dumps(arguments)
-                        input_items.append({
-                            "type": "function_call",
-                            "call_id": tc.get("id", tc.get("call_id", "")),
-                            "name": tc["name"],
-                            "arguments": arguments,
-                        })
+                    chat_messages.append({"role": "assistant", "content": msg.content})
+            elif msg.role == "user" and self.file_path:
+                content = msg.content
+                file_path_obj = Path(self.file_path)
+                if file_path_obj.exists():
+                    file_content = file_path_obj.read_text(encoding="utf-8")
+                    content = f"File content ({self.file_path}):\n```\n{file_content}\n```\n\nUser query: {msg.content}"
+                chat_messages.append({"role": "user", "content": content})
             else:
-                input_items.append({"role": msg.role, "content": msg.content})
+                chat_messages.append({"role": msg.role, "content": msg.content})
 
-        instructions = "\n".join(instructions_parts) if instructions_parts else None
-
-        # Convert tools from Chat Completions format to Responses API format
-        converted_tools = None
-        if tools:
-            converted_tools = []
-            for tool in tools:
-                if "function" in tool:
-                    converted_tools.append({
-                        "type": "function",
-                        "name": tool["function"]["name"],
-                        "description": tool["function"].get("description", ""),
-                        "parameters": tool["function"].get("parameters", {}),
-                    })
-                else:
-                    converted_tools.append(tool)
-
-        # Prepare request kwargs
+        # Core request params
         kwargs = {
-            "model": self.config.model_name,
-            "input": input_items,
-            "temperature": self.config.temperature,
-            "max_output_tokens": self.config.max_tokens,
-            "top_p": self.config.top_p,
+            "model": self.agent_config.model_name,
+            "messages": chat_messages,
+            "temperature": self.agent_config.temperature,
+            "max_tokens": self.agent_config.max_tokens,
+            "top_p": self.agent_config.top_p,
         }
 
-        if instructions:
-            kwargs["instructions"] = instructions
-
-        if converted_tools:
-            kwargs["tools"] = converted_tools
+        if tools:
+            kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
 
+        # api_params overrides any of the above or adds extras
+        # (stop, seed, presence_penalty, frequency_penalty, etc.)
+        kwargs.update(self.agent_config.api_params)
+
+        # Structured output via JSON schema from gold answer file
+        first_answer = None
+        if self.task_config.task.get("structured_output", False) and self.task_config.task.get("gold_answer_path"):
+            gold_path = Path(self.task_config.task.get("gold_answer_path"))
+            if gold_path.exists():
+                with open(gold_path, encoding="utf-8") as f:
+                    gold_data = json.load(f)
+                if isinstance(gold_data, list) and gold_data:
+                    first = gold_data[0]
+                    first_answer = first
+                    payload = first.get("data", first)
+                    if isinstance(payload, dict):
+                        kwargs["response_format"] = _dict_to_response_format(
+                            f"{self.task_config.task.get('id', 'Unknown')}_schema", payload, strict=True
+                        )
+
         try:
-            file = await self.client.files.create(
-                file=open("draconomicon.pdf", "rb"),
-                purpose="user_data"
-            )
-            response = await self.client.responses.create(**kwargs)
+            response = await self.client.chat.completions.create(**kwargs)
 
             latency = time.time() - start_time
 
             # Parse response
-            content = response.output_text
-            tool_calls = []
-            for item in response.output:
-                if item.type == "function_call":
-                    tool_calls.append(
+            choice = response.choices[0]
+            content = choice.message.content or ""
+
+            calls: list[ToolCall] = []
+            if choice.message.tool_calls:
+                for tc in choice.message.tool_calls:
+                    calls.append(
                         ToolCall(
-                            id=item.id or item.call_id,
-                            name=item.name,
-                            arguments=json.loads(item.arguments),
+                            id=tc.id,
+                            name=tc.function.name,
+                            arguments=json.loads(tc.function.arguments),
                         )
                     )
 
-            # Map status to finish_reason
-            finish_reason_map = {
-                "completed": "stop",
-                "failed": "error",
-                "incomplete": "length",
-                "cancelled": "stop",
-            }
-            finish_reason = finish_reason_map.get(response.status or "", "stop")
-
-            # Calculate cost
+            finish_reason = choice.finish_reason or "stop"
             usage = response.usage.model_dump() if response.usage else {}
             cost = self._calculate_cost(usage)
             self.total_cost += cost
             self.total_tokens += usage.get("total_tokens", 0)
 
-            return AgentResponse(
-                content=content,
-                tool_calls=tool_calls,
+            return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
+                response=content,
                 finish_reason=finish_reason,
-                usage=usage,
+                tool_calls=calls,
                 cost=cost,
+                usage=usage,
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
-                tool_calls=[],
+            return AgentOutput(
+                response="",
                 finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
@@ -378,7 +448,7 @@ class AnthropicAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """Send chat request to Anthropic API."""
         import time
 
@@ -449,8 +519,8 @@ class AnthropicAgent(BaseAgent):
             self.total_cost += cost
             self.total_tokens += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
 
-            return AgentResponse(
-                content=content,
+            return AgentOutput(
+                response=content,
                 tool_calls=tool_calls,
                 finish_reason="stop",
                 usage=usage,
@@ -458,8 +528,8 @@ class AnthropicAgent(BaseAgent):
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
+            return AgentOutput(
+                response="",
                 tool_calls=[],
                 finish_reason="error",
                 cost=0.0,
@@ -498,7 +568,7 @@ class GeminiAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """Send chat request to Google Gemini API."""
         import time
 
@@ -547,8 +617,8 @@ class GeminiAgent(BaseAgent):
             self.total_cost += cost
             self.total_tokens += usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
 
-            return AgentResponse(
-                content=content,
+            return AgentOutput(
+                response=content,
                 tool_calls=[],
                 finish_reason="stop",
                 usage=usage,
@@ -556,8 +626,8 @@ class GeminiAgent(BaseAgent):
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
+            return AgentOutput(
+                response="",
                 tool_calls=[],
                 finish_reason="error",
                 cost=0.0,
@@ -595,7 +665,7 @@ class GroqAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """Send chat request to Groq API."""
         import time
 
@@ -646,8 +716,8 @@ class GroqAgent(BaseAgent):
             self.total_cost += cost
             self.total_tokens += usage.get("total_tokens", 0)
 
-            return AgentResponse(
-                content=content,
+            return AgentOutput(
+                response=content,
                 tool_calls=[],
                 finish_reason=choice.finish_reason or "stop",
                 usage=usage,
@@ -655,8 +725,8 @@ class GroqAgent(BaseAgent):
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
+            return AgentOutput(
+                response="",
                 tool_calls=[],
                 finish_reason="error",
                 cost=0.0,
@@ -695,7 +765,7 @@ class OllamaAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """Send chat request to Ollama API."""
         import time
 
@@ -740,8 +810,8 @@ class OllamaAgent(BaseAgent):
             cost = 0.0
             self.total_cost += cost
 
-            return AgentResponse(
-                content=content,
+            return AgentOutput(
+                response=content,
                 tool_calls=[],
                 finish_reason="stop",
                 usage=usage,
@@ -749,8 +819,8 @@ class OllamaAgent(BaseAgent):
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
+            return AgentOutput(
+                response="",
                 tool_calls=[],
                 finish_reason="error",
                 cost=0.0,
@@ -784,7 +854,7 @@ class BedrockAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """Send chat request to AWS Bedrock API."""
         import time
 
@@ -835,8 +905,8 @@ class BedrockAgent(BaseAgent):
 
             self.total_cost += cost
 
-            return AgentResponse(
-                content=content,
+            return AgentOutput(
+                response=content,
                 tool_calls=[],
                 finish_reason="stop",
                 usage=usage,
@@ -844,8 +914,8 @@ class BedrockAgent(BaseAgent):
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
+            return AgentOutput(
+                response="",
                 tool_calls=[],
                 finish_reason="error",
                 cost=0.0,
@@ -891,7 +961,7 @@ class TogetherAIAgent(BaseAgent):
         self,
         messages: list[Message],
         tools: list[dict] | None = None,
-    ) -> AgentResponse:
+    ) -> AgentOutput:
         """Send chat request to Together AI API."""
         import time
 
@@ -931,8 +1001,8 @@ class TogetherAIAgent(BaseAgent):
             self.total_cost += cost
             self.total_tokens += usage.get("total_tokens", 0)
 
-            return AgentResponse(
-                content=content,
+            return AgentOutput(
+                response=content,
                 tool_calls=[],
                 finish_reason=choice.get("finish_reason", "stop"),
                 usage=usage,
@@ -940,8 +1010,8 @@ class TogetherAIAgent(BaseAgent):
                 latency=latency,
             )
         except Exception:
-            return AgentResponse(
-                content="",
+            return AgentOutput(
+                response="",
                 tool_calls=[],
                 finish_reason="error",
                 cost=0.0,
@@ -966,18 +1036,23 @@ class TogetherAIAgent(BaseAgent):
         await self.client.aclose()
 
 
-def create_agent(config: AgentConfig | str | Path) -> BaseAgent:
+def create_agent(agent_config: AgentConfig | str | Path,
+                 task_config: TaskConfig | str | Path) -> BaseAgent:
     """
     Factory function to create an agent instance.
 
     Args:
-        config: AgentConfig object or path to config file
+        agent_config: AgentConfig object or path to config file
+        task_config: TaskConfig object or path to config file
 
     Returns:
         Configured agent instance
     """
-    if isinstance(config, (str, Path)):
-        config = AgentConfig.from_yaml(config)
+    if isinstance(agent_config, (str, Path)):
+        agent_config = AgentConfig.from_yaml(agent_config)
+
+    if isinstance(task_config, (str, Path)):
+        task_config = TaskConfig.from_yaml(task_config)
 
     provider_map = {
         AgentProvider.OPENAI: OpenAIAgent,
@@ -990,8 +1065,8 @@ def create_agent(config: AgentConfig | str | Path) -> BaseAgent:
         AgentProvider.LOCAL: OllamaAgent,  # Local defaults to Ollama
     }
 
-    agent_class = provider_map.get(config.provider)
+    agent_class = provider_map.get(agent_config.provider)
     if agent_class is None:
-        raise ValueError(f"Unsupported provider: {config.provider}")
+        raise ValueError(f"Unsupported provider: {agent_config.provider}")
 
-    return agent_class(config)
+    return agent_class(agent_config, task_config)

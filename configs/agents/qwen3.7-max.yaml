@@ -1,34 +1,27 @@
 # =============================================================================
-# GPT-4 Configuration
+# Qwen 3 Max Configuration
 # OptiS Benchmark - Agent Settings
 # =============================================================================
+#
+# Uses OpenAI-compatible SDK to call DeepSeek API.
+# Endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1
 
 agent:
-  name: "optis-gpt4"
+  name: "optis-qwen"
   version: "1.0.0"
-  description: "GPT-4 Turbo Optical Design Agent"
+  description: "Qwen 3 Max Optical Design Agent"
 
 model:
   provider: "openai"
-  name: "gpt-4-turbo"
-  api_base: "https://api.openai.com/v1"
-  api_key: "${OPENAI_API_KEY}"
+  name: "qwen3-max"
+  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key: "${QWEN_API_KEY}"
 
   temperature: 0.0
   max_tokens: 4096
   top_p: 1.0
   frequency_penalty: 0.0
   presence_penalty: 0.0
-
-  # Extra params passed directly to client.responses.create(**kwargs).
-  # Supports any OpenAI Responses API parameter.
-  # See: https://developers.openai.com/api/reference/resources/responses/methods/create
-  api_params:
-    store: true
-    include:
-      - "message.input_image.image_url"
-      - "web_search_call.action.sources"
-    # reasoning: {}
 
 system_prompt_file: "prompts/system/optical_agent.txt"
 
@@ -39,7 +32,7 @@ tools:
     - "bash_execute"
     - "python_execute"
     - "optical_api"
-  
+
   optical_software:
     zemax:
       enabled: true
