@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -34,7 +35,7 @@ class ProviderInfo:
     provider_type: str
     model_name: str
     has_api_key: bool
-    tools_enabled: list[str]
+    tools_config: dict[str, Any]
 
     @property
     def display_name(self) -> str:
@@ -60,7 +61,7 @@ class QuickLLMSelector:
         if not self.config_dir.exists():
             return self.providers
 
-        for config_file in self.config_dir.glob("*.yaml"):
+        for config_file in self.config_dir.glob("**/*.yaml"):
             if config_file.name == "template.yaml":
                 continue
 
@@ -71,7 +72,6 @@ class QuickLLMSelector:
                 # Extract provider info
                 model_cfg = data.get("model", {})
                 data.get("agent", {})
-                tools_cfg = data.get("tools", {})
 
                 provider = model_cfg.get("provider", "unknown")
                 model_name = model_cfg.get("name", "unknown")
@@ -103,7 +103,7 @@ class QuickLLMSelector:
                     provider_type=provider,
                     model_name=model_name,
                     has_api_key=has_key,
-                    tools_enabled=tools_cfg.get("enabled", []),
+                    tools_config=data.get("tools", {}),
                 )
             except Exception as e:
                 print(f"Warning: Failed to load {config_file}: {e}", file=sys.stderr)
@@ -325,7 +325,8 @@ async def interactive_mode(selector: QuickLLMSelector) -> None:
 
     for i, p in enumerate(providers, 1):
         status = "✅" if p.has_api_key else "⚠️ "
-        tools = ", ".join(p.tools_enabled[:3]) if p.tools_enabled else "none"
+        tools_list = p.tools_config.get("enabled", [])
+        tools = ", ".join(tools_list[:3]) if tools_list else "none"
         print(f"  {i}. {status} {p.display_name}")
         print(f"     Model: {p.model_name} | Tools: {tools}")
 
@@ -386,8 +387,9 @@ async def main() -> None:
             print(f"  {status} {p.display_name}")
             print(f"      Config: {p.config_path.name}")
             print(f"      Model: {p.model_name}")
-            if p.tools_enabled:
-                print(f"      Tools: {', '.join(p.tools_enabled)}")
+            tools_list = p.tools_config.get("enabled", [])
+            if tools_list:
+                print(f"      Tools: {', '.join(tools_list)}")
             print()
         return
 

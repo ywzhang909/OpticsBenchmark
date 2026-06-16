@@ -22,37 +22,93 @@ model:
   # Authentication (use environment variables in production)
   api_key: "${OPENAI_API_KEY}"
 
-  # Model Parameters
-  temperature: 0.0
-  max_tokens: 4096
-  top_p: 1.0
-  frequency_penalty: 0.0
-  presence_penalty: 0.0
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
 
-  # Extra params passed directly to the API client call.
-  # Supports any provider-specific API parameter.
-  # Example for OpenAI Responses API:
-  #   See: https://developers.openai.com/api/reference/resources/responses/methods/create
-  # api_params:
-  #   store: true
-  #   metadata:
-  #     session: "optis-benchmark"
-  #   include:
-  #     - "message.input_image.image_url"
+    # Extra params passed directly to the API client call.
+    # Supports any provider-specific API parameter.
+    # Example for OpenAI Responses API:
+    #   See: https://developers.openai.com/api/reference/resources/responses/methods/create
+    # api_params:
+    #   store: true
+    #   metadata:
+    #     session: "optis-benchmark"
+    #   include:
+    #     - "message.input_image.image_url"
 
 # System Prompt
 system_prompt_file: "prompts/system/optical_agent.txt"
 
 # Tool Configuration
+# 可用工具类型及参数说明请查看 API 文档：
+#   https://developers.openai.ac.cn/api/docs/guides/tools#usage-in-the-api
+#
+# 每个工具在 `tools` 列表中定义为一项，type 字段指定工具类型。
+# 模型会根据提示词自动判断是否调用已配置的工具。
+# 可通过 tool_choice 参数显式控制调用行为。
+#
+# 以下为各工具类型的配置示例（按需启用/调整字段）：
+#
+# 1. MCP 服务器 (type: "mcp")
+#    - server_label:       MCP 服务器标识
+#    - server_description: 服务器功能描述
+#    - server_url:         MCP SSE 端点 URL
+#    - require_approval:   "never" | "always" | "on_unknown"  ——是否需要用户确认
 tools:
-  enabled:
-    - "file_read"
-    - "file_write"
-    - "bash_execute"
-    - "python_execute"
-    - "optical_api"
+  mcp_server:
+    server_label: "optis-mcp-server"
+    server_description: "Optical Design AI Server"
+    server_url: "http://localhost:8000"
+    require_approval: true
 
-  # Optical software integration
+# 2. 网络搜索 (type: "web_search")
+#    - 无需额外参数，设为 true 即可启用
+web_search: true
+
+# 3. 文件搜索 (type: "file_search")
+#    - vector_store_ids:   OpenAI Vector Store ID 列表
+#    - max_num_results:    返回的最大结果数（可选）
+#    注意：需要在 OpenAI 平台先创建 Vector Store 并上传文件
+#   示例：
+#   - type: file_search
+#     vector_store_ids: ["vs_xxx"]
+#     max_num_results: 5
+file_search:
+  - "paper1.pdf"
+  - "paper2.pdf"
+  - "paper3.pdf"
+
+# 4. 工具搜索 (type: "tool_search")——仅在 gpt-5.4+ 支持
+#    - 与 namespace 配合使用，动态加载延迟工具
+#    - 设空字典即可启用搜索：{}
+#    需配合函数工具的 defer_loading: true
+tool_search:
+  name: "optics_namespace"
+  description: "Search for optics namespace"
+
+  # 5. 函数调用 (type: "function")——自定义业务逻辑
+  #    - name:        函数名称
+  #    - description: 函数功能说明
+  #    - parameters:  JSON Schema 定义参数结构
+  #    - strict:      true 启用严格模式（推荐）
+  #    - defer_loading: true 延迟加载（配合 tool_search 使用）
+  #    示例：
+  #   - type: function
+  #     name: zemax_analyze
+  #     description: "Run Zemax optical analysis"
+  #     parameters:
+  #       type: object
+  #       properties:
+  #         lens_file: { type: string }
+  #       required: [lens_file]
+  #       additionalProperties: false
+  #     strict: true
+
+  # Optical software integration (custom, non-OpenAI)
   optical_software:
     zemax:
       enabled: true

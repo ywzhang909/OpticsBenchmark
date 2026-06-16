@@ -1,0 +1,65 @@
+# =============================================================================
+# OpenAI Agent Configuration Template
+# OptiS Benchmark - Agent Settings
+# =============================================================================
+#
+# Copy this file and customize for your OpenAI-compatible model.
+
+agent:
+  name: "optis-openai-agent"
+  version: "1.0.0"
+  description: "OpenAI Optical Design Agent"
+
+model:
+  provider: "openai"
+  name: "gpt-4-turbo"
+  api_base: "https://api.openai.com/v1"
+  api_key: "${OPENAI_API_KEY}"
+
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+
+    api_params:
+      n: 1
+      store: true
+
+system_prompt_file: "prompts/system/optical_agent.txt"
+
+# Tool Configuration
+# See: https://developers.openai.ac.cn/api/docs/guides/tools#usage-in-the-api
+tools:
+  mcp_server:
+    server_label: "optis-mcp-server"
+    server_description: "Optical Design AI Server"
+    server_url: "http://localhost:8000"
+    require_approval: true
+
+  web_search: true
+
+  file_search:
+    - "paper1.pdf"
+    - "paper2.pdf"
+
+  tool_search:
+    name: "optics_namespace"
+    description: "Search for optics namespace"
+
+  optical_software:
+    zemax:
+      enabled: true
+      connection: "zosapi"
+      workspace_path: "/tmp/zemax_workspace"
+
+execution:
+  max_retries: 3
+  timeout: 300
+  cache_enabled: true
+  cache_ttl: 3600
+
+cost_tracking:
+  enabled: true
+  log_api_usage: true

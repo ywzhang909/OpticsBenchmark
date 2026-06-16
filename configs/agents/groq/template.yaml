@@ -1,38 +1,31 @@
 # =============================================================================
-# DeepSeek V4 Pro Configuration
+# Groq Agent Configuration Template
 # OptiS Benchmark - Agent Settings
 # =============================================================================
 #
-# Uses Anthropic SDK to call DeepSeek API.
-# Endpoint: https://api.deepseek.com
+# Copy this file and customize for your Groq model.
 
 agent:
-  name: "optis-deepseek"
+  name: "optis-groq-agent"
   version: "1.0.0"
-  description: "DeepSeek V4 Pro Optical Design Agent"
+  description: "Groq Optical Design Agent"
 
 model:
-  provider: "anthropic"
-  name: "deepseek-v4-pro"
-  api_base: "https://api.deepseek.com/anthropic"
-  api_key: "${DEEPSEEK_API_KEY}"
+  provider: "groq"
+  name: "llama-3.3-70b-versatile"
+  api_base: "https://api.groq.com/openai/v1"
+  api_key: "${GROQ_API_KEY}"
 
-  temperature: 0.0
-  max_tokens: 4096
-  top_p: 1.0
-  frequency_penalty: 0.0
-  presence_penalty: 0.0
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+    top_p: 1.0
 
 system_prompt_file: "prompts/system/optical_agent.txt"
 
+# Tool Configuration
+# Groq supports OpenAI-compatible function calling.
 tools:
-  enabled:
-    - "file_read"
-    - "file_write"
-    - "bash_execute"
-    - "python_execute"
-    - "optical_api"
-
   optical_software:
     zemax:
       enabled: true

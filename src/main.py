@@ -28,13 +28,13 @@ def parse_args() -> argparse.Namespace:
         epilog="""
 Examples:
   # Run agent on dataset to generate outputs
-  python src/main.py -a configs/agents/gpt-4.yaml -t lens_design
+  python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design
 
   # Run agent with custom output and concurrency
-  python src/main.py -a configs/agents/claude-3.yaml -t lens_design -o results/my_outputs.jsonl -c 4
+  python src/main.py -a configs/agents/anthropic/claude-3.yaml -t lens_design -o results/my_outputs.jsonl -c 4
 
   # Run all task sets with a specific agent
-  python src/main.py -a configs/agents/gpt-4.yaml --all-tasks -o results/all_outputs.jsonl
+  python src/main.py -a configs/agents/openai/gpt-4.yaml --all-tasks -o results/all_outputs.jsonl
 
   # Then evaluate outputs (Phase 2):
   python src/eval.py -i results/outputs.jsonl -t configs/tasks/lens_design.yaml

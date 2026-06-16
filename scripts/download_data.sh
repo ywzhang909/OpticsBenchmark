@@ -190,7 +190,7 @@ main() {
     echo ""
     echo "Next steps:"
     echo "  1. Review downloaded datasets: ls ${PROCESSED_DIR}"
-    echo "  2. Run evaluation: python src/main.py --agent-config configs/agents/gpt-4.yaml --task-set lens_design"
+    echo "  2. Run evaluation: python src/main.py --agent-config configs/agents/openai/gpt-4.yaml --task-set lens_design"
     echo ""
 }
 

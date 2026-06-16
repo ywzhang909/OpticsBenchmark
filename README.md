@@ -95,19 +95,19 @@ bash scripts/download_data.sh
 
 ```bash
 # Using the installed CLI entry point
-optis -a configs/agents/gpt-4.yaml -t lens_design
+optis -a configs/agents/openai/gpt-4.yaml -t lens_design
 
 # Or run directly
-python src/main.py -a configs/agents/gpt-4.yaml -t lens_design
+python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design
 
 # All tasks with 4 concurrent workers
-python src/main.py -a configs/agents/claude-3.yaml --all-tasks -c 4
+python src/main.py -a configs/agents/anthropic/claude-3.yaml --all-tasks -c 4
 
 # Specify output path
-python src/main.py -a configs/agents/gpt-4.yaml -t lens_design -o results/agent_outputs.jsonl
+python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design -o results/agent_outputs.jsonl
 
 # Dry run to validate config without calling APIs
-python src/main.py -a configs/agents/gpt-4.yaml -t lens_design --dry-run
+python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design --dry-run
 ```
 
 **Phase 2** — Evaluate agent outputs with scoring metrics:
@@ -176,13 +176,13 @@ OpticsBenchmark/
 
 | Provider | Config | Client Library |
 |----------|--------|----------------|
-| OpenAI (GPT-4, GPT-4 Turbo) | `configs/agents/gpt-4.yaml` | `openai` |
-| Anthropic (Claude 3.5 Sonnet) | `configs/agents/claude-3.yaml` | `anthropic` |
-| Google Gemini (1.5 Pro) | `configs/agents/gemini.yaml` | `google-genai` |
-| Groq (free inference, Llama 3.1 70B) | `configs/agents/groq.yaml` | `groq` |
-| Ollama (local models) | `configs/agents/ollama.yaml` | `httpx` |
-| AWS Bedrock (Claude 3.5 Sonnet) | `configs/agents/bedrock.yaml` | `boto3` |
-| Together AI (Llama 3.3 70B Instruct) | `configs/agents/together.yaml` | `httpx` |
+| OpenAI (GPT-4, GPT-4 Turbo) | `configs/agents/openai/gpt-4.yaml` | `openai` |
+| Anthropic (Claude 3.5 Sonnet) | `configs/agents/anthropic/claude-3.yaml` | `anthropic` |
+| Google Gemini (1.5 Pro) | `configs/agents/google/gemini.yaml` | `google-genai` |
+| Groq (free inference, Llama 3.1 70B) | `configs/agents/groq/groq.yaml` | `groq` |
+| Ollama (local models) | `configs/agents/ollama/ollama.yaml` | `httpx` |
+| AWS Bedrock (Claude 3.5 Sonnet) | `configs/agents/bedrock/bedrock.yaml` | `boto3` |
+| Together AI (Llama 3.3 70B Instruct) | `configs/agents/together/together.yaml` | `httpx` |
 
 Per-provider features:
 - **Anthropic**: Configurable `thinking_budget` for extended thinking

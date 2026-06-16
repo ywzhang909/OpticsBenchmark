@@ -42,13 +42,8 @@ class AgentConfig:
     model_name: str
     api_base: str
     api_key: str
-    temperature: float = 0.0
-    max_tokens: int = 4096
-    top_p: float = 1.0
-    frequency_penalty: float = 0.0
-    presence_penalty: float = 0.0
     system_prompt: str = ""
-    tools_enabled: list[str] = field(default_factory=list)
+    tools_config: dict[str, Any] = field(default_factory=dict)
     timeout: int = 300
     max_retries: int = 3
 
@@ -56,8 +51,9 @@ class AgentConfig:
     thinking_budget: int | None = None  # Anthropic specific
     ollama_host: str = "http://localhost:11434"  # Ollama specific
 
-    # Generic extra params passed directly to the API call
-    api_params: dict[str, Any] = field(default_factory=dict)
+    # Setup parameters from model.setup in YAML
+    # (temperature, max_completion_tokens, top_p, api_params, extra_body, etc.)
+    setup_config: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> AgentConfig:
@@ -70,7 +66,6 @@ class AgentConfig:
 
         model_cfg = data.get("model", {})
         agent_cfg = data.get("agent", {})
-        tools_cfg = data.get("tools", {})
         exec_cfg = data.get("execution", {})
         provider_cfg = data.get("provider_settings", {})
 
@@ -90,18 +85,13 @@ class AgentConfig:
             model_name=model_cfg.get("name", "gpt-4"),
             api_base=model_cfg.get("api_base", ""),
             api_key=model_cfg.get("api_key", ""),
-            temperature=model_cfg.get("temperature", 0.0),
-            max_tokens=model_cfg.get("max_tokens", 4096),
-            top_p=model_cfg.get("top_p", 1.0),
-            frequency_penalty=model_cfg.get("frequency_penalty", 0.0),
-            presence_penalty=model_cfg.get("presence_penalty", 0.0),
             system_prompt=system_prompt,
-            tools_enabled=tools_cfg.get("enabled", []),
+            tools_config=data.get("tools", {}),
             timeout=exec_cfg.get("timeout", 300),
             max_retries=exec_cfg.get("max_retries", 3),
             thinking_budget=provider_cfg.get("thinking_budget"),
             ollama_host=provider_cfg.get("ollama_host", "http://localhost:11434"),
-            api_params=model_cfg.get("api_params", {}),
+            setup_config=model_cfg.get("setup", {}),
         )
 
     @staticmethod
@@ -295,9 +285,38 @@ class BaseAgent(ABC):
             "conversation_length": len(self.conversation_history),
         }
 
+    def _build_structured_output(self) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """Build response_format and first_answer from gold_answer_path."""
+        if not self.task_config.task.get("structured_output", False):
+            return None, None
+        gold_path = self.task_config.task.get("gold_answer_path")
+        if not gold_path:
+            return None, None
+        gold_path_obj = Path(gold_path)
+        if not gold_path_obj.exists():
+            return None, None
+        with open(gold_path_obj, encoding="utf-8") as f:
+            gold_data = json.load(f)
+        if not isinstance(gold_data, list) or not gold_data:
+            return None, None
+        first = gold_data[0]
+        payload = first.get("data", first)
+        if not isinstance(payload, dict):
+            return None, None
+        return (
+            _dict_to_response_format(
+                f"{self.task_config.task.get('id', 'Unknown')}_schema", payload, strict=True
+            ),
+            first,
+        )
+
 
 class OpenAIAgent(BaseAgent):
     """Agent implementation for OpenAI models."""
+
+    # Known API hosts that still use the legacy "max_tokens" parameter
+    # instead of OpenAI's "max_completion_tokens".
+    _USE_MAX_TOKENS_HOSTS: set[str] = {"api.deepseek.com"}
 
     def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
         super().__init__(agent_config, task_config)
@@ -316,6 +335,7 @@ class OpenAIAgent(BaseAgent):
     ) -> AgentOutput:
         """Send chat request to OpenAI Chat Completions API."""
         import time
+        from urllib.parse import urlparse
 
         start_time = time.time()
 
@@ -331,44 +351,99 @@ class OpenAIAgent(BaseAgent):
                 content = msg.content
                 file_path_obj = Path(self.file_path)
                 if file_path_obj.exists():
-                    file_content = file_path_obj.read_text(encoding="utf-8")
-                    content = f"File content ({self.file_path}):\n```\n{file_content}\n```\n\nUser query: {msg.content}"
-                chat_messages.append({"role": "user", "content": content})
+                    file_obj = await self.client.files.create(
+                        file=file_path_obj.open("rb"),
+                        purpose="asistants"
+                    )
+                chat_messages.append({"role": "user", "content": content, "file_ids": [file_obj.id]})
             else:
                 chat_messages.append({"role": msg.role, "content": msg.content})
 
+        # Determine the correct token parameter name based on API host
+        api_base = self.agent_config.api_base or ""
+        host = urlparse(api_base).hostname
+        tokens_param = (
+            "max_tokens"
+            if host and any(host.endswith(h) for h in self._USE_MAX_TOKENS_HOSTS)
+            else "max_completion_tokens"
+        )
+
         # Core request params
+        setup = self.agent_config.setup_config
         kwargs = {
             "model": self.agent_config.model_name,
             "messages": chat_messages,
-            "temperature": self.agent_config.temperature,
-            "max_tokens": self.agent_config.max_tokens,
-            "top_p": self.agent_config.top_p,
+            "temperature": setup.get("temperature", 0.0),
+            tokens_param: setup.get("max_completion_tokens", 4096),
+            "top_p": setup.get("top_p", 1.0),
         }
 
-        if tools:
-            kwargs["tools"] = tools
+        tools_config = self.agent_config.tools_config
+        if tools_config:
+            tools = []
+            if tools_config.get("mcp_server", {}):
+                tool={
+                        "type": "mcp",
+                        "server_label": tools_config["mcp_server"].get("server_label", None),
+                        "server_description": tools_config["mcp_server"].get("server_description", None),
+                        "server_url": tools_config["mcp_server"].get("server_url", None),
+                        "require_approval": tools_config["mcp_server"].get("require_approval", None),
+                    },
+                tools.append(tool)
+
+            if tools_config.get("web_search", False):
+                tools.append({ "type" : "web_search"})
+
+            if tools_config.get("file_search", []):
+                vector_store = await self.client.vector_stores.create(
+                    name="knowledge_base"
+                )
+                file_ids = []
+                for file_url in tools_config["file_search"]:
+                    file_path_obj = Path(file_url)
+                    if file_path_obj.exists():
+                        file_obj = await self.client.files.create(
+                            file=file_path_obj.open("rb"),
+                            purpose="assistants"
+                        )
+                        file_ids.append(file_obj.id)
+                if file_ids:
+                    await self.client.vector_stores.file_batches.create_and_poll(
+                        vector_store_id=vector_store.id,
+                        file_ids=file_ids
+                    )
+                tools.append({
+                    "type": "file_search",
+                    "vector_store_ids": [vector_store.id],
+                })
+
+            if tools_config.get("tool_search", {}):
+                custom_namespace = {
+                    "type" : "namespace",
+                    "name" : tools_config["tool_search"].get("name", "unknow"),
+                    "description" : tools_config["tool_search"].get("description", "unknow"),
+                    "tools" : tools,
+                }
+                kwargs["tools"] = [
+                    custom_namespace,
+                    {"type": "tool_search"}
+                ]
+            else :
+                kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
 
         # api_params overrides any of the above or adds extras
         # (stop, seed, presence_penalty, frequency_penalty, etc.)
-        kwargs.update(self.agent_config.api_params)
+        kwargs.update(setup.get("api_params", {}))
+
+        # extra_body for non-OpenAI-standard params (e.g. Qwen enable_thinking)
+        if setup.get("extra_body"):
+            kwargs["extra_body"] = setup["extra_body"]
 
         # Structured output via JSON schema from gold answer file
-        first_answer = None
-        if self.task_config.task.get("structured_output", False) and self.task_config.task.get("gold_answer_path"):
-            gold_path = Path(self.task_config.task.get("gold_answer_path"))
-            if gold_path.exists():
-                with open(gold_path, encoding="utf-8") as f:
-                    gold_data = json.load(f)
-                if isinstance(gold_data, list) and gold_data:
-                    first = gold_data[0]
-                    first_answer = first
-                    payload = first.get("data", first)
-                    if isinstance(payload, dict):
-                        kwargs["response_format"] = _dict_to_response_format(
-                            f"{self.task_config.task.get('id', 'Unknown')}_schema", payload, strict=True
-                        )
+        response_format, first_answer = self._build_structured_output()
+        if response_format:
+            kwargs["response_format"] = response_format
 
         try:
             response = await self.client.chat.completions.create(**kwargs)
@@ -434,13 +509,13 @@ class OpenAIAgent(BaseAgent):
 class AnthropicAgent(BaseAgent):
     """Agent implementation for Anthropic models."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
         from anthropic import AsyncAnthropic
 
-        api_base = self.config.api_base or "https://api.anthropic.com"
+        api_base = self.agent_config.api_base or "https://api.anthropic.com"
         self.client = AsyncAnthropic(
-            api_key=self.config.api_key,
+            api_key=self.agent_config.api_key,
             base_url=api_base,
         )
 
@@ -470,25 +545,28 @@ class AnthropicAgent(BaseAgent):
                 )
 
         # Prepare request kwargs
+        setup = self.agent_config.setup_config
         kwargs = {
-            "model": self.config.model_name,
+            "model": self.agent_config.model_name,
             "messages": api_messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
+            "temperature": setup.get("temperature", 0.0),
+            "max_tokens": setup.get("max_completion_tokens", 4096),
         }
 
         if system_content:
             kwargs["system"] = system_content
 
         # Anthropic extended thinking
-        if self.config.thinking_budget:
+        if self.agent_config.thinking_budget:
             kwargs["thinking"] = {
                 "type": "enabled",
-                "budget_tokens": self.config.thinking_budget,
+                "budget_tokens": self.agent_config.thinking_budget,
             }
 
         if tools:
             kwargs["tools"] = tools
+
+        response_format, first_answer = self._build_structured_output()
 
         try:
             response = await self.client.messages.create(**kwargs)
@@ -520,6 +598,7 @@ class AnthropicAgent(BaseAgent):
             self.total_tokens += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
 
             return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
                 tool_calls=tool_calls,
                 finish_reason="stop",
@@ -554,15 +633,19 @@ class AnthropicAgent(BaseAgent):
         await self.client.close()
 
 
-class GeminiAgent(BaseAgent):
+class GoogleAgent(BaseAgent):
     """Agent implementation for Google Gemini models."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        import google.genai as genai
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
+        from google import genai
 
-        genai.configure(api_key=self.config.api_key)
-        self.client = genai.GenerativeModel(self.config.model_name)
+        self.client = genai.Client(
+            api_key=self.agent_config.api_key,
+            vertexai=self.agent_config.setup_config.get("vertexai", False),
+            project_id=self.agent_config.setup_config.get("project_id", None),
+            location=self.agent_config.setup_config.get("location", None),
+        )
 
     async def chat(
         self,
@@ -571,6 +654,8 @@ class GeminiAgent(BaseAgent):
     ) -> AgentOutput:
         """Send chat request to Google Gemini API."""
         import time
+
+        from google.genai import types
 
         start_time = time.time()
 
@@ -582,21 +667,92 @@ class GeminiAgent(BaseAgent):
             if msg.role == "system":
                 system_instruction = msg.content
             elif msg.role == "user":
-                contents.append({"role": "user", "parts": [{"text": msg.content}]})
+                if self.file_path:
+                    file_path_obj = Path(self.file_path)
+                    if file_path_obj.exists():
+                        file_obj = await self.client.aio.files.upload(
+                            file=file_path_obj
+                        )
+                        contents.append({file_obj})
+                contents.append({msg.content})
             elif msg.role == "assistant":
                 contents.append({"role": "model", "parts": [{"text": msg.content}]})
 
         try:
-            generation_config = {
-                "temperature": self.config.temperature,
-                "max_output_tokens": self.config.max_tokens,
-                "top_p": self.config.top_p,
-            }
+            setup = self.agent_config.setup_config
 
-            response = await self.client.generate_content_async(
-                contents=contents,
-                generation_config=generation_config,
+            response_format, first_answer = self._build_structured_output()
+
+            tools_config = self.agent_config.tools_config
+            if tools_config:
+                tools = []
+                if tools_config.get("web_search", False):
+                    grounding_tool = types.Tool(
+                        google_search=types.GoogleSearch()
+                    )
+                    tools.append(grounding_tool)
+
+                if tools_config.get("file_search", []):
+                    file_search_store = await self.client.aio.file_search_stores.create(
+                        config={
+                            "display_name": tools_config.get("file_search_store_name", "optics_file_search"),
+                            "embedding_model": tools_config.get("embedding_model", "models/gemini-embedding-2")
+                        }
+                    )
+                    for file_url in tools_config.get("file_search", []):
+                        sample_file = await self.client.aio.files.upload(file=file_url, config={'name': file_url.split('/')[-1]})
+                        await self.client.aio.file_search_stores.import_file(
+                            file_search_store_name=file_search_store.name,
+                            file_name=sample_file.name
+                        )
+                    tool = types.Tool(
+                        file_search=types.FileSearch(
+                        file_search_store_names=[file_search_store.name]
+                        )
+                    )
+                    tools.append(tool)
+            config = types.GenerateContentConfig(
                 system_instruction=system_instruction if system_instruction else None,
+                temperature=setup.get("temperature", None),
+                top_p=setup.get("top_p", None),
+                top_k=setup.get("top_k", None),
+                candidate_count=setup.get("candidate_count", None),
+                max_output_tokens=setup.get("max_completion_tokens", None),
+                stop_sequences=setup.get("stop_sequences", None),
+                presence_penalty=setup.get("presence_penalty", None),
+                frequency_penalty=setup.get("frequency_penalty", None),
+                seed=setup.get("seed", None),
+                response_logprobs=setup.get("response_logprobs", None),
+                logprobs=setup.get("logprobs", None),
+                response_mime_type="application/json" if response_format else None,
+                response_json_schema=response_format,
+                labels=setup.get("labels", None),
+                cached_content=setup.get("cached_content", None),
+                response_modalities=setup.get("response_modalities", None),
+                media_resolution=setup.get("media_resolution", None),
+                audio_timestamp=setup.get("audio_timestamp", None),
+                enable_enhanced_civic_answers=setup.get("enable_enhanced_civic_answers", None),
+                service_tier=setup.get("service_tier", None),
+                should_return_http_response=setup.get("should_return_http_response", None),
+                safety_settings=(
+                    [types.SafetySetting(**s) for s in setup["safety_settings"]]
+                    if setup.get("safety_settings") else None
+                ),
+                thinking_config=(
+                    types.ThinkingConfig(
+                        include_thoughts=setup["thinking"].get("include_thoughts", None),
+                        thinking_budget=setup["thinking"].get("thinking_budget", None),
+                        thinking_level=setup["thinking"].get("thinking_level", None),
+                    )
+                    if setup.get("thinking") else None
+                ),
+                tools=tools,
+            )
+
+            response = await self.client.aio.models.generate_content(
+                model=self.agent_config.model_name,
+                contents=contents,
+                config=config
             )
 
             latency = time.time() - start_time
@@ -618,6 +774,7 @@ class GeminiAgent(BaseAgent):
             self.total_tokens += usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
 
             return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
                 tool_calls=[],
                 finish_reason="stop",
@@ -655,11 +812,11 @@ class GeminiAgent(BaseAgent):
 class GroqAgent(BaseAgent):
     """Agent implementation for Groq models."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
         from groq import AsyncGroq
 
-        self.client = AsyncGroq(api_key=self.config.api_key)
+        self.client = AsyncGroq(api_key=self.agent_config.api_key)
 
     async def chat(
         self,
@@ -695,13 +852,18 @@ class GroqAgent(BaseAgent):
                 )
                 break
 
+        setup = self.agent_config.setup_config
         kwargs = {
-            "model": self.config.model_name,
+            "model": self.agent_config.model_name,
             "messages": api_messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
-            "top_p": self.config.top_p,
+            "temperature": setup.get("temperature", 0.0),
+            "max_tokens": setup.get("max_completion_tokens", 4096),
+            "top_p": setup.get("top_p", 1.0),
         }
+
+        response_format, first_answer = self._build_structured_output()
+        if response_format:
+            kwargs["response_format"] = response_format
 
         try:
             response = await self.client.chat.completions.create(**kwargs)
@@ -717,6 +879,7 @@ class GroqAgent(BaseAgent):
             self.total_tokens += usage.get("total_tokens", 0)
 
             return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
                 tool_calls=[],
                 finish_reason=choice.finish_reason or "stop",
@@ -754,11 +917,11 @@ class GroqAgent(BaseAgent):
 class OllamaAgent(BaseAgent):
     """Agent implementation for Ollama (local models)."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
         import httpx
 
-        self.host = self.config.ollama_host
+        self.host = self.agent_config.ollama_host
         self.client = httpx.AsyncClient(base_url=self.host, timeout=120.0)
 
     async def chat(
@@ -781,15 +944,18 @@ class OllamaAgent(BaseAgent):
                 }
             )
 
+        setup = self.agent_config.setup_config
         kwargs = {
-            "model": self.config.model_name,
+            "model": self.agent_config.model_name,
             "messages": api_messages,
             "stream": False,
             "options": {
-                "temperature": self.config.temperature,
-                "num_predict": self.config.max_tokens,
+                "temperature": setup.get("temperature", 0.0),
+                "num_predict": setup.get("max_completion_tokens", 4096),
             },
         }
+
+        response_format, first_answer = self._build_structured_output()
 
         try:
             response = await self.client.post("/api/chat", json=kwargs)
@@ -811,6 +977,7 @@ class OllamaAgent(BaseAgent):
             self.total_cost += cost
 
             return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
                 tool_calls=[],
                 finish_reason="stop",
@@ -839,13 +1006,13 @@ class OllamaAgent(BaseAgent):
 class BedrockAgent(BaseAgent):
     """Agent implementation for AWS Bedrock models."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
         import boto3
 
         self.client = boto3.client(
             "bedrock-runtime",
-            region_name=config.api_base or "us-east-1",
+            region_name=agent_config.api_base or "us-east-1",
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
         )
@@ -879,17 +1046,20 @@ class BedrockAgent(BaseAgent):
                     }
                 )
 
+        setup = self.agent_config.setup_config
         body = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": self.config.max_tokens,
+            "max_tokens": setup.get("max_completion_tokens", 4096),
             "messages": api_messages,
-            "temperature": self.config.temperature,
-            "top_p": self.config.top_p,
+            "temperature": setup.get("temperature", 0.0),
+            "top_p": setup.get("top_p", 1.0),
         }
+
+        response_format, first_answer = self._build_structured_output()
 
         try:
             response = await self.client.invoke_model_async(
-                modelId=self.config.model_name,
+                modelId=self.agent_config.model_name,
                 contentType="application/json",
                 accept="application/json",
                 body=json.dumps(body),
@@ -906,6 +1076,7 @@ class BedrockAgent(BaseAgent):
             self.total_cost += cost
 
             return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
                 tool_calls=[],
                 finish_reason="stop",
@@ -943,15 +1114,15 @@ class BedrockAgent(BaseAgent):
 class TogetherAIAgent(BaseAgent):
     """Agent implementation for Together AI models."""
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
+    def __init__(self, agent_config: AgentConfig, task_config: TaskConfig):
+        super().__init__(agent_config, task_config)
         import httpx
 
-        api_base = self.config.api_base or "https://api.together.xyz"
+        api_base = self.agent_config.api_base or "https://api.together.xyz"
         self.client = httpx.AsyncClient(
             base_url=api_base,
             headers={
-                "Authorization": f"Bearer {self.config.api_key}",
+                "Authorization": f"Bearer {self.agent_config.api_key}",
                 "Content-Type": "application/json",
             },
             timeout=120.0,
@@ -977,13 +1148,18 @@ class TogetherAIAgent(BaseAgent):
                 }
             )
 
+        setup = self.agent_config.setup_config
         body = {
-            "model": self.config.model_name,
+            "model": self.agent_config.model_name,
             "messages": api_messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
-            "top_p": self.config.top_p,
+            "temperature": setup.get("temperature", 0.0),
+            "max_tokens": setup.get("max_completion_tokens", 4096),
+            "top_p": setup.get("top_p", 1.0),
         }
+
+        response_format, first_answer = self._build_structured_output()
+        if response_format:
+            body["response_format"] = response_format
 
         try:
             response = await self.client.post("/v1/chat/completions", json=body)
@@ -1002,6 +1178,7 @@ class TogetherAIAgent(BaseAgent):
             self.total_tokens += usage.get("total_tokens", 0)
 
             return AgentOutput(
+                task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
                 tool_calls=[],
                 finish_reason=choice.get("finish_reason", "stop"),
@@ -1057,7 +1234,7 @@ def create_agent(agent_config: AgentConfig | str | Path,
     provider_map = {
         AgentProvider.OPENAI: OpenAIAgent,
         AgentProvider.ANTHROPIC: AnthropicAgent,
-        AgentProvider.GOOGLE: GeminiAgent,
+        AgentProvider.GOOGLE: GoogleAgent,
         AgentProvider.GROQ: GroqAgent,
         AgentProvider.OLLAMA: OllamaAgent,
         AgentProvider.BEDROCK: BedrockAgent,

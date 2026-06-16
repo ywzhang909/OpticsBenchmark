@@ -1,24 +1,25 @@
 # =============================================================================
-# Google Gemini Configuration
+# Together AI Configuration
 # OptiS Benchmark - Agent Settings
 # =============================================================================
 
 agent:
-  name: "optis-gemini"
+  name: "optis-together"
   version: "1.0.0"
-  description: "Google Gemini Optical Design Agent"
+  description: "Together AI Agent"
 
 model:
-  provider: "google"
-  name: "gemini-1.5-pro"
+  provider: "together"
+  name: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
   
-  # Gemini API Key
-  api_key: "${GOOGLE_API_KEY}"
+  # Together AI API Key
+  api_key: "${TOGETHER_API_KEY}"
+  api_base: "https://api.together.xyz"
   
-  # Model Parameters
-  temperature: 0.0
-  max_tokens: 8192
-  top_p: 1.0
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+    top_p: 1.0
 
 system_prompt_file: "prompts/system/optical_agent.txt"
 

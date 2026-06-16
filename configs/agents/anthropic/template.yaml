@@ -1,0 +1,47 @@
+# =============================================================================
+# Anthropic Agent Configuration Template
+# OptiS Benchmark - Agent Settings
+# =============================================================================
+#
+# Copy this file and customize for your Anthropic model.
+
+agent:
+  name: "optis-anthropic-agent"
+  version: "1.0.0"
+  description: "Anthropic Optical Design Agent"
+
+model:
+  provider: "anthropic"
+  name: "claude-3-5-sonnet-20241022"
+  api_base: "https://api.anthropic.com"
+  api_key: "${ANTHROPIC_API_KEY}"
+
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+    top_p: 1.0
+
+provider_settings:
+  thinking_budget: 16000
+
+system_prompt_file: "prompts/system/optical_agent.txt"
+
+# Tool Configuration
+# Anthropic supports function calling (tool use) via the Messages API.
+# See: https://docs.anthropic.com/en/docs/build-with-claude/tool-use
+tools:
+  optical_software:
+    zemax:
+      enabled: true
+      connection: "zosapi"
+      workspace_path: "/tmp/zemax_workspace"
+
+execution:
+  max_retries: 3
+  timeout: 300
+  cache_enabled: true
+  cache_ttl: 3600
+
+cost_tracking:
+  enabled: true
+  log_api_usage: true

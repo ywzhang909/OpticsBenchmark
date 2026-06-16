@@ -61,5 +61,5 @@ uv run pytest tests/             # Run tests (verbose, short traceback)
 uv run pytest --cov=src          # With coverage
 uv run ruff check .              # Lint
 uv run mypy src/                 # Type check (lenient mode)
-uv run python src/main.py -a configs/agents/gpt-4.yaml -t lens_design  # Run eval
+uv run python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design  # Run eval
 ```

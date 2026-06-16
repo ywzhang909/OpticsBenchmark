@@ -52,8 +52,8 @@ usage() {
     echo "  -h, --help                 Show this help"
     echo ""
     echo "Examples:"
-    echo "  $0 -a configs/agents/gpt-4.yaml -t lens_design"
-    echo "  $0 -a configs/agents/claude-3.yaml -t system_analysis -c 4 -v"
+  echo "  $0 -a configs/agents/openai/gpt-4.yaml -t lens_design"
+  echo "  $0 -a configs/agents/anthropic/claude-3.yaml -t system_analysis -c 4 -v"
     echo ""
 }
 

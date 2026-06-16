@@ -21,17 +21,17 @@ class TestProviderInfo:
         """Test display name formatting."""
         provider = ProviderInfo(
             name="GPT-4 (OpenAI)",
-            config_path=Path("configs/agents/gpt-4.yaml"),
+            config_path=Path("configs/agents/openai/gpt-4.yaml"),
             provider_type="openai",
             model_name="gpt-4-turbo",
             has_api_key=True,
-            tools_enabled=["file_read", "bash_execute"],
+            tools_config={"enabled": ["file_read", "bash_execute"]},
         )
 
         assert provider.display_name == "GPT-4 (OpenAI) (gpt-4-turbo)"
         assert provider.provider_type == "openai"
         assert provider.has_api_key is True
-        assert len(provider.tools_enabled) == 2
+        assert len(provider.tools_config.get("enabled", [])) == 2
 
 
 class TestQuickLLMSelector:

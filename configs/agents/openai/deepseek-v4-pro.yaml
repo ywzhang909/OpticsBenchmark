@@ -1,27 +1,28 @@
 # =============================================================================
-# Claude 3 Configuration
+# DeepSeek V4 Pro Configuration
 # OptiS Benchmark - Agent Settings
 # =============================================================================
+#
+# Uses Anthropic SDK to call DeepSeek API.
+# Endpoint: https://api.deepseek.com
 
 agent:
-  name: "optis-claude3"
+  name: "optis-deepseek"
   version: "1.0.0"
-  description: "Claude 3.5 Sonnet Optical Design Agent"
+  description: "DeepSeek V4 Pro Optical Design Agent"
 
 model:
-  provider: "anthropic"
-  name: "claude-3-5-sonnet-20241022"
-  api_base: "https://api.anthropic.com/v1"
-  api_key: "${ANTHROPIC_API_KEY}"
-  
-  temperature: 0.0
-  top_p: 1.0
-  max_tokens: 8192
-  
-  # Claude-specific
-  thinking:
-    enabled: false
-    budget_tokens: 10000
+  provider: "openai"
+  name: "deepseek-v4-pro"
+  api_base: "https://api.deepseek.com"
+  api_key: "${DEEPSEEK_API_KEY}"
+
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
 
 system_prompt_file: "prompts/system/optical_agent.txt"
 
@@ -32,7 +33,7 @@ tools:
     - "bash_execute"
     - "python_execute"
     - "optical_api"
-  
+
   optical_software:
     zemax:
       enabled: true

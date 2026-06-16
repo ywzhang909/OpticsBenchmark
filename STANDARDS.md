@@ -270,7 +270,7 @@ class MyClass:
 ### 4.1 YAML 配置结构
 
 ```yaml
-# configs/agents/gpt-4.yaml
+# configs/agents/openai/gpt-4.yaml
 
 # =============================================================================
 # Agent Configuration
@@ -500,7 +500,7 @@ class TestAgent:
     @pytest.fixture
     def agent(self):
         """测试 fixture"""
-        return create_agent("configs/agents/gpt-4.yaml")
+        return create_agent("configs/agents/openai/gpt-4.yaml")
     
     async def test_chat(self, agent):
         """测试聊天功能"""
