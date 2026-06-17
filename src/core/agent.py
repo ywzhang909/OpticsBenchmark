@@ -513,10 +513,8 @@ class AnthropicAgent(BaseAgent):
         super().__init__(agent_config, task_config)
         from anthropic import AsyncAnthropic
 
-        api_base = self.agent_config.api_base or "https://api.anthropic.com"
         self.client = AsyncAnthropic(
             api_key=self.agent_config.api_key,
-            base_url=api_base,
         )
 
     async def chat(
@@ -526,30 +524,47 @@ class AnthropicAgent(BaseAgent):
     ) -> AgentOutput:
         """Send chat request to Anthropic API."""
         import time
+        from pathlib import Path
 
         start_time = time.time()
 
-        # Convert messages to API format
+        # Build messages for API format
         api_messages = []
         system_content = ""
 
         for msg in messages:
             if msg.role == "system":
                 system_content = msg.content
+            elif msg.role == "assistant":
+                if msg.content:
+                    api_messages.append({"role": "assistant", "content": msg.content})
+            elif msg.role == "user" and self.file_path:
+                file_path_obj = Path(self.file_path)
+                content = msg.content
+                if file_path_obj.exists():
+                    api_messages.append({
+                        "role" : "user",
+                        "content" : [
+                            {
+                                "type" : "document",
+                                "source": {
+                                    "type" : "url",
+                                    "url" : self.file_path
+                                }
+                            },
+                            {"type": "text", "text": content}
+                        ]
+                    })
+                else:
+                    api_messages.append({"role": "user", "content": content})
             else:
-                api_messages.append(
-                    {
-                        "role": msg.role,
-                        "content": msg.content,
-                    }
-                )
+                api_messages.append({"role": msg.role, "content": msg.content})
 
         # Prepare request kwargs
         setup = self.agent_config.setup_config
         kwargs = {
             "model": self.agent_config.model_name,
             "messages": api_messages,
-            "temperature": setup.get("temperature", 0.0),
             "max_tokens": setup.get("max_completion_tokens", 4096),
         }
 
@@ -557,16 +572,77 @@ class AnthropicAgent(BaseAgent):
             kwargs["system"] = system_content
 
         # Anthropic extended thinking
-        if self.agent_config.thinking_budget:
+        if setup.get("thinking", {}):
             kwargs["thinking"] = {
-                "type": "enabled",
-                "budget_tokens": self.agent_config.thinking_budget,
+                "type": setup["thinking"]["type"] if setup["thinking"].get("type", None) else "enabled",
+                "budget_tokens": setup["thinking"]["budget_tokens"] if setup["thinking"].get("budget_tokens", None) else 512,
+                "display": setup["thinking"]["display"] if setup["thinking"].get("display", None) else "omitted",
             }
 
-        if tools:
-            kwargs["tools"] = tools
+        # Tools configuration from agent_config.tools_config
+        tools_config = self.agent_config.tools_config
+        built_tools = []
+        if tools_config:
+            if tools_config.get("mcp_server", {}):
+                kwargs["mcp_servers"] = [{
+                    "type" : tools_config["mcp_server"].get("type", None),
+                    "url" : tools_config["mcp_server"].get("url", None),
+                    "name" : tools_config["mcp_server"].get("name", None),
+                    "authorization_token": tools_config["mcp_server"].get("authorization_token", None),
+                }]
 
+            if tools_config.get("web_search", {}):
+                web_search = tools_config["web_search"]
+                built_tools.append({
+                    "type" : web_search.get("type", "web_search_20250305"),
+                    "name" : "web_search",
+                    "max_uses" : web_search.get("max_uses", None),
+                    "allowed_domains" : web_search.get("allowed_domains", None),
+                    "blocked_domains" : web_search.get("blocked_domains", None),
+                    "user_location" : web_search.get("user_location", None),
+                    })
+                
+            if tools_config.get("web_fetch", {}):
+                web_fetch = tools_config["web_fetch"]
+                built_tools.append({
+                    "type" : web_fetch.get("type", "web_fetch_20250910"),
+                    "name" : "web_fetch",
+                    "max_uses" : web_fetch.get("max_uses", None),
+                    "allowed_domains" : web_fetch.get("allowed_domains", None),
+                    "blocked_domains" : web_fetch.get("blocked_domains", None),
+                    "citations" : web_fetch.get("citations", None),
+                    "max_content_tokens" : web_fetch.get("max_content_tokens", None)
+                    })
+
+            if tools_config.get("tool_search", {}):
+                built_tools.append({
+                    "type" : tools_config["tool_search"].get("type", None),
+                    "name" : tools_config["tool_search"].get("name", None)
+                })
+
+            kwargs["tools"] = built_tools
+
+            if tools_config.get("tool_choice", None):
+                kwargs["tool_choice"] = { 
+                    "type": tools_config["tool_choice"].get("type", None),
+                }
+
+        # api_params overrides any of the above or adds extras
+        kwargs.update(setup.get("api_params", {}))
+
+
+        # Structured output via JSON schema (converted to Anthropic tool)
         response_format, first_answer = self._build_structured_output()
+        structured_tool_name = None
+        if response_format:
+            js = response_format["json_schema"]
+            kwargs["output_config"] = {
+                "format" : {
+                    "type" : "json_schema",
+                    "schema" : js["schema"],
+                }
+            }
+            kwargs["tool_choice"] = {"type": "tool", "name": structured_tool_name}
 
         try:
             response = await self.client.messages.create(**kwargs)
@@ -587,6 +663,8 @@ class AnthropicAgent(BaseAgent):
                             arguments=block.input,
                         )
                     )
+                    if structured_tool_name and block.name == structured_tool_name:
+                        content = json.dumps(block.input, ensure_ascii=False)
 
             # Calculate cost
             usage = {
