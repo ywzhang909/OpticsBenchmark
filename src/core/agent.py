@@ -339,6 +339,12 @@ class OpenAIAgent(BaseAgent):
 
         start_time = time.time()
 
+        models_response = await self.client.models.list()
+        model_ids = [m.id for m in models_response.data]
+        print(f"Available models ({len(model_ids)}):")
+        for mid in model_ids:
+            print(f"  - {mid}")
+
         # Build messages for Chat Completions
         chat_messages = []
         for msg in messages:
