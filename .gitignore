@@ -148,6 +148,8 @@ logs/
 data/raw/
 data/external/
 dataset/paper_info_extract/
+dataset/optics_question_answer/
+dataset/paper_review
 *.hdf5
 *.parquet
 .zemax/
@@ -168,3 +170,6 @@ uv.lock
 
 # temp files
 .scrpts/citation_correctness_eval.py
+
+# test files
+self_test

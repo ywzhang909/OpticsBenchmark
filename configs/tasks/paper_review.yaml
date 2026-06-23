@@ -44,34 +44,6 @@ environment:
     max_steps: 20
     memory_limit: "2GB"
 
-evaluation:
-  scoring_method: "metric_based"
-  
-  metrics:
-    - name: "summary_quality"
-      type: "numeric"
-      description: "Quality of paper summary (0-1)"
-    - name: "critique_depth"
-      type: "numeric"
-      description: "Depth of critique (0-1)"
-    - name: "technical_accuracy"
-      type: "numeric"
-      description: "Accuracy of technical comments (0-1)"
-    - name: "coverage_completeness"
-      type: "numeric"
-      description: "Coverage of paper aspects (0-1)"
-  
-  success_criteria:
-    - metric: "summary_quality"
-      operator: ">="
-      value: 0.7
-    - metric: "technical_accuracy"
-      operator: ">="
-      value: 0.8
-    - metric: "coverage_completeness"
-      operator: ">="
-      value: 0.6
-
 prompt:
   system_file: "prompts/system/research_agent.txt"
   template_file: "prompts/templates/paper_review.txt"

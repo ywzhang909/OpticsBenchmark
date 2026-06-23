@@ -190,24 +190,10 @@ class AgentOutput:
 
     task_id: str = ""
     response: Any = ""
-    finish_reason: str = ""
-    tool_calls: list[ToolCall] = field(default_factory=list)
     cost: float = 0.0
-    usage: dict[str, int] = field(default_factory=dict)
     latency: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "task_id": self.task_id,
-            "response": self.response,
-            "finish_reason": self.finish_reason,
-            "cost": self.cost,
-            "usage": self.usage,
-            "latency": self.latency,
-        }
-
-    def to_dataset_format(self) -> dict[str, Any]:
-        """Convert to a format suitable for datasets."""
         return {
             "id": self.task_id,
             "data": self.response,
@@ -215,7 +201,10 @@ class AgentOutput:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AgentOutput:
-        return cls(**data)
+        return cls(
+            task_id=data.get("id", ""),
+            response=data.get("data", ""),
+        )
 
 class BaseAgent(ABC):
     """
@@ -471,7 +460,6 @@ class OpenAIAgent(BaseAgent):
                         )
                     )
 
-            finish_reason = choice.finish_reason or "stop"
             usage = response.usage.model_dump() if response.usage else {}
             cost = self._calculate_cost(usage)
             self.total_cost += cost
@@ -480,16 +468,12 @@ class OpenAIAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                finish_reason=finish_reason,
-                tool_calls=calls,
                 cost=cost,
-                usage=usage,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )
@@ -607,7 +591,7 @@ class AnthropicAgent(BaseAgent):
                     "blocked_domains" : web_search.get("blocked_domains", None),
                     "user_location" : web_search.get("user_location", None),
                     })
-                
+
             if tools_config.get("web_fetch", {}):
                 web_fetch = tools_config["web_fetch"]
                 built_tools.append({
@@ -629,7 +613,7 @@ class AnthropicAgent(BaseAgent):
             kwargs["tools"] = built_tools
 
             if tools_config.get("tool_choice", None):
-                kwargs["tool_choice"] = { 
+                kwargs["tool_choice"] = {
                     "type": tools_config["tool_choice"].get("type", None),
                 }
 
@@ -684,17 +668,12 @@ class AnthropicAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                tool_calls=tool_calls,
-                finish_reason="stop",
-                usage=usage,
                 cost=cost,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                tool_calls=[],
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )
@@ -860,17 +839,12 @@ class GoogleAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                tool_calls=[],
-                finish_reason="stop",
-                usage=usage,
                 cost=cost,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                tool_calls=[],
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )
@@ -965,17 +939,12 @@ class GroqAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                tool_calls=[],
-                finish_reason=choice.finish_reason or "stop",
-                usage=usage,
                 cost=cost,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                tool_calls=[],
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )
@@ -1050,12 +1019,6 @@ class OllamaAgent(BaseAgent):
 
             content = data.get("message", {}).get("content", "")
 
-            # Ollama doesn't provide token counts in response
-            usage = {
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-            }
-
             # Local models have no API cost
             cost = 0.0
             self.total_cost += cost
@@ -1063,17 +1026,12 @@ class OllamaAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                tool_calls=[],
-                finish_reason="stop",
-                usage=usage,
                 cost=cost,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                tool_calls=[],
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )
@@ -1162,17 +1120,12 @@ class BedrockAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                tool_calls=[],
-                finish_reason="stop",
-                usage=usage,
                 cost=cost,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                tool_calls=[],
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )
@@ -1264,17 +1217,12 @@ class TogetherAIAgent(BaseAgent):
             return AgentOutput(
                 task_id=first_answer.get("id", "") if first_answer else "",
                 response=content,
-                tool_calls=[],
-                finish_reason=choice.get("finish_reason", "stop"),
-                usage=usage,
                 cost=cost,
                 latency=latency,
             )
         except Exception:
             return AgentOutput(
                 response="",
-                tool_calls=[],
-                finish_reason="error",
                 cost=0.0,
                 latency=time.time() - start_time,
             )

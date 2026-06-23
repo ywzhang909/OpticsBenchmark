@@ -1,79 +1,87 @@
-# OptiS Benchmark - Dataset Directory
+# OptiS Benchmark — 数据集目录
 
-This directory contains the评测数据集 for optical design agent evaluation.
+本目录包含光学设计智能体评测所需的全部数据集。
 
 ## 目录结构
 
 ```
 dataset/
-├── raw/                    # 原始数据（通过脚本下载）
-├── processed/              # 处理后的标准数据（JSONL 格式）
-│   ├── lens_design.jsonl
-│   ├── system_analysis.jsonl
-│   └── ...
-├── README.md               # 本文件
-└── download.sh            # 数据下载脚本
-```
-
-## 数据格式
-
-所有数据集使用 JSONL（JSON Lines）格式，每行是一个有效的 JSON 对象。
-
-### 标准字段
-
-```json
-{
-  "task_id": "lens_001",
-  "instruction": "设计一个焦距为50mm的消色差双合透镜...",
-  "expected_output": {
-    "lens_type": "achromat_doublet",
-    "focal_length": 50.0,
-    "materials": ["N-BK7", "F2"],
-    "mtf_target": 0.7
-  },
-  "metadata": {
-    "difficulty": 3,
-    "category": "lens_design",
-    "estimated_time": 15
-  }
-}
+├── paper_info_extract/           # 论文信息提取任务数据集
+│   ├── dataset_json/             # JSON 标注数据
+│   │   ├── dataset_v1.json      # 15 篇光学论文的评测样本
+│   │   └── gold_answer_v1.json  # 13 字段结构化 gold answer
+│   └── data_v1/                 # 原始 PDF 论文文件（15 篇）
+├── info_extraction/              # 信息抽取附加数据
+│   └── AO/                      # 自适应光学论文分析文本（160+ 篇）
+├── paper_review/                 # 论文审稿任务（待完善）
+│   ├── dataset_json/            # （空）
+│   └── data_v1/                 # （空）
+├── optics_question_answer/       # 光学问答任务（待完善）
+└── README.md                     # 本文件
 ```
 
 ## 数据集说明
 
-### lens_design.jsonl
-- **任务类型**: 镜头设计与优化
-- **评测指标**: MTF 性能、像差、公差分析
-- **数据量**: 50 个评测样本
+### paper_info_extract — 论文信息提取（就绪）
 
-### system_analysis.jsonl
-- **任务类型**: 光学系统性能分析
-- **评测指标**: 分析完整性、指标准确性
-- **数据量**: 75 个评测样本
+- **任务**: 从光学科学论文中提取 13 个结构化字段（标题、作者、摘要、方法、指标等）
+- **数据量**: 15 篇论文 / 15 个评测样本
+- **格式**: JSON（标注数据）+ PDF（原始论文）
+- **状态**: ✅ 可用
+
+### info_extraction/AO — 自适应光学分析（就绪）
+
+- **任务**: 自适应光学（Adaptive Optics）领域论文的 AI 生成分析文本
+- **数据量**: 160+ 篇分析文件（中英混合）
+- **格式**: TXT
+- **状态**: ✅ 可用
+
+### paper_review — 论文审稿（待完善）
+
+- **任务**: 对光学论文进行学术审稿并给出评分与建议
+- **状态**: ⏳ 数据集待生成
+
+### optics_question_answer — 光学问答（待完善）
+
+- **任务**: 光学领域知识问答评测
+- **状态**: ⏳ 数据集待生成
+
+## 数据格式
+
+### paper_info_extract JSON 格式
+
+```json
+{
+  "paper_id": "paper_001",
+  "title": "Achromatic flat optical components via compensation...",
+  "fields": {
+    "authors": ["Zhang, Y.", "Li, X."],
+    "abstract": "We demonstrate...",
+    "method": "Compensation between structure and material dispersions",
+    "metrics": {
+      "efficiency": 0.85,
+      "bandwidth": "400-700nm"
+    }
+  }
+}
+```
 
 ## 数据准备
 
-### 自动下载
-
 ```bash
-chmod +x download_data.sh
-./scripts/download_data.sh
+# 自动下载（如数据集托管在远程仓库）
+bash scripts/download_data.sh
+
+# 或手动将数据放置到对应子目录
 ```
 
-### 手动下载
+## 贡献新数据集
 
-1. 访问数据集仓库
-2. 下载处理后的 JSONL 文件
-3. 放置到 `dataset/processed/` 目录
-
-## 贡献数据集
-
-欢迎贡献新的评测数据集！
-
-1. 确保数据格式符合上述标准
-2. 包含足够的元信息（难度、类别等）
-3. 提供预期输出的ground truth
-4. 提交 Pull Request
+1. 在 `dataset/` 下创建任务命名的子目录
+2. 确保数据符合任务 config 中定义的格式规范
+3. 提供 JSON 标注文件 + 原始输入文件
+4. 配置 `configs/tasks/<task_name>.yaml` 中的数据集路径
+5. 提交 Pull Request
 
 ## 许可证
 

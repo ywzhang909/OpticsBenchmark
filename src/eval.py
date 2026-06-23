@@ -13,11 +13,12 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import AgentRunner, TaskConfig
+from src.core.runner import AgentRunner
 from src.utils.logger import logger, setup_logger
 from src.utils.parser import ConfigParser
 
@@ -29,11 +30,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Evaluate agent outputs with task config
-  python src/eval.py -i results/agent_outputs.jsonl -t configs/tasks/lens_design.yaml
+  # Evaluate agent outputs with eval config and gold answers
+  python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml
 
   # Evaluate with custom output path
-  python src/eval.py -i results/outputs.jsonl -t configs/tasks/lens_design.yaml -o results/eval_results.json
+  python src/eval.py -i results/outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml -o results/eval_results.json
         """,
     )
 
@@ -46,11 +47,18 @@ Examples:
         help="Path to agent outputs JSONL file (from Phase 1)",
     )
     parser.add_argument(
-        "-t",
-        "--task-config",
+        "-e",
+        "--eval-config",
         type=str,
         required=True,
-        help="Path to task configuration file (YAML)",
+        help="Path to evaluation configuration file (YAML)",
+    )
+    parser.add_argument(
+        "-g",
+        "--gold",
+        type=str,
+        required=True,
+        help="Path to gold standard answer dataset file (JSON)",
     )
     parser.add_argument(
         "-o",
@@ -94,18 +102,55 @@ def load_system_config(system_config_path: str) -> dict:
         return {}
 
 
+def _load_gold_data(gold_path: str) -> dict[str, Any]:
+    """Load gold standard answers from JSON file and build task_id -> data map.
+
+    Expected JSON format: [{"task_id": "...", "data": {...}}, ...]
+    """
+    path = Path(gold_path)
+    if not path.exists():
+        logger.error(f"Gold data file not found: {gold_path}")
+        return {}
+
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+
+    if not isinstance(raw, list):
+        logger.error("Gold data must be a JSON array of {task_id, data} objects")
+        return {}
+
+    gold_map: dict[str, Any] = {}
+    for item in raw:
+        tid = item.get("id")
+        if not tid:
+            logger.warning(f"Skipping gold item without task_id: {item}")
+            continue
+        gold_map[tid] = item.get("data")
+
+    logger.info(f"Loaded {len(gold_map)} gold answers from {gold_path}")
+    return gold_map
+
+
 async def run_evaluation(
     input_path: str,
-    task_config_path: str,
+    gold_path: str,
+    eval_config_path: str,
     output_path: str,
 ) -> int:
     """Phase 2: Evaluate agent outputs and compute metrics."""
     logger.info("Evaluation (Phase 2 - Metric Scoring)")
-    logger.info(f"Input:  {input_path}")
-    logger.info(f"Task:   {task_config_path}")
-    logger.info(f"Output: {output_path}")
+    logger.info(f"Input:       {input_path}")
+    logger.info(f"Gold:        {gold_path}")
+    logger.info(f"Eval Config: {eval_config_path}")
+    logger.info(f"Output:      {output_path}")
 
     try:
+        # Load gold standard answers
+        gold_map = _load_gold_data(gold_path)
+        if not gold_map:
+            logger.error("No gold answers loaded")
+            return 1
+
         # Load agent outputs
         agent_outputs = AgentRunner.load_agent_outputs(input_path)
         logger.info(f"Loaded {len(agent_outputs)} agent outputs")
@@ -114,30 +159,38 @@ async def run_evaluation(
             logger.error("No agent outputs found")
             return 1
 
-        # Load task config and create evaluator
-        task_config = TaskConfig.from_yaml(task_config_path)
+        # Load eval config and create evaluator
+        eval_config = ConfigParser.load_config(eval_config_path)
 
         from src.core.evaluator import create_evaluator
 
-        evaluator = create_evaluator(task_config.evaluation_config)
+        evaluator = create_evaluator(eval_config)
 
-        # Evaluate each output
+        # Evaluate each output, matched by task_id
         results = []
         for ao in agent_outputs:
+            if ao.task_id not in gold_map:
+                logger.warning(f"Gold answer not found for task_id: {ao.task_id}, skipping")
+                continue
+
             result = await evaluator.evaluate(
                 task_id=ao.task_id,
                 predicted_output=ao.response,
-                expected_output=ao.expected_output,
-                metadata=ao.metadata,
+                expected_output=gold_map[ao.task_id],
+                metadata=None,
             )
             result.cost = ao.cost
             results.append(result)
+
+        if not results:
+            logger.error("No results after matching agent outputs with gold answers")
+            return 1
 
         # Aggregate results
         aggregated = await evaluator.aggregate(results)
 
         # Save results
-        _save_evaluation_results(aggregated, output_path, task_config)
+        _save_evaluation_results(aggregated, output_path, eval_config)
 
         # Log summary
         logger.info("EVALUATION COMPLETE")
@@ -154,15 +207,14 @@ async def run_evaluation(
         return 1
 
 
-def _save_evaluation_results(aggregated, output_path: str, task_config: TaskConfig) -> None:
+def _save_evaluation_results(aggregated, output_path: str, eval_config: dict) -> None:
     """Save aggregated evaluation results."""
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     data = {
         "timestamp": datetime.now().isoformat(),
-        "task_id": task_config.task_id,
-        "task_name": task_config.name,
+        "eval_config": eval_config,
         "total_tasks": aggregated.total_tasks,
         "successful_tasks": aggregated.successful_tasks,
         "success_rate": aggregated.success_rate,
@@ -219,7 +271,8 @@ async def main_async(args: argparse.Namespace) -> int:
 
     return await run_evaluation(
         input_path=args.input,
-        task_config_path=args.task_config,
+        gold_path=args.gold,
+        eval_config_path=args.eval_config,
         output_path=args.output,
     )
 

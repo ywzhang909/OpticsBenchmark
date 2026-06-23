@@ -22,7 +22,7 @@ OptiS Benchmark is a modular, extensible evaluation framework for assessing LLM-
 - **Structured output support** — JSON schema generation from gold-answer files for OpenAI Responses API
 - **Multi-dimensional evaluation** — 12 metric modules: Exact Match, ROUGE, BLEU, METEOR, CIDEr, BERTScore, Perplexity, Sentence Similarity, Hungarian Matching, Jaccard Similarity, Edit Distance, Citation F1
 - **Composite scoring** — PluginEval-inspired weighted scoring with LLM judge and anti-pattern penalties
-- **Configuration-driven** — YAML-based agent and task configs; no code changes to switch models or tasks
+- **Configuration-driven** — YAML-based agent and task configs; no code changes to switch models or tasks (8 task types)
 - **Parallel execution** — Async concurrency with semaphore-based task control
 - **Report generation** — Automatic HTML/Markdown reports with statistics and model comparison
 - **Quick LLM selector** — Interactive CLI tool for comparing providers without writing code
@@ -113,11 +113,11 @@ python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design --dry-run
 **Phase 2** — Evaluate agent outputs with scoring metrics:
 
 ```bash
-# Evaluate agent outputs using task config
-python src/eval.py -i results/agent_outputs.jsonl -t configs/tasks/lens_design.yaml
+# Evaluate agent outputs using eval config and gold answers
+python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml
 
 # Specify output path for evaluation results
-python src/eval.py -i results/agent_outputs.jsonl -t configs/tasks/lens_design.yaml -o results/eval_results.json
+python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml -o results/eval_results.json
 ```
 
 ---
@@ -128,8 +128,8 @@ python src/eval.py -i results/agent_outputs.jsonl -t configs/tasks/lens_design.y
 OpticsBenchmark/
 ├── configs/                        # Configuration center
 │   ├── system.yaml                # Global system config
-│   ├── agents/                    # Agent configs (7 providers + template)
-│   └── tasks/                     # Task configs (7 task types + template)
+│   ├── agents/                    # Agent configs (7 providers, 11 model configs + templates)
+│   └── tasks/                     # Task configs (8 task types + template)
 ├── src/                           # Core source package
 │   ├── __init__.py
 │   ├── main.py                    # Phase 1: Agent output generator (CLI: optis)
@@ -149,8 +149,11 @@ OpticsBenchmark/
 │   │   └── parser.py             # YAML/JSONL/config parser with env-var expansion
 │   └── tools/
 │       └── quick_llm_selector.py # Interactive CLI tool for testing/comparing providers
-├── dataset/                       # Evaluation datasets (downloaded via download_data.sh)
-├── prompts/                       # Prompt templates
+├── dataset/                       # Evaluation datasets
+│   ├── paper_info_extract/       # 16 PDF papers + JSON dataset/gold-answer files
+│   ├── info_extraction/          # AO paper analysis files (160+ texts)
+│   └── optics_question_answer/   # Q&A dataset (empty, pending)
+├── prompts/                       # LLM prompt templates
 │   ├── system/                   # System prompts (optical_agent, research_agent)
 │   ├── templates/                # Task-specific templates (6 tasks)
 │   └── paper_info_extract/       # Custom prompt for paper info extraction task
@@ -161,8 +164,12 @@ OpticsBenchmark/
 │   ├── download_data.sh          # Dataset download script
 │   ├── run_eval.sh               # Evaluation automation wrapper
 │   └── utils/                    # 12 standalone evaluation utility modules
-├── tests/                         # Pytest test suite (21 files, 367 tests)
-├── docs/                          # Chinese-language technical documentation
+├── tests/                         # Pytest test suite (21 test files)
+├── docs/                          # Chinese + English technical documentation
+│   ├── foundation/               # Optical basics, agent theory, evaluation methodology
+│   ├── theory.md                 # Evaluation theory
+│   ├── contribution.md           # Contribution guide
+│   └── ...                       # Design docs
 ├── website/                       # Static leaderboard page (index.html)
 ├── pyproject.toml                 # Single-source config (build, deps, tools)
 ├── requirements.txt
@@ -174,9 +181,9 @@ OpticsBenchmark/
 
 ## Supported LLM Providers
 
-| Provider | Config | Client Library |
-|----------|--------|----------------|
-| OpenAI (GPT-4, GPT-4 Turbo) | `configs/agents/openai/gpt-4.yaml` | `openai` |
+| Provider | Config(s) | Client Library |
+|----------|-----------|----------------|
+| OpenAI | `configs/agents/openai/gpt-4.yaml` (+ 4 more: DeepSeek, Llama 4, Mistral, Qwen) | `openai` |
 | Anthropic (Claude 3.5 Sonnet) | `configs/agents/anthropic/claude-3.yaml` | `anthropic` |
 | Google Gemini (1.5 Pro) | `configs/agents/google/gemini.yaml` | `google-genai` |
 | Groq (free inference, Llama 3.1 70B) | `configs/agents/groq/groq.yaml` | `groq` |
@@ -186,7 +193,7 @@ OpticsBenchmark/
 
 Per-provider features:
 - **Anthropic**: Configurable `thinking_budget` for extended thinking
-- **OpenAI**: `api_params` dict for arbitrary OpenAI Responses API parameters (e.g. `store`, `metadata`, `include`, `reasoning`)
+- **OpenAI**: `api_params` dict for arbitrary OpenAI Responses API parameters (e.g. `store`, `metadata`, `include`, `reasoning`); also supports third-party models via OpenAI-compatible endpoints (DeepSeek, Qwen, Llama 4, Mistral)
 - **Ollama**: Configurable `ollama_host` for remote Ollama instances
 
 ---
@@ -201,6 +208,7 @@ Per-provider features:
 | `paper_retrieval_eval` | Paper retrieval and citation | 2 | 100 | Precision, recall, F1 |
 | `paper_info_extract` | 13-field structured extraction from optical science papers | 2 | 100 | Structured output + metric |
 | `multi_doc_summary` | Multi-document summarization | 3 | 50 | ROUGE-1/2/L composite |
+| `optics_question_answer` | Optics question answering | 2 | 80 | Exact Match, ROUGE-L |
 | `research_overview` | Research area overview generation | 4 | 30 | ROUGE-L, coverage |
 
 The `paper_info_extract` task supports structured output (`structured_output: true`), generating a JSON Schema from the gold-answer file at runtime. It also uses `file_input: true` to read PDF files directly.
@@ -334,11 +342,12 @@ Arguments:
 ### `python src/eval.py` — Phase 2: Evaluation Engine
 
 ```
-Usage: python src/eval.py -i <agent_outputs> -t <task_config> [options]
+Usage: python src/eval.py -i <agent_outputs> -g <gold> -e <eval_config> [options]
 
 Arguments:
   -i, --input PATH           Agent outputs JSONL file (required)
-  -t, --task-config PATH     Task YAML config file (required)
+  -g, --gold PATH            Gold standard answer dataset file (JSON) (required)
+  -e, --eval-config PATH     Evaluation configuration YAML file (required)
   -o, --output PATH          Output results path (default: results/eval_results.json)
   --system-config PATH       System config path (default: configs/system.yaml)
   --log-level LEVEL          Logging level (default: INFO)
@@ -450,9 +459,11 @@ pytest tests/ --ignore=tests/test_bert_score_eval.py
 
 ## Dependencies
 
-**Core**: `openai`, `anthropic`, `pydantic`, `pyyaml`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`
+**Core**: `openai`, `anthropic`, `pydantic`, `pyyaml`, `python-dotenv`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`
 
-**Dev**: `pytest`, `pytest-asyncio`, `pytest-cov`, `black`, `isort`, `ruff`, `mypy`
+**Dev**: `pytest`, `pytest-asyncio`, `pytest-cov`, `black`, `isort`, `ruff`, `mypy`, `pre-commit`
+
+**Docs**: `sphinx`, `sphinx-rtd-theme`
 
 ---
 

@@ -1,0 +1,147 @@
+# =============================================================================
+# Evaluation Configuration Template
+# OptiS Benchmark — Phase 2 Evaluation Engine
+#
+# Used by: src/eval.py --eval-config configs/evaluation/template.yaml
+#
+# This file is loaded directly as a dict and passed to create_evaluator(),
+# which dispatches based on scoring_method to the appropriate evaluator.
+# =============================================================================
+
+# --- Scoring Method ---
+# Available methods:
+#   metric_based     — Numeric optical performance metrics (MTF, spot size, etc.)
+#   exact_match      — Normalized string equality
+#   partial_match    — Jaccard similarity for strings, key matching for dicts
+#   summarization    — ROUGE-1/2/L weighted composite (alias: rouge)
+#   citation         — Precision, recall, F1 for citation accuracy (alias: retrieval)
+#   composite        — Multi-dimensional weighted scoring with LLM judge
+scoring_method: "metric_based"
+
+# --- Metrics Definition (for metric_based / summarization / citation) ---
+metrics:
+  - name: "mtf_performance"
+    type: "numeric"
+    description: "Modulation Transfer Function at specified frequencies"
+  - name: "spot_size"
+    type: "numeric"
+    description: "RMS spot size across field"
+  - name: "design_validity"
+    type: "binary"
+    description: "Whether design meets basic validity criteria"
+
+# --- Success Criteria ---
+# Used to determine if a task passes (success: true/false).
+# All criteria must be met for success.
+success_criteria:
+  - metric: "mtf_performance"
+    operator: ">="
+    value: 0.7
+  - metric: "design_validity"
+    operator: "=="
+    value: true
+
+# --- Composite Scoring (only used when scoring_method: composite) ---
+# Layer blend weights
+llm_judge_weight: 0.3
+static_weight: 0.7
+
+# Evaluation dimensions for composite scoring
+dimensions:
+  - name: "optical_accuracy"
+    weight: 0.25
+    description: "Accuracy of optical design outputs (MTF, spot size, etc.)"
+  - name: "metric_correctness"
+    weight: 0.20
+    description: "Correct computation of evaluation metrics"
+  - name: "output_completeness"
+    weight: 0.15
+    description: "All required fields and task elements present in output"
+  - name: "citation_accuracy"
+    weight: 0.12
+    description: "Correctness and relevance of citations and references"
+  - name: "reasoning_quality"
+    weight: 0.10
+    description: "Quality of reasoning in explanations and justifications"
+  - name: "robustness"
+    weight: 0.08
+    description: "Handles edge cases gracefully without crashing"
+  - name: "efficiency"
+    weight: 0.05
+    description: "Computational efficiency of the solution"
+  - name: "reproducibility"
+    weight: 0.05
+    description: "Results are reproducible with the same inputs"
+
+# Anti-pattern penalties (multiplicative, worst applies)
+anti_patterns:
+  - name: "empty_output"
+    description: "Agent returned empty or null output"
+    penalty: 0.6
+  - name: "hallucinated_citation"
+    description: "Citation to a non-existent or irrelevant paper"
+    penalty: 0.7
+  - name: "incorrect_calculation"
+    description: "Fundamentally incorrect numerical calculation"
+    penalty: 0.75
+  - name: "parse_failure"
+    description: "Output could not be parsed or decoded"
+    penalty: 0.5
+
+# --- LLM Judge Configuration (only used when scoring_method: composite) ---
+llm_judge:
+  provider: "openai"
+  model: "gpt-4"
+  max_tokens: 1024
+  temperature: 0.0
+  rubrics:
+    - name: "relevance"
+      description: "How relevant is the output to the task"
+      levels:
+        - score: 0.0
+          description: "Completely irrelevant or off-topic"
+        - score: 0.25
+          description: "Partially relevant, missing key aspects"
+        - score: 0.5
+          description: "Moderately relevant, covers main points"
+        - score: 0.75
+          description: "Highly relevant, addresses all requirements"
+        - score: 1.0
+          description: "Perfectly relevant with insightful additions"
+    - name: "correctness"
+      description: "Factual and technical correctness"
+      levels:
+        - score: 0.0
+          description: "Contains major factual errors"
+        - score: 0.25
+          description: "Partially correct with significant errors"
+        - score: 0.5
+          description: "Mostly correct with minor issues"
+        - score: 0.75
+          description: "Correct with very minor imprecisions"
+        - score: 1.0
+          description: "Completely correct and precise"
+    - name: "completeness"
+      description: "Completeness of the response"
+      levels:
+        - score: 0.0
+          description: "Minimal or no content"
+        - score: 0.25
+          description: "Missing many required elements"
+        - score: 0.5
+          description: "Covers main points but lacks detail"
+        - score: 0.75
+          description: "Comprehensive with minor omissions"
+        - score: 1.0
+          description: "Thorough and exhaustive"
+
+# --- Perplexity Evaluator Config (only used when scoring_method includes perplexity) ---
+perplexity:
+  model_name: "gpt2"
+  max_length: 1024
+  stride: 512
+
+# --- BERTScore Config (only used when scoring_method includes bert_score) ---
+bert_score:
+  model_name: "microsoft/deberta-xlarge-mnli"
+  batch_size: 64

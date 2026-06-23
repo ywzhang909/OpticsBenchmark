@@ -1,0 +1,1 @@
+# OptiS Benchmark - Paper info extract Prompt(zero-shot)

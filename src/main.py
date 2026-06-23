@@ -197,10 +197,8 @@ async def run_agent_output(
         agent_outputs = await runner.run_agent()
         AgentRunner.save_agent_outputs(agent_outputs, output_path)
 
-        total_tokens = sum(o.usage.get("total_tokens", 0) for o in agent_outputs)
         logger.info("Agent Output Complete")
         logger.info(f"Total Tasks:  {len(agent_outputs)}")
-        logger.info(f"Total Tokens:   {total_tokens}")
 
         return 0
 
