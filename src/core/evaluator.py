@@ -9,10 +9,108 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 import time
 from abc import ABC, abstractmethod
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
+# =============================================================================
+# Paper extraction evaluation utilities (from scripts/utils/)
+# =============================================================================
+
+try:
+    from scripts.utils.bertScore_eval_utils import compute_bert_score
+    from scripts.utils.bleu_eval_utils import compute_bleu
+    from scripts.utils.cider_eval_utils import compute_cider
+    from scripts.utils.citation_eval_utils import compute_citation_f1
+    from scripts.utils.edit_distance_utils import (
+        levenshtein_distance,
+        normalized_edit_similarity,
+        word_edit_similarity,
+        word_error_rate,
+    )
+    from scripts.utils.em_eval_utils import (
+        compute_exact_match,
+        normalize_text,
+        record_doi_punctuation,
+    )
+    from scripts.utils.hungarian_algorithm_utils import hungarian_match
+    from scripts.utils.jaccard_similarity_utils import (
+        char_ngram_jaccard,
+        dice_coefficient,
+        jaccard_similarity,
+    )
+    from scripts.utils.meteor_eval_utils import compute_meteor
+    from scripts.utils.perplexity_eval_utils import compute_perplexity
+    from scripts.utils.sentence_similarity_utils import SentenceEmbedder
+    from scripts.utils.rouge_eval_utils import compute_rouge
+except ImportError:
+    pass
+
+# =============================================================================
+# Helper
+# =============================================================================
+
+
+def _try_parse_json(data: Any) -> Any:
+    """Try to parse a JSON string, falling back to the original value."""
+    if isinstance(data, str):
+        try:
+            return json.loads(data)
+        except json.JSONDecodeError:
+            return data
+    return data
+
+
+def normalize_dict_key(data: dict) -> dict:
+    """Normalize text content via ``normalize_text``.
+
+    Applies :func:`normalize_text` to every string encountered:
+    - ``str`` → normalized string
+    - ``list`` → normalized strings inside (non-str items kept as-is)
+    - ``dict`` → normalized keys **and** string values (non-str kept as-is)
+
+    Returns:
+        Data of the same type with string content normalized.
+    """
+    if isinstance(data, dict):
+        return {
+            normalize_text(k) if isinstance(k, str) else k:
+            v
+            for k, v in data.items()
+        }
+    return data
+
+
+def sentenceMatch(
+    pred_sentences: list[str],
+    gold_sentences: list[str],
+    model_name: str = "BAAI/bge-m3",
+) -> list[tuple[int, int]]:
+    """Match predicted sentences to gold sentences via Hungarian algorithm.
+
+    Encodes both sentence lists with a transformer embedder, computes
+    pairwise cosine similarity matrix, then solves the optimal one-to-one
+    assignment.
+
+    Args:
+        pred_sentences: List of predicted sentences.
+        gold_sentences: List of gold/reference sentences.
+        model_name: HuggingFace model name for the embedder.
+
+    Returns:
+        List of (pred_idx, gold_idx) assignment tuples.
+    """
+    embedder = SentenceEmbedder(model_name=model_name)
+    pred_embs = embedder.encode(pred_sentences)
+    gold_embs = embedder.encode(gold_sentences)
+    import numpy as np
+
+    sim_matrix = np.dot(pred_embs, gold_embs.T).astype(np.float32)
+    assignments, _ = hungarian_match(sim_matrix)
+    return assignments
+
 
 # =============================================================================
 # Data Classes
@@ -158,15 +256,12 @@ class MetricBasedEvaluator(BaseEvaluator):
 
         try:
             # Parse outputs
-            if isinstance(predicted_output, str):
-                predicted = json.loads(predicted_output)
-            else:
-                predicted = predicted_output
+            predicted = _try_parse_json(predicted_output)
 
-            if isinstance(expected_output, str):
-                expected = json.loads(expected_output)
-            else:
-                expected = expected_output
+            expected = _try_parse_json(expected_output)
+
+            predicted = normalize_dict_key(predicted)
+            expected = normalize_dict_key(expected)
 
             # Compute metrics
             metrics = self._compute_metrics(predicted, expected, metadata)
@@ -333,7 +428,7 @@ class MetricBasedEvaluator(BaseEvaluator):
 
 
 class ExactMatchEvaluator(BaseEvaluator):
-    """Evaluator that checks for exact matches."""
+    """Evaluator that checks for exact matches across JSON entries."""
 
     async def evaluate(
         self,
@@ -342,18 +437,56 @@ class ExactMatchEvaluator(BaseEvaluator):
         expected_output: Any,
         metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
-        """Check for exact match."""
+        """Evaluate exact match by comparing parsed JSON entries."""
         start_time = time.time()
 
-        success = predicted_output == expected_output
+        try:
+            # Parse outputs as JSON
+            predicted = _try_parse_json(predicted_output)
 
-        return EvaluationResult(
-            task_id=task_id,
-            success=success,
-            score=1.0 if success else 0.0,
-            details={"exact_match": success},
-            execution_time=time.time() - start_time,
-        )
+            expected = _try_parse_json(expected_output)
+
+            predicted = normalize_dict_key(predicted)
+            expected = normalize_dict_key(expected)
+
+            # Iterate over entries and compute exact match scores
+            scores: list[float] = []
+            info_names = normalize_dict_key(self.config.get("info_names", list(expected.keys())))
+            for entry_name, pred_value in predicted.items():
+                if entry_name not in info_names:
+                    continue
+                gold_value = expected.get(entry_name)
+                if gold_value is None:
+                    continue
+                if isinstance(pred_value, str) and isinstance(gold_value, str):
+                    score = ExactMatchScorer.calculate(pred_value, gold_value, entry_name)
+                    scores.append(score)
+                elif isinstance(pred_value, list) and isinstance(gold_value, list):
+                    pred_norm = [normalize_text(p) for p in pred_value]
+                    gold_norm = [normalize_text(g) for g in gold_value]
+                    scores.append(1.0 if Counter(pred_norm) == Counter(gold_norm) else 0.0)
+
+            avg_score = sum(scores) / len(scores) if scores else 0.0
+
+            return EvaluationResult(
+                task_id=task_id,
+                success=avg_score >= 0.5,
+                score=avg_score,
+                metrics={"exact_match_avg": avg_score, "num_entries": len(scores)},
+                details={
+                    "scores": scores,
+                    "num_entries": len(scores),
+                },
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return EvaluationResult(
+                task_id=task_id,
+                success=False,
+                score=0.0,
+                error=str(e),
+                execution_time=time.time() - start_time,
+            )
 
     async def aggregate(
         self,
@@ -391,22 +524,37 @@ class PartialMatchEvaluator(BaseEvaluator):
         """Check for partial match."""
         start_time = time.time()
 
-        if isinstance(predicted_output, str) and isinstance(expected_output, str):
-            score = self._string_similarity(predicted_output, expected_output)
-        elif isinstance(predicted_output, dict) and isinstance(expected_output, dict):
-            score = self._dict_similarity(predicted_output, expected_output)
-        else:
-            score = 1.0 if predicted_output == expected_output else 0.0
+        try:
+            predicted = _try_parse_json(predicted_output)
+            expected = _try_parse_json(expected_output)
 
-        success = score >= self.threshold
+            predicted = normalize_dict_key(predicted)
+            expected = normalize_dict_key(expected)
 
-        return EvaluationResult(
-            task_id=task_id,
-            success=success,
-            score=score,
-            details={"threshold": self.threshold},
-            execution_time=time.time() - start_time,
-        )
+            if isinstance(predicted, str) and isinstance(expected, str):
+                score = self._string_similarity(predicted, expected)
+            elif isinstance(predicted, dict) and isinstance(expected, dict):
+                score = self._dict_similarity(predicted, expected)
+            else:
+                score = 1.0 if predicted == expected else 0.0
+
+            success = score >= self.threshold
+
+            return EvaluationResult(
+                task_id=task_id,
+                success=success,
+                score=score,
+                details={"threshold": self.threshold},
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return EvaluationResult(
+                task_id=task_id,
+                success=False,
+                score=0.0,
+                error=str(e),
+                execution_time=time.time() - start_time,
+            )
 
     def _string_similarity(self, s1: str, s2: str) -> float:
         """Compute string similarity using Jaccard index."""
@@ -452,132 +600,6 @@ class PartialMatchEvaluator(BaseEvaluator):
         )
 
 
-# =============================================================================
-# ROUGE-based Evaluator for Summarization Tasks
-# =============================================================================
-
-
-class ROGUEScorer:
-    """
-    ROUGE (Recall-Oriented Understudy for Gisting Evaluation) scorer.
-
-    Implements ROUGE-N, ROUGE-L metrics for summarization evaluation.
-    """
-
-    @staticmethod
-    def rouge_n(predicted: str, reference: str, n: int = 1) -> dict[str, float]:
-        """
-        Calculate ROUGE-N score.
-
-        Args:
-            predicted: Predicted text
-            reference: Reference text
-            n: N-gram size (1 for unigrams, 2 for bigrams, etc.)
-
-        Returns:
-            Dict with precision, recall, f_score
-        """
-
-        def get_ngrams(text: str, n: int) -> dict[tuple, int]:
-            words = text.lower().split()
-            ngrams = {}
-            for i in range(len(words) - n + 1):
-                ngram = tuple(words[i : i + n])
-                ngrams[ngram] = ngrams.get(ngram, 0) + 1
-            return ngrams
-
-        pred_ngrams = get_ngrams(predicted, n)
-        ref_ngrams = get_ngrams(reference, n)
-
-        if not pred_ngrams or not ref_ngrams:
-            return {"precision": 0.0, "recall": 0.0, "f_score": 0.0}
-
-        # Calculate overlap
-        overlap = sum(
-            min(pred_ngrams.get(ng, 0), ref_ngrams.get(ng, 0)) for ng in ref_ngrams.keys()
-        )
-
-        precision = overlap / sum(pred_ngrams.values())
-        recall = overlap / sum(ref_ngrams.values())
-        f_score = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-
-        return {
-            "precision": precision,
-            "recall": recall,
-            "f_score": f_score,
-        }
-
-    @staticmethod
-    def rouge_l(predicted: str, reference: str) -> dict[str, float]:
-        """
-        Calculate ROUGE-L (Longest Common Subsequence) score.
-
-        Args:
-            predicted: Predicted text
-            reference: Reference text
-
-        Returns:
-            Dict with precision, recall, f_score
-        """
-
-        def lcs_length(s1: str, s2: str) -> int:
-            """Calculate length of longest common subsequence."""
-            words1 = s1.lower().split()
-            words2 = s2.lower().split()
-
-            m, n = len(words1), len(words2)
-            dp = [[0] * (n + 1) for _ in range(m + 1)]
-
-            for i in range(1, m + 1):
-                for j in range(1, n + 1):
-                    if words1[i - 1] == words2[j - 1]:
-                        dp[i][j] = dp[i - 1][j - 1] + 1
-                    else:
-                        dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
-
-            return dp[m][n]
-
-        pred_words = predicted.lower().split()
-        ref_words = reference.lower().split()
-
-        lcs_len = lcs_length(predicted, reference)
-
-        precision = lcs_len / len(pred_words) if pred_words else 0.0
-        recall = lcs_len / len(ref_words) if ref_words else 0.0
-        f_score = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-
-        return {
-            "precision": precision,
-            "recall": recall,
-            "f_score": f_score,
-        }
-
-    @classmethod
-    def calculate_all(cls, predicted: str, reference: str) -> dict[str, float]:
-        """Calculate all ROUGE metrics."""
-        metrics = {}
-
-        # ROUGE-1 (unigrams)
-        r1 = cls.rouge_n(predicted, reference, 1)
-        metrics["rouge_1_precision"] = r1["precision"]
-        metrics["rouge_1_recall"] = r1["recall"]
-        metrics["rouge_1_f_score"] = r1["f_score"]
-
-        # ROUGE-2 (bigrams)
-        r2 = cls.rouge_n(predicted, reference, 2)
-        metrics["rouge_2_precision"] = r2["precision"]
-        metrics["rouge_2_recall"] = r2["recall"]
-        metrics["rouge_2_f_score"] = r2["f_score"]
-
-        # ROUGE-L
-        rl = cls.rouge_l(predicted, reference)
-        metrics["rouge_l_precision"] = rl["precision"]
-        metrics["rouge_l_recall"] = rl["recall"]
-        metrics["rouge_l_f_score"] = rl["f_score"]
-
-        return metrics
-
-
 class SummarizationEvaluator(MetricBasedEvaluator):
     """
     Evaluator for summarization tasks using ROUGE metrics.
@@ -600,15 +622,23 @@ class SummarizationEvaluator(MetricBasedEvaluator):
         start_time = time.time()
 
         try:
-            if isinstance(predicted_output, str):
-                predicted = predicted_output
-            else:
-                predicted = str(predicted_output)
+            predicted = _try_parse_json(predicted_output)
+            reference = _try_parse_json(expected_output)
 
-            if isinstance(expected_output, str):
-                reference = expected_output
-            else:
-                reference = str(expected_output)
+            predicted = normalize_dict_key(predicted)
+            reference = normalize_dict_key(reference)
+
+            if isinstance(predicted, dict):
+                field = predicted.get("text") or predicted.get("summary") or predicted.get("output")
+                predicted = str(field) if field else str(predicted)
+            elif not isinstance(predicted, str):
+                predicted = str(predicted)
+
+            if isinstance(reference, dict):
+                field = reference.get("text") or reference.get("summary") or reference.get("output")
+                reference = str(field) if field else str(reference)
+            elif not isinstance(reference, str):
+                reference = str(reference)
 
             # Calculate ROUGE metrics
             rouge_metrics = ROGUEScorer.calculate_all(predicted, reference)
@@ -694,6 +724,9 @@ class CitationEvaluator(MetricBasedEvaluator):
                 expected = json.loads(expected_output)
             else:
                 expected = expected_output
+
+            predicted = normalize_dict_key(predicted)
+            expected = normalize_dict_key(expected)
 
             # Extract paper lists
             pred_papers = self._extract_papers(predicted)
@@ -819,6 +852,313 @@ class CitationEvaluator(MetricBasedEvaluator):
         union = len(words1 | words2)
 
         return intersection / union if union > 0 else 0.0
+
+
+class RougeEvaluator(BaseEvaluator):
+    """
+    Evaluator for text generation tasks using ROUGE metrics.
+
+    Computes ROUGE-1, ROUGE-2, and ROUGE-L scores via ROGUEScorer.
+    """
+
+    async def evaluate(
+        self,
+        task_id: str,
+        predicted_output: Any,
+        expected_output: Any,
+        metadata: dict[str, Any] | None = None,
+    ) -> EvaluationResult:
+        """Evaluate using ROUGE metrics."""
+        start_time = time.time()
+
+        try:
+            predicted = _try_parse_json(predicted_output)
+            reference = _try_parse_json(expected_output)
+
+            predicted = normalize_dict_key(predicted)
+            references = normalize_dict_key(reference)
+
+            info_names = normalize_dict_key(self.config.get("info_names", list(references.keys())))
+
+
+            for entry_name, pred_value in predicted.items():
+                if entry_name not in info_names:
+                    continue
+                gold_value = references.get(entry_name)
+                if gold_value is None:
+                    continue
+                if isinstance(gold_value, list) and isinstance(pred_value, list) and len(gold_value) > 1:
+                    assignments = sentenceMatch(pred_value, gold_value)
+                    for pred_idx, gold_idx in assignments:
+                        matched_pred = pred_value[pred_idx]
+                        matched_gold = gold_value[gold_idx]
+                        rouge_metrics = ROGUEScorer.calculate_all(matched_pred, [matched_gold])
+
+            score = (
+                rouge_metrics.get("rouge_1_f_score", 0)
+                + rouge_metrics.get("rouge_2_f_score", 0)
+                + rouge_metrics.get("rouge_l_f_score", 0)
+            ) / 3
+
+            metrics = {
+                "rouge_1": rouge_metrics.get("rouge_1_f_score", 0),
+                "rouge_2": rouge_metrics.get("rouge_2_f_score", 0),
+                "rouge_l": rouge_metrics.get("rouge_l_f_score", 0),
+                "rouge_1_precision": rouge_metrics.get("rouge_1_precision", 0),
+                "rouge_1_recall": rouge_metrics.get("rouge_1_recall", 0),
+                "rouge_2_precision": rouge_metrics.get("rouge_2_precision", 0),
+                "rouge_2_recall": rouge_metrics.get("rouge_2_recall", 0),
+                "rouge_l_precision": rouge_metrics.get("rouge_l_precision", 0),
+                "rouge_l_recall": rouge_metrics.get("rouge_l_recall", 0),
+            }
+
+            success = score >= 0.5
+
+            return EvaluationResult(
+                task_id=task_id,
+                success=success,
+                score=score,
+                metrics=metrics,
+                details={
+                    "predicted": predicted[:500],
+                    "reference": reference[:500],
+                    "rouge_details": rouge_metrics,
+                },
+                execution_time=time.time() - start_time,
+            )
+        except Exception as e:
+            return EvaluationResult(
+                task_id=task_id,
+                success=False,
+                score=0.0,
+                error=str(e),
+                execution_time=time.time() - start_time,
+            )
+
+    async def aggregate(
+        self,
+        results: list[EvaluationResult],
+    ) -> AggregatedResults:
+        """Aggregate ROUGE evaluation results."""
+        total = len(results)
+        successful = sum(1 for r in results if r.success)
+
+        return AggregatedResults(
+            total_tasks=total,
+            successful_tasks=successful,
+            success_rate=successful / total if total > 0 else 0.0,
+            avg_score=sum(r.score for r in results) / total if total > 0 else 0.0,
+            avg_execution_time=sum(r.execution_time for r in results) / total if total > 0 else 0.0,
+            total_cost=sum(r.cost for r in results),
+            per_task_results=results,
+        )
+
+
+# =============================================================================
+# Scorer Classes (wrapping scripts/utils/ functions)
+# =============================================================================
+
+
+class ROGUEScorer:
+    """
+    ROUGE (Recall-Oriented Understudy for Gisting Evaluation) scorer.
+
+    Delegates to ``scripts.utils.rouge_eval_utils.compute_rouge``.
+    """
+
+    @staticmethod
+    def calculate_all(predicted: str, reference: str, metrics: list[str] | None = None) -> dict[str, float]:
+        """Calculate ROUGE metrics (ROUGE-1, ROUGE-2, ROUGE-L, etc.).
+
+        Args:
+            predicted: Predicted text
+            reference: Reference text
+            metrics: List of metrics, e.g. ["rouge1", "rouge2", "rougeL"]
+
+        Returns:
+            Dict with keys like rouge_1_precision, rouge_1_recall, rouge_1_f_score, etc.
+        """
+        if metrics is None:
+            metrics = ["rouge1", "rouge2", "rougeL"]
+        return compute_rouge(predicted, reference, metrics=metrics)
+
+
+
+class ExactMatchScorer:
+    """Exact-match scorer, wrapping ``scripts.utils.em_eval_utils``.
+
+    Computes normalized exact match with special DOI punctuation handling.
+    """
+
+    @classmethod
+    def calculate(
+        cls,
+        pred_answer: str,
+        gold_answer: str,
+        entry_name: str = "",
+    ) -> float:
+        em = float(compute_exact_match(pred_answer, gold_answer))
+        if entry_name.lower() == "doi":
+            pred_doi_punct = record_doi_punctuation(pred_answer)
+            gold_doi_punct = record_doi_punctuation(gold_answer)
+            for punct, pred_indices in pred_doi_punct.items():
+                gold_indices = gold_doi_punct.get(punct, [])
+                if Counter(pred_indices) != Counter(gold_indices):
+                    em = 0.0
+                    break
+        return em
+
+
+class BLEUScorer:
+    """BLEU score scorer, wrapping ``scripts.utils.bleu_eval_utils``."""
+
+    @classmethod
+    def calculate(
+        cls,
+        pred_answer: str,
+        gold_answers: list[str],
+    ) -> dict[str, float]:
+        result = compute_bleu(pred_answer, gold_answers)
+        return {
+            "bleu": result["bleu"],
+            "brevity_penalty": result["brevity_penalty"],
+        }
+
+
+
+
+
+class BERTScoreScorer:
+    """BERTScore scorer, wrapping ``scripts.utils.bertScore_eval_utils``."""
+
+    @classmethod
+    def calculate(
+        cls,
+        pred_answer: str,
+        gold_answers: list[str],
+        model_name: str = "microsoft/deberta-xlarge-mnli",
+    ) -> dict[str, float]:
+        result = compute_bert_score(pred_answer, gold_answers, model_name=model_name)
+        return {
+            "bertScore_precision": result["precision"],
+            "bertScore_recall": result["recall"],
+            "bertScore_f1": result["f1"],
+        }
+
+
+class PerplexityScorer:
+    """Perplexity scorer, wrapping ``scripts.utils.perplexity_eval_utils``."""
+
+    @classmethod
+    def calculate(
+        cls,
+        text: str,
+        model_name: str = "gpt2",
+        max_length: int = 1024,
+        stride: int = 512,
+    ) -> dict[str, float]:
+        result = compute_perplexity(text, model_name=model_name, max_length=max_length, stride=stride)
+        return {
+            "perplexity": result["perplexity"],
+            "avg_log_likelihood": result["avg_log_likelihood"],
+        }
+
+
+class MeteorScorer:
+    """METEOR scorer, wrapping ``scripts.utils.meteor_eval_utils``."""
+
+    @classmethod
+    def calculate(
+        cls,
+        pred_answer: str,
+        gold_answers: list[str],
+    ) -> dict[str, float]:
+        return {"meteor": compute_meteor(pred_answer, gold_answers)["meteor"]}
+
+
+class CiderScorer:
+    """CIDEr scorer, wrapping ``scripts.utils.cider_eval_utils``."""
+
+    @classmethod
+    def calculate(
+        cls,
+        pred_answer: str,
+        gold_answers: list[str],
+    ) -> dict[str, float]:
+        result = compute_cider(pred_answer, gold_answers)
+        return {
+            "cider": result["cider"],
+        }
+
+
+class SentenceSimilarityScorer:
+    """Sentence-similarity scorer, wrapping ``scripts.utils.sentence_similarity_utils``.
+
+    Uses a transformer embedder (default: BAAI/bge-m3) to encode sentences,
+    then computes pairwise cosine similarity with Hungarian matching for
+    multi-sentence fields.
+    """
+
+    @classmethod
+    def calculate_similarity_matrix(
+        cls,
+        pred_sentences: list[str],
+        gold_sentences: list[str],
+        model_name: str = "BAAI/bge-m3",
+        batch_size: int = 32,
+    ) -> dict[str, float]:
+        embedder = SentenceEmbedder(model_name=model_name, batch_size=batch_size)
+        pred_embs = embedder.encode(pred_sentences)
+        gold_embs = embedder.encode(gold_sentences)
+        import numpy as np
+
+        sim_matrix = np.dot(pred_embs, gold_embs.T).astype(np.float32)
+        assignments, total_score = hungarian_match(sim_matrix)
+        n = max(len(pred_sentences), len(gold_sentences))
+        return {
+            "hungarian_total_score": total_score,
+            "hungarian_mean_score": total_score / n if n > 0 else 0.0,
+            "num_assignments": len(assignments),
+        }
+
+    @classmethod
+    def calculate_best_match(
+        cls,
+        pred_sentences: list[str],
+        gold_sentences: list[str],
+        model_name: str = "BAAI/bge-m3",
+    ) -> dict[str, float]:
+        embedder = SentenceEmbedder(model_name=model_name)
+        pred_embs = embedder.encode(pred_sentences)
+        gold_embs = embedder.encode(gold_sentences)
+        import numpy as np
+
+        sim_matrix = np.dot(pred_embs, gold_embs.T).astype(np.float32)
+        best = float(sim_matrix.max()) if sim_matrix.size > 0 else 0.0
+        return {"best_similarity": best}
+
+
+class CitationScorer:
+    """Citation-scoring scorer, wrapping ``scripts.utils.citation_eval_utils``.
+
+    Computes citation precision, recall, and F1 using an NLI-based
+    AutoAIS model.
+    """
+
+    @classmethod
+    def calculate(
+        cls,
+        question: str,
+        pred_answer: str,
+        citations: list[dict],
+        at_most_citations: int | None = None,
+    ) -> dict[str, float]:
+        result = compute_citation_f1(question, pred_answer, citations, at_most_citations)
+        return {
+            "citation_rec": result["citation_rec"],
+            "citation_prec": result["citation_prec"],
+            "citation_f1": result["citation_f1"],
+        }
 
 
 # =============================================================================
@@ -1442,190 +1782,47 @@ class ReportGenerator:
 
         return md
 
-
-# =============================================================================
-# Composite Evaluator (multi-dimensional weighted scoring)
-# =============================================================================
-
-
-class CompositeEvaluator(BaseEvaluator):
-    """Evaluator that blends multiple metric dimensions into a weighted
-    composite score, with anti-pattern penalties.
-
-    Inspired by Vercel Labs benchmark-agents / PluginEval's layered
-    evaluation methodology.
-
-    The evaluator takes a ``CompositeScorer`` instance and runs it against
-    the metric scores extracted from the predicted output.
-
-    Usage in task YAML::
-
-        scoring_method: composite
-        dimensions:
-          optical_accuracy: 0.25
-          metric_correctness: 0.20
-          ...
-    """
-
-    def __init__(self, config: dict[str, Any], scorer: Any = None):
-        super().__init__(config)
-        if scorer is not None:
-            self._scorer = scorer
-        else:
-            from .composite_scorer import CompositeScoreConfig, CompositeScorer
-
-            self._scorer = CompositeScorer(CompositeScoreConfig.default_optical())
-
-        # Allow per-config dimension overrides
-        dim_overrides = config.get("dimensions", {})
-        if dim_overrides and hasattr(self._scorer.config, "dimensions"):
-            for d in self._scorer.config.dimensions:
-                if d.name in dim_overrides:
-                    d.weight = dim_overrides[d.name]
-
-    async def evaluate(
-        self,
-        task_id: str,
-        predicted_output: Any,
-        expected_output: Any,
-        metadata: dict[str, Any] | None = None,
-    ) -> EvaluationResult:
-        """Evaluate and produce a weighted composite score."""
-        start_time = time.time()
-        try:
-            pred = predicted_output if isinstance(predicted_output, dict) else {}
-            static = {}
-            for d in self._scorer.config.dimensions:
-                if d.name in pred:
-                    static[d.name] = float(pred[d.name])
-                # Fallback: look for a matching metric key
-                for key in ("mtf", "spot_size", "distortion"):
-                    if key in pred and d.name == "optical_accuracy":
-                        static[d.name] = max(static.get(d.name, 0.0), float(pred[key]))
-
-            ap_triggered = []
-            if metadata:
-                ap_triggered = metadata.get("anti_patterns", [])
-
-            report = self._scorer.score(
-                static_scores=static,
-                anti_patterns_triggered=ap_triggered,
-            )
-
-            return EvaluationResult(
-                task_id=task_id,
-                success=report.final_composite >= 0.5,
-                score=report.final_composite,
-                metrics={
-                    d.name: d.blended_score for d in report.dimension_scores
-                },
-                details={
-                    "composite_report": {
-                        "raw_composite": report.raw_composite,
-                        "final_composite": report.final_composite,
-                        "grade": report.grade,
-                        "anti_pattern_penalty": report.anti_pattern_penalty,
-                        "anti_patterns_triggered": report.anti_patterns_triggered,
-                        "dimension_scores": {
-                            d.name: {
-                                "static": d.static_score,
-                                "judge": d.judge_score,
-                                "blended": d.blended_score,
-                                "weight_contribution": d.weight_contribution,
-                            }
-                            for d in report.dimension_scores
-                        },
-                    }
-                },
-                execution_time=time.time() - start_time,
-            )
-        except Exception as e:
-            return EvaluationResult(
-                task_id=task_id,
-                success=False,
-                score=0.0,
-                error=str(e),
-                execution_time=time.time() - start_time,
-            )
-
-    async def aggregate(
-        self,
-        results: list[EvaluationResult],
-    ) -> AggregatedResults:
-        """Aggregate multiple composite evaluation results."""
-        if not results:
-            return AggregatedResults(
-                total_tasks=0,
-                successful_tasks=0,
-                success_rate=0.0,
-                avg_score=0.0,
-                avg_execution_time=0.0,
-                total_cost=0.0,
-            )
-        total = len(results)
-        successful = sum(1 for r in results if r.success)
-        scores = [r.score for r in results]
-        times = [r.execution_time for r in results]
-
-        return AggregatedResults(
-            total_tasks=total,
-            successful_tasks=successful,
-            success_rate=successful / total,
-            avg_score=sum(scores) / total,
-            avg_execution_time=sum(times) / total,
-            total_cost=sum(getattr(r, "cost", 0.0) for r in results),
-            metrics_summary=self._build_metrics_summary(results),
-            per_task_results=results,
-        )
-
-    @staticmethod
-    def _build_metrics_summary(results: list[EvaluationResult]) -> dict[str, dict[str, float]]:
-        """Build a summary of all metrics across results."""
-        all_metrics: dict[str, list[float]] = {}
-        for r in results:
-            for k, v in r.metrics.items():
-                all_metrics.setdefault(k, []).append(v)
-        summary = {}
-        for k, vals in all_metrics.items():
-            summary[k] = {
-                "mean": sum(vals) / len(vals),
-                "min": min(vals),
-                "max": max(vals),
-            }
-        return summary
-
-
 # =============================================================================
 # Factory Function
 # =============================================================================
 
 
-def create_evaluator(config: dict[str, Any]) -> BaseEvaluator:
+def create_evaluator(config: dict[str, Any]) -> list[BaseEvaluator]:
     """
-    Factory function to create an evaluator instance.
+    Factory function to create evaluator instances based on eval_metrics config.
 
     Args:
-        config: Evaluator configuration
+        config: Evaluator configuration containing eval_metrics dict
 
     Returns:
-        Configured evaluator instance
+        List of configured evaluator instances
     """
-    scoring_method = config.get("scoring_method", "metric_based")
+    eval_metrics = config.get("eval_metrics", "")
 
-    if scoring_method == "exact_match":
-        return ExactMatchEvaluator(config)
-    elif scoring_method == "partial_match":
-        return PartialMatchEvaluator(config)
-    elif scoring_method == "metric_based":
-        return MetricBasedEvaluator(config)
-    elif scoring_method == "summarization" or scoring_method == "rouge":
-        return SummarizationEvaluator(config)
-    elif scoring_method == "citation" or scoring_method == "retrieval":
-        return CitationEvaluator(config)
-    elif scoring_method == "composite":
-        # Composite scoring (requires composite_scorer module)
-        from .composite_scorer import CompositeScoreConfig, CompositeScorer
+    if eval_metrics == "":
+        print("Error: 'eval_metrics' is empty or not configured in the evaluation config.")
+        sys.exit(1)
 
-        return CompositeEvaluator(config, scorer=CompositeScorer(CompositeScoreConfig.default_optical()))
-    else:
-        raise ValueError(f"Unknown scoring method: {scoring_method}")
+    EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
+        "exact_match": ExactMatchEvaluator,
+        "partial_match": PartialMatchEvaluator,
+        "metric_based": MetricBasedEvaluator,
+        "summarization": SummarizationEvaluator,
+        "rouge": RougeEvaluator,
+        "citation": CitationEvaluator,
+        "retrieval": CitationEvaluator
+    }
+
+    evaluators: list[BaseEvaluator] = []
+    for eval_type, eval_cfg in eval_metrics.items():
+        if eval_type in EVALUATOR_MAP:
+            cls = EVALUATOR_MAP[eval_type]
+            evaluators.append(cls(eval_cfg if eval_cfg else {}))
+        else:
+            print(f"Warning: Unknown evaluator type '{eval_type}', skipping.")
+
+    if not evaluators:
+        print("Error: No valid evaluators created from 'eval_metrics' configuration.")
+        sys.exit(1)
+
+    return evaluators

@@ -31,6 +31,7 @@ from .evaluator import (
     ExactMatchEvaluator,
     MetricBasedEvaluator,
     PartialMatchEvaluator,
+    RougeEvaluator,
     create_evaluator,
 )
 from .llm_judge import DEFAULT_RUBRICS, JudgePromptBuilder, JudgeResult, LLMJudge, Rubric
@@ -59,6 +60,7 @@ __all__ = [
     "ExactMatchEvaluator",
     "MetricBasedEvaluator",
     "PartialMatchEvaluator",
+    "RougeEvaluator",
     "create_evaluator",
     # Composite scoring
     "CompositeScoreConfig",

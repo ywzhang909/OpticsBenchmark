@@ -18,51 +18,43 @@ def ensure_nltk_resources():
         try:
             nltk.download("punkt_tab")
         except Exception:
-            # Fallback to older punkt tokenizer
             try:
                 nltk.data.find("tokenizers/punkt")
             except LookupError:
                 nltk.download("punkt")
 
 
-def compute_rouge(pred_answer, gold_answer):
+def compute_rouge(pred_answer, gold_answer, metrics=None):
     """Main function for rouge scoring.
     If two references are provided,
     the best score is chosen for each instance.
     Args:
-        data: requires field `output` and `answer` (or `annotations` for ASQA)
-        metrics: list of evaluation metrics
+        pred_answer: predicted text
+        gold_answer: reference text (string or list of strings)
+        metrics: list of evaluation metrics, e.g. ["rouge1", "rouge2", "rougeL"]
     Returns:
-        dictionary representation of rouge scores
+        dictionary of rouge scores with keys like rouge_1_precision, rouge_1_recall, rouge_1_f_score, etc.
     """
     # Ensure required NLTK resources are available
     ensure_nltk_resources()
 
-    def _rouge_calculation(hypotheses, references, metrics=None):
-
-        if metrics is None:
-            metrics = ["rougeL"]
-        scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
-        rouge_score = 0
-        for idx, ref in enumerate(references):
-            score = scorer.score(ref, hypotheses)
-            if score["rougeL"].fmeasure > rouge_score:
-                rouge_score = score["rougeL"].fmeasure
-
-        return rouge_score
-
-    # sentence evaluation
-    # h = '\n'.join(nltk.sent_tokenize(pred_answer.lower()))
-    # r1 = '\n'.join(nltk.sent_tokenize(gold_answer.lower()))
-
     # document evaluation
     h = pred_answer.lower()
-    r1 = [g.lower() for g in gold_answer]
-    rouge_score = _rouge_calculation(h, r1)
+    gold_list = [g.lower() for g in (gold_answer if isinstance(gold_answer, list) else [gold_answer])]
 
-    return rouge_score
+    return _rouge_calculation(h, gold_list, metrics)
 
-pred_answer = "The cat is on the mat."
-gold_answer = ["The cat is on the mat.", "The cat sat on the mat."]
 
-rouge_score = compute_rouge(pred_answer, gold_answer)
+def _rouge_calculation(hypotheses, references, metrics=None):
+    scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
+    LABEL_MAP = {"rouge1": "rouge_1", "rouge2": "rouge_2", "rougeL": "rouge_l"}
+    result = {}
+    for ref in references:
+        scores = scorer.score(ref, hypotheses)
+        for m in metrics:
+            label = LABEL_MAP.get(m, m)
+            for attr, suffix in [("precision", "precision"), ("recall", "recall"), ("fmeasure", "f_score")]:
+                key = f"{label}_{suffix}"
+                val = getattr(scores[m], attr)
+                result[key] = max(result.get(key, 0), val)
+    return result

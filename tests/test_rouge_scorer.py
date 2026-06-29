@@ -16,108 +16,108 @@ class TestROGUEScorer:
         """Test ROUGE-1 with perfect match."""
         text = "the quick brown fox"
 
-        result = ROGUEScorer.rouge_n(text, text, n=1)
+        result = ROGUEScorer.calculate_all(text, text, metrics=["rouge1"])
 
-        assert result["precision"] == 1.0
-        assert result["recall"] == 1.0
-        assert result["f_score"] == 1.0
+        assert result["rouge_1_precision"] == 1.0
+        assert result["rouge_1_recall"] == 1.0
+        assert result["rouge_1_f_score"] == 1.0
 
     def test_rouge_1_partial_match(self):
         """Test ROUGE-1 with partial match."""
         pred = "the quick fox"
         ref = "the quick brown fox"
 
-        result = ROGUEScorer.rouge_n(pred, ref, n=1)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rouge1"])
 
         # 3 common unigrams, 4 reference unigrams
-        assert result["recall"] == pytest.approx(3 / 4)
+        assert result["rouge_1_recall"] == pytest.approx(3 / 4)
         # 3 common unigrams, 3 predicted unigrams
-        assert result["precision"] == 1.0
+        assert result["rouge_1_precision"] == 1.0
 
     def test_rouge_1_no_overlap(self):
         """Test ROUGE-1 with no overlap."""
         pred = "hello world"
         ref = "goodbye earth"
 
-        result = ROGUEScorer.rouge_n(pred, ref, n=1)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rouge1"])
 
-        assert result["precision"] == 0.0
-        assert result["recall"] == 0.0
-        assert result["f_score"] == 0.0
+        assert result["rouge_1_precision"] == 0.0
+        assert result["rouge_1_recall"] == 0.0
+        assert result["rouge_1_f_score"] == 0.0
 
     def test_rouge_2_basic(self):
         """Test ROUGE-2 (bigrams)."""
         pred = "the quick brown"
         ref = "the quick red"
 
-        result = ROGUEScorer.rouge_n(pred, ref, n=2)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rouge2"])
 
         # Common bigrams: "the quick"
-        assert result["precision"] == pytest.approx(1 / 2)
-        assert result["recall"] == pytest.approx(1 / 2)
+        assert result["rouge_2_precision"] == pytest.approx(1 / 2)
+        assert result["rouge_2_recall"] == pytest.approx(1 / 2)
 
     def test_rouge_2_perfect(self):
         """Test ROUGE-2 with perfect match."""
         text = "the quick brown"
 
-        result = ROGUEScorer.rouge_n(text, text, n=2)
+        result = ROGUEScorer.calculate_all(text, text, metrics=["rouge2"])
 
-        assert result["precision"] == 1.0
-        assert result["recall"] == 1.0
-        assert result["f_score"] == 1.0
+        assert result["rouge_2_precision"] == 1.0
+        assert result["rouge_2_recall"] == 1.0
+        assert result["rouge_2_f_score"] == 1.0
 
     def test_rouge_2_empty_output(self):
         """Test ROUGE-2 with empty predicted output."""
         pred = ""
         ref = "the quick brown fox"
 
-        result = ROGUEScorer.rouge_n(pred, ref, n=2)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rouge2"])
 
-        assert result["precision"] == 0.0
-        assert result["recall"] == 0.0
-        assert result["f_score"] == 0.0
+        assert result["rouge_2_precision"] == 0.0
+        assert result["rouge_2_recall"] == 0.0
+        assert result["rouge_2_f_score"] == 0.0
 
     def test_rouge_l_basic(self):
         """Test ROUGE-L (LCS)."""
         pred = "the quick brown fox"
         ref = "the quick brown fox"
 
-        result = ROGUEScorer.rouge_l(pred, ref)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rougeL"])
 
-        assert result["precision"] == 1.0
-        assert result["recall"] == 1.0
-        assert result["f_score"] == 1.0
+        assert result["rouge_l_precision"] == 1.0
+        assert result["rouge_l_recall"] == 1.0
+        assert result["rouge_l_f_score"] == 1.0
 
     def test_rouge_l_partial(self):
         """Test ROUGE-L with partial match."""
         pred = "the quick fox"
         ref = "the quick brown fox jumps"
 
-        result = ROGUEScorer.rouge_l(pred, ref)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rougeL"])
 
         # LCS = "the quick fox" = 3 words
         # Precision = 3/3 = 1.0
         # Recall = 3/5 = 0.6
-        assert result["precision"] == 1.0
-        assert result["recall"] == pytest.approx(3 / 5)
+        assert result["rouge_l_precision"] == 1.0
+        assert result["rouge_l_recall"] == pytest.approx(3 / 5)
 
     def test_rouge_l_no_overlap(self):
         """Test ROUGE-L with no overlap."""
         pred = "hello world"
         ref = "goodbye earth"
 
-        result = ROGUEScorer.rouge_l(pred, ref)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rougeL"])
 
-        assert result["precision"] == 0.0
-        assert result["recall"] == 0.0
-        assert result["f_score"] == 0.0
+        assert result["rouge_l_precision"] == 0.0
+        assert result["rouge_l_recall"] == 0.0
+        assert result["rouge_l_f_score"] == 0.0
 
     def test_rouge_l_empty(self):
         """Test ROUGE-L with empty strings."""
-        result = ROGUEScorer.rouge_l("", "")
+        result = ROGUEScorer.calculate_all("", "", metrics=["rougeL"])
 
-        assert result["precision"] == 0.0
-        assert result["recall"] == 0.0
+        assert result["rouge_l_precision"] == 0.0
+        assert result["rouge_l_recall"] == 0.0
 
     def test_calculate_all_metrics(self):
         """Test calculating all ROUGE metrics at once."""
@@ -153,9 +153,9 @@ class TestROGUEScorer:
         recall = 2 / 4  # 2 common / 4 reference
         expected_f = 2 * precision * recall / (precision + recall)
 
-        result = ROGUEScorer.rouge_n(pred, ref, n=1)
+        result = ROGUEScorer.calculate_all(pred, ref, metrics=["rouge1"])
 
-        assert result["f_score"] == pytest.approx(expected_f)
+        assert result["rouge_1_f_score"] == pytest.approx(expected_f)
 
 
 class TestSummarizationEvaluator:
