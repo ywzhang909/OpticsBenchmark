@@ -35,3 +35,50 @@ def hungarian_match(sim_matrix: np.ndarray) -> tuple[list[tuple[int, int]], floa
     assignments = list(zip(row_indices.tolist(), col_indices.tolist()))
     total_score = float(sim_matrix[row_indices, col_indices].sum())
     return assignments, total_score
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Hungarian Algorithm — Optimal Assignment")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--matrix",
+        type=str,
+        help="Similarity matrix as semicolon-delimited rows, comma-delimited columns, e.g. '0.9,0.1;0.1,0.8'",
+    )
+    group.add_argument("--matrix-file", type=str, help="Path to JSON file containing 2D list or CSV file")
+    args = parser.parse_args()
+
+    if args.matrix_file:
+        import os
+
+        _, ext = os.path.splitext(args.matrix_file)
+        if ext.lower() == ".csv":
+            import csv
+
+            matrix = []
+            with open(args.matrix_file, "r") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    matrix.append([float(x) for x in row])
+        else:
+            with open(args.matrix_file, "r") as f:
+                matrix = json.load(f)
+    else:
+        matrix = [[float(x) for x in row.split(",")] for row in args.matrix.split(";")]
+
+    sim_matrix = np.array(matrix, dtype=np.float64)
+    assignments, total_score = hungarian_match(sim_matrix)
+
+    result = {
+        "assignments": [[int(a), int(b)] for a, b in assignments],
+        "total_score": round(total_score, 4),
+        "matrix_shape": list(sim_matrix.shape),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

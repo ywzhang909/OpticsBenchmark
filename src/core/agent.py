@@ -74,8 +74,11 @@ class AgentConfig:
         system_file = data.get("system_prompt_file")
         if system_file:
             system_path = Path(system_file)
-            if not system_path.is_absolute():
-                system_path = Path("prompts/system") / system_file
+            if not system_path.exists():
+                # Fall back to prompts/system/ directory
+                alt_path = Path("prompts/system") / system_file
+                if alt_path.exists():
+                    system_path = alt_path
             if system_path.exists():
                 system_prompt = system_path.read_text(encoding="utf-8")
 
@@ -197,6 +200,8 @@ class AgentOutput:
         return {
             "id": self.task_id,
             "data": self.response,
+            "cost": self.cost,
+            "latency": self.latency,
         }
 
     @classmethod
@@ -204,6 +209,8 @@ class AgentOutput:
         return cls(
             task_id=data.get("id", ""),
             response=data.get("data", ""),
+            cost=data.get("cost", 0.0),
+            latency=data.get("latency", 0.0),
         )
 
 class BaseAgent(ABC):
@@ -253,6 +260,10 @@ class BaseAgent(ABC):
     def set_file(self, path: str | None) -> None:
         """Set file path for file upload."""
         self.file_path = path
+
+    def add_system_message(self, content: str) -> None:
+        """Add a system message to the conversation."""
+        self.conversation_history.append(Message(role="system", content=content))
 
     def add_developer_message(self, content: str) -> None:
         """Add a developer message to the conversation."""
@@ -328,12 +339,6 @@ class OpenAIAgent(BaseAgent):
 
         start_time = time.time()
 
-        models_response = await self.client.models.list()
-        model_ids = [m.id for m in models_response.data]
-        print(f"Available models ({len(model_ids)}):")
-        for mid in model_ids:
-            print(f"  - {mid}")
-
         # Build messages for Chat Completions
         chat_messages = []
         for msg in messages:
@@ -346,11 +351,14 @@ class OpenAIAgent(BaseAgent):
                 content = msg.content
                 file_path_obj = Path(self.file_path)
                 if file_path_obj.exists():
-                    file_obj = await self.client.files.create(
-                        file=file_path_obj.open("rb"),
-                        purpose="asistants"
-                    )
-                chat_messages.append({"role": "user", "content": content, "file_ids": [file_obj.id]})
+                    with file_path_obj.open("rb") as fh:
+                        file_obj = await self.client.files.create(
+                            file=fh,
+                            purpose="assistants"
+                        )
+                    chat_messages.append({"role": "user", "content": content, "file_ids": [file_obj.id]})
+                else:
+                    chat_messages.append({"role": "user", "content": content})
             else:
                 chat_messages.append({"role": msg.role, "content": msg.content})
 
@@ -532,18 +540,27 @@ class AnthropicAgent(BaseAgent):
                 file_path_obj = Path(self.file_path)
                 content = msg.content
                 if file_path_obj.exists():
+                    import base64
+                    with file_path_obj.open("rb") as fh:
+                        encoded = base64.b64encode(fh.read()).decode("utf-8")
+                    media_type = (
+                        "application/pdf"
+                        if file_path_obj.suffix.lower() == ".pdf"
+                        else "text/plain"
+                    )
                     api_messages.append({
-                        "role" : "user",
-                        "content" : [
+                        "role": "user",
+                        "content": [
                             {
-                                "type" : "document",
+                                "type": "document",
                                 "source": {
-                                    "type" : "url",
-                                    "url" : self.file_path
-                                }
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": encoded,
+                                },
                             },
-                            {"type": "text", "text": content}
-                        ]
+                            {"type": "text", "text": content},
+                        ],
                     })
                 else:
                     api_messages.append({"role": "user", "content": content})
@@ -730,14 +747,16 @@ class GoogleAgent(BaseAgent):
             if msg.role == "system":
                 system_instruction = msg.content
             elif msg.role == "user":
+                parts = []
                 if self.file_path:
                     file_path_obj = Path(self.file_path)
                     if file_path_obj.exists():
                         file_obj = await self.client.aio.files.upload(
                             file=file_path_obj
                         )
-                        contents.append({file_obj})
-                contents.append({msg.content})
+                        parts.append(file_obj)
+                parts.append({"text": msg.content})
+                contents.append({"role": "user", "parts": parts})
             elif msg.role == "assistant":
                 contents.append({"role": "model", "parts": [{"text": msg.content}]})
 
@@ -1100,11 +1119,17 @@ class BedrockAgent(BaseAgent):
         response_format, first_answer = self._build_structured_output()
 
         try:
-            response = await self.client.invoke_model_async(
-                modelId=self.agent_config.model_name,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps(body),
+            import asyncio
+
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.client.invoke_model(
+                    modelId=self.agent_config.model_name,
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps(body),
+                ),
             )
 
             latency = time.time() - start_time

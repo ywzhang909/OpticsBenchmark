@@ -107,3 +107,35 @@ def compute_perplexity(
         "num_tokens": seq_len,
         "model_name": model_name,
     }
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Perplexity Evaluation")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--text", type=str, help="Input text")
+    group.add_argument("--file", type=str, help="Path to input text file")
+    parser.add_argument(
+        "--model", type=str, default="gpt2", help="HuggingFace causal LM name (default: gpt2)"
+    )
+    parser.add_argument("--max-length", type=int, default=1024, help="Max context length")
+    parser.add_argument("--stride", type=int, default=512, help="Sliding window stride")
+    args = parser.parse_args()
+
+    if args.file:
+        with open(args.file, "r", encoding="utf-8") as f:
+            text = f.read()
+    else:
+        text = args.text
+
+    try:
+        result = compute_perplexity(text, model_name=args.model, max_length=args.max_length, stride=args.stride)
+    except Exception as e:
+        result = {"error": str(e)}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

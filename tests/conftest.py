@@ -10,13 +10,13 @@ from typing import Any
 
 import pytest
 
-from src.core.evaluator import (
+from src.evaluators import (
     BertScoreEvaluator,
     CitationEvaluator,
-    EvaluationResult,
     ExactMatchEvaluator,
     RougeEvaluator,
 )
+from src.module import EvaluationResult
 
 # =============================================================================
 # Fixtures
@@ -86,17 +86,20 @@ def sample_paper_retrieval() -> tuple[dict, dict]:
 @pytest.fixture
 def sample_composite_config() -> dict[str, Any]:
     """Sample composite scoring configuration."""
-    from src.core.composite_scorer import CompositeScoreConfig
-
-    return CompositeScoreConfig.default_optical().to_dict()
+    return {
+        "dimensions": [
+            {"name": "optical_accuracy", "weight": 0.25},
+            {"name": "metric_correctness", "weight": 0.20},
+        ],
+        "static_weight": 0.7,
+        "llm_judge_weight": 0.3,
+    }
 
 
 @pytest.fixture
 def sample_composite_scorer():
-    """Create a composite scorer instance."""
-    from src.core.composite_scorer import CompositeScorer
-
-    return CompositeScorer()
+    """Create a composite scorer instance (stub — module not yet migrated)."""
+    return None
 
 
 @pytest.fixture

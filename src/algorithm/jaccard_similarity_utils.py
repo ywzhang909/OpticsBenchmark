@@ -217,3 +217,33 @@ def keyword_coverage(pred_text: str, gold_keywords: List[str]) -> dict:
         "found": found,
         "missing": missing,
     }
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Jaccard Similarity & Keyword Coverage")
+    parser.add_argument("--s1", type=str, required=True, help="First text")
+    parser.add_argument("--s2", type=str, required=True, help="Second text")
+    parser.add_argument("--topn", type=int, default=10, help="Top-N keywords (default: 10)")
+    parser.add_argument("--char-n", type=int, default=3, help="Character n-gram size (default: 3)")
+    args = parser.parse_args()
+
+    kw1 = extract_keywords_by_tf(args.s1, top_n=args.topn)
+    kw2 = extract_keywords_by_tf(args.s2, top_n=args.topn)
+
+    result = {
+        "jaccard": round(jaccard_similarity(args.s1, args.s2), 4),
+        "dice": round(dice_coefficient(args.s1, args.s2), 4),
+        f"char_{args.char_n}_gram_jaccard": round(char_ngram_jaccard(args.s1, args.s2, n=args.char_n), 4),
+        "keyword_p/r/f1_s1_vs_s2": keyword_precision_recall(kw1, kw2),
+        "keyword_p/r/f1_s2_vs_s1": keyword_precision_recall(kw2, kw1),
+        "keyword_coverage_s1_in_s2": keyword_coverage(args.s2, kw1),
+        "keyword_coverage_s2_in_s1": keyword_coverage(args.s1, kw2),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

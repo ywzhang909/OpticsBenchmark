@@ -146,3 +146,25 @@ def word_edit_similarity(pred: str, ref: str) -> float:
 
     distance = _levenshtein_on_sequences(pred_words, ref_words)
     return 1.0 - distance / max_len
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Edit Distance Evaluation")
+    parser.add_argument("--s1", type=str, required=True, help="First string")
+    parser.add_argument("--s2", type=str, required=True, help="Second string")
+    args = parser.parse_args()
+
+    result = {
+        "levenshtein": levenshtein_distance(args.s1, args.s2),
+        "normalized_edit_similarity": round(normalized_edit_similarity(args.s1, args.s2), 4),
+        "word_error_rate": round(word_error_rate(args.s1, args.s2), 4),
+        "word_edit_similarity": round(word_edit_similarity(args.s1, args.s2), 4),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

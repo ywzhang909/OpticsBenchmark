@@ -139,3 +139,22 @@ def compute_bleu(
         "pred_len": pred_len,
         "ref_len": ref_len,
     }
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="BLEU Score Evaluation")
+    parser.add_argument("--pred", type=str, required=True, help="Predicted text")
+    parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")
+    parser.add_argument("--max-n", type=int, default=4, help="Maximum n-gram order (default: 4)")
+    parser.add_argument("--no-smooth", action="store_false", dest="smooth", help="Disable smoothing")
+    args = parser.parse_args()
+
+    result = compute_bleu(args.pred, args.gold, max_n=args.max_n, smooth=args.smooth)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -8,7 +8,11 @@ It supports multiple reference texts and chooses the best score for each instanc
 
 import nltk
 from rouge_score import rouge_scorer
-from scripts.utils.em_eval_utils import normalize_text
+
+try:
+    from scripts.utils.em_eval_utils import normalize_text
+except ModuleNotFoundError:
+    from src.algorithm.em_eval_utils import normalize_text
 
 def ensure_nltk_resources():
     """Download required NLTK resources if not already present."""
@@ -63,3 +67,28 @@ def _rouge_calculation(hypothese, reference, metrics=None):
             val = getattr(scores[m], attr)
             result[key] = val
     return result
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="ROUGE Score Evaluation")
+    parser.add_argument("--pred", type=str, required=True, help="Predicted text")
+    parser.add_argument("--gold", type=str, required=True, help="Gold/reference text")
+    parser.add_argument(
+        "--metrics",
+        type=str,
+        nargs="+",
+        default=["rouge1", "rouge2", "rougeL"],
+        choices=["rouge1", "rouge2", "rougeL"],
+        help="ROUGE metrics to compute",
+    )
+    args = parser.parse_args()
+
+    result = compute_rouge(args.pred, args.gold, args.metrics)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

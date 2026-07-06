@@ -104,12 +104,28 @@ class AgentRunner:
         if not isinstance(records, list):
             raise ValueError(f"Expected JSON array in dataset, got {type(records).__name__}")
 
-        prompt_template = None
-        task_file = self.config.task_config.prompt_config.get("task_file", "")
+        # Build prompt from prompt_config: try task_file first, then system_file + template_file
+        prompt = ""
+        prompt_cfg = self.config.task_config.prompt_config
+        task_file = prompt_cfg.get("task_file", "")
         if task_file:
             prompt_path = Path(task_file)
             if prompt_path.exists():
-                prompt_template = "\n".join(prompt_path.read_text(encoding="utf-8").splitlines()[2:])
+                prompt = prompt_path.read_text(encoding="utf-8")
+
+        if not prompt:
+            system_file = prompt_cfg.get("system_file", "")
+            template_file = prompt_cfg.get("template_file", "")
+            parts = []
+            if system_file:
+                sp = Path(system_file)
+                if sp.exists():
+                    parts.append(sp.read_text(encoding="utf-8"))
+            if template_file:
+                tp = Path(template_file)
+                if tp.exists():
+                    parts.append(tp.read_text(encoding="utf-8"))
+            prompt = "\n\n".join(parts)
 
         for i, record in enumerate(records):
             task_id = i + 1
@@ -119,7 +135,7 @@ class AgentRunner:
             tasks.append(
                 TaskInstance(
                     task_id=task_id,
-                    prompt=prompt_template,
+                    prompt=prompt,
                     metadata={
                         "task_id": task_id,
                         "title": title,
@@ -182,7 +198,6 @@ class AgentRunner:
             result = await self.agent.chat(messages)
 
             elapsed = time.time() - start
-            logger.info(f"[{task.task_id}] prompt: {task.prompt}")
             logger.info(f"[{task.task_id}] cost: ${result.cost:.4f}, time: {elapsed:.2f}s")
 
             return AgentOutput(
@@ -193,7 +208,6 @@ class AgentRunner:
             )
         except asyncio.TimeoutError:
             elapsed = time.time() - start
-            logger.info(f"[{task.task_id}] prompt: {task.prompt}")
             logger.info(f"[{task.task_id}] cost: $0.0000, time: {elapsed:.2f}s (timeout)")
             return AgentOutput(
                 task_id=task.task_id,
@@ -204,7 +218,6 @@ class AgentRunner:
         except Exception as e:
             elapsed = time.time() - start
             logger.error(f"Error running agent on task {task.task_id}: {e}")
-            logger.info(f"[{task.task_id}] prompt: {task.prompt}")
             logger.info(f"[{task.task_id}] cost: $0.0000, time: {elapsed:.2f}s (error)")
             return AgentOutput(
                 task_id=task.task_id,
@@ -215,27 +228,32 @@ class AgentRunner:
 
     @staticmethod
     def save_agent_outputs(outputs: list[AgentOutput], path: str | Path) -> None:
-        """Save agent outputs to a JSON file.
+        """Save agent outputs to a JSONL file.
 
         Args:
             outputs: List of agent outputs to save
-            path: Output file path (JSON format)
+            path: Output file path (JSONL format)
         """
         out_path = Path(path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
-            json.dump([o.to_dict() for o in outputs], f, ensure_ascii=False, indent=2)
+            for o in outputs:
+                f.write(json.dumps(o.to_dict(), ensure_ascii=False) + "\n")
 
     @staticmethod
     def load_agent_outputs(path: str | Path) -> list[AgentOutput]:
-        """Load agent outputs from a JSON file.
+        """Load agent outputs from a JSONL file.
 
         Args:
-            path: Input file path (JSON format)
+            path: Input file path (JSONL format)
 
         Returns:
             List of AgentOutput loaded from file
         """
+        outputs = []
         with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        return [AgentOutput.from_dict(item) for item in data]
+            for line in f:
+                line = line.strip()
+                if line:
+                    outputs.append(AgentOutput.from_dict(json.loads(line)))
+        return outputs

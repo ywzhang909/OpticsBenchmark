@@ -81,3 +81,29 @@ def compute_bert_score(
         "recall": round(R[best_idx].item(), 4),
         "f1": round(F1[best_idx].item(), 4),
     }
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="BERTScore Evaluation")
+    parser.add_argument("--pred", type=str, required=True, help="Predicted text")
+    parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="roberta-large",
+        help="HuggingFace model name (default: roberta-large)",
+    )
+    args = parser.parse_args()
+
+    try:
+        result = compute_bert_score(args.pred, args.gold, model_name=args.model)
+    except Exception as e:
+        result = {"error": str(e)}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

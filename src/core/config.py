@@ -40,4 +40,5 @@ class TaskConfig:
             prompt_config=prompt_data,
             max_samples=dataset_data.get("num_samples"),
             shuffle=dataset_data.get("shuffle", False),
+            file_input=task_data.get("file_input", False),
         )

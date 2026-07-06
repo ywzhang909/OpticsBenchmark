@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 try:
     from src.algorithm.citation_eval_utils import compute_citation_f1
 except ImportError:

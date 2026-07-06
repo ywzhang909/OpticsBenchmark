@@ -11,6 +11,8 @@ from transformers import (
 )
 
 OSU_AUTOAIS_MODEL = "osunlp/attrscore-flan-t5-xl"
+claim_autoais_model = None
+claim_autoais_tokenizer = None
 input_prompt = "As an Attribution Validator, your task is to verify whether a given reference can support the given claim. A claim can be either a plain sentence or a question followed by its answer. Specifically, your response should clearly indicate the relationship: Attributable, Contradictory or Extrapolatory. A contradictory error occurs when you can infer that the answer contradicts the fact presented in the context, while an extrapolatory error means that you cannot infer the correctness of the answer based on the information provided in the context. \n\nClaim: {claim}\n Reference: {output}"
 
 def get_max_memory():
@@ -253,4 +255,33 @@ def compute_citation_f1(question, pred_answer, citations, at_most_citations=None
         "citation_f1": 2 * citation_rec * citation_prec / (citation_rec + citation_prec) if citation_rec + citation_prec > 0 else 0,
         "cited_paper_numbers": total_citations,
     }
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Citation F1 Evaluation (AutoAIS)")
+    parser.add_argument("--question", type=str, required=True, help="Question text")
+    parser.add_argument("--pred", type=str, required=True, help="Predicted answer with citations")
+    parser.add_argument(
+        "--citations",
+        type=str,
+        required=True,
+        help="Path to JSON file with citations array [{\"title\": ..., \"text\": ...}]",
+    )
+    args = parser.parse_args()
+
+    with open(args.citations, "r", encoding="utf-8") as f:
+        citations = json.load(f)
+
+    try:
+        result = compute_citation_f1(args.question, args.pred, citations)
+    except Exception as e:
+        result = {"error": str(e)}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
 

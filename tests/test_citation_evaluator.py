@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from src.core.evaluator import CitationEvaluator
+from src.evaluators import CitationEvaluator
 
 
 class TestCitationEvaluator:

@@ -22,11 +22,11 @@ load_dotenv()
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import AgentRunner
-from src.utils.logger import logger, setup_logger
-from src.utils.parser import ConfigParser
-from src.evaluators import create_evaluator
-from src.module import AggregatedResults
+from src.core.runner import AgentRunner  # noqa: E402
+from src.evaluators import create_evaluator  # noqa: E402
+from src.module import AggregatedResults  # noqa: E402
+from src.utils.logger import logger, setup_logger  # noqa: E402
+from src.utils.parser import ConfigParser  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:

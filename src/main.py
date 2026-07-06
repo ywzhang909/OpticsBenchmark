@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -20,9 +19,9 @@ load_dotenv()
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import AgentRunner, RunnerConfig
-from src.utils.logger import logger, setup_logger
-from src.utils.parser import ConfigParser
+from src.core.runner import AgentRunner, RunnerConfig  # noqa: E402
+from src.utils.logger import logger, setup_logger  # noqa: E402
+from src.utils.parser import ConfigParser  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -158,7 +157,7 @@ def resolve_task_configs(
     configs_dir = Path("configs/tasks")
 
     if all_tasks:
-        return list(configs_dir.glob("*.yaml"))
+        return [p for p in configs_dir.glob("*.yaml") if p.stem != "template"]
 
     if task_set:
         task_path = Path(task_set)
@@ -197,6 +196,9 @@ async def run_agent_output(
             max_concurrency=concurrency,
             timeout=timeout,
         )
+
+        if max_samples is not None:
+            config.task_config.max_samples = max_samples
 
         runner = AgentRunner(config)
         agent_outputs = await runner.run_agent()

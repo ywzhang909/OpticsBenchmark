@@ -166,3 +166,55 @@ def compute_similarity_matrix(
     gold_embs = embedder.encode(gold_sentences)
 
     return np.dot(pred_embs, gold_embs.T).astype(np.float32)
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Sentence Similarity Matrix")
+    group_pred = parser.add_mutually_exclusive_group(required=True)
+    group_pred.add_argument("--pred-sentences", type=str, nargs="+", help="Predicted sentences")
+    group_pred.add_argument("--pred-file", type=str, help="File with one predicted sentence per line")
+    group_gold = parser.add_mutually_exclusive_group(required=True)
+    group_gold.add_argument("--gold-sentences", type=str, nargs="+", help="Gold/reference sentences")
+    group_gold.add_argument("--gold-file", type=str, help="File with one gold sentence per line")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="BAAI/bge-m3",
+        help="HuggingFace embedding model (default: BAAI/bge-m3)",
+    )
+    parser.add_argument("--output", type=str, help="Path to save similarity matrix as JSON")
+    args = parser.parse_args()
+
+    if args.pred_file:
+        with open(args.pred_file, "r", encoding="utf-8") as f:
+            pred_sents = [line.rstrip("\n") for line in f if line.strip()]
+    else:
+        pred_sents = args.pred_sentences
+
+    if args.gold_file:
+        with open(args.gold_file, "r", encoding="utf-8") as f:
+            gold_sents = [line.rstrip("\n") for line in f if line.strip()]
+    else:
+        gold_sents = args.gold_sentences
+
+    try:
+        sim_matrix = compute_similarity_matrix(pred_sents, gold_sents, model_name=args.model)
+        result = {
+            "pred_count": len(pred_sents),
+            "gold_count": len(gold_sents),
+            "matrix": sim_matrix.tolist(),
+        }
+        text = json.dumps(result, ensure_ascii=False, indent=2)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(text)
+        print(text)
+    except Exception as e:
+        print(json.dumps({"error": str(e)}, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -151,3 +151,20 @@ def compute_cider(
         "cider": round(cider_val, 4),
         "cider_n": [round(c, 4) for c in cider_n],
     }
+
+
+def main():
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="CIDEr Evaluation")
+    parser.add_argument("--pred", type=str, required=True, help="Predicted text")
+    parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")
+    args = parser.parse_args()
+
+    result = compute_cider(args.pred, args.gold)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

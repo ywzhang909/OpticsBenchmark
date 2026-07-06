@@ -62,3 +62,25 @@ def compute_exact_match(a_gold, a_pred):
     """Check whether two strings are equal up to normalization."""
 
     return int(normalize_text(a_gold) == normalize_text(a_pred))
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Exact Match Evaluation")
+    parser.add_argument("--gold", type=str, required=True, help="Gold/reference text")
+    parser.add_argument("--pred", type=str, required=True, help="Predicted text")
+    args = parser.parse_args()
+
+    import json
+
+    result = {
+        "exact_match": compute_exact_match(args.gold, args.pred),
+        "normalized_gold": normalize_text(args.gold),
+        "normalized_pred": normalize_text(args.pred),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
