@@ -150,6 +150,7 @@ data/external/
 dataset/paper_info_extract/
 dataset/optics_question_answer/
 dataset/paper_review
+dataset/info_extraction
 *.hdf5
 *.parquet
 .zemax/

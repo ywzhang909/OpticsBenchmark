@@ -49,19 +49,17 @@ eval_metrics:
       - "method"
       - "performance metrics"
       - "ten keywords"
+    metrics:
+      - "rouge1"
+      - "rouge2"
+      - "rougeL"
 
   # --- BERTScore Evaluator ---
   # BERTScore using transformer embeddings for semantic similarity.
   bert_score:
     info_names:
-      - "abstract"
+      - "objective"
+      - "novelty"
       - "method"
-      - "conclusion"
-    model_name: "microsoft/deberta-xlarge-mnli"
-
-  # --- Citation Evaluator ---
-  # Precision, recall, F1 for retrieved/cited papers.
-  citation:
-    info_names:
-      - "papers"
-      - "references"
+      - "performance metrics"
+      - "ten keywords"

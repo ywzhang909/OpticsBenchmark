@@ -8,20 +8,23 @@ It supports multiple reference texts and chooses the best score for each instanc
 
 import nltk
 from rouge_score import rouge_scorer
-
+from scripts.utils.em_eval_utils import normalize_text
 
 def ensure_nltk_resources():
     """Download required NLTK resources if not already present."""
     try:
         nltk.data.find("tokenizers/punkt_tab")
-    except LookupError:
+    except Exception:
         try:
             nltk.download("punkt_tab")
         except Exception:
             try:
                 nltk.data.find("tokenizers/punkt")
-            except LookupError:
-                nltk.download("punkt")
+            except Exception:
+                try:
+                    nltk.download("punkt")
+                except Exception:
+                    pass
 
 
 def compute_rouge(pred_answer, gold_answer, metrics=None):
@@ -36,25 +39,27 @@ def compute_rouge(pred_answer, gold_answer, metrics=None):
         dictionary of rouge scores with keys like rouge_1_precision, rouge_1_recall, rouge_1_f_score, etc.
     """
     # Ensure required NLTK resources are available
-    ensure_nltk_resources()
+    try:
+        ensure_nltk_resources()
+    except Exception:
+        pass
 
     # document evaluation
-    h = pred_answer.lower()
-    gold_list = [g.lower() for g in (gold_answer if isinstance(gold_answer, list) else [gold_answer])]
+    h = normalize_text(pred_answer)
+    g = normalize_text(gold_answer)
 
-    return _rouge_calculation(h, gold_list, metrics)
+    return _rouge_calculation(h, g, metrics)
 
 
-def _rouge_calculation(hypotheses, references, metrics=None):
+def _rouge_calculation(hypothese, reference, metrics=None):
     scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
     LABEL_MAP = {"rouge1": "rouge_1", "rouge2": "rouge_2", "rougeL": "rouge_l"}
     result = {}
-    for ref in references:
-        scores = scorer.score(ref, hypotheses)
-        for m in metrics:
-            label = LABEL_MAP.get(m, m)
-            for attr, suffix in [("precision", "precision"), ("recall", "recall"), ("fmeasure", "f_score")]:
-                key = f"{label}_{suffix}"
-                val = getattr(scores[m], attr)
-                result[key] = max(result.get(key, 0), val)
+    scores = scorer.score(reference, hypothese)
+    for m in metrics:
+        label = LABEL_MAP.get(m, m)
+        for attr, suffix in [("precision", "precision"), ("recall", "recall"), ("fmeasure", "f_score")]:
+            key = f"{label}_{suffix}"
+            val = getattr(scores[m], attr)
+            result[key] = val
     return result

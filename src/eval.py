@@ -10,10 +10,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -43,21 +48,24 @@ Examples:
         "-i",
         "--input",
         type=str,
-        required=True,
+        # required=True,
+        default="self_test/dataset/paper_info_extract/test_v1.json",
         help="Path to agent outputs JSONL file (from Phase 1)",
     )
     parser.add_argument(
         "-e",
         "--eval-config",
         type=str,
-        required=True,
+        # required=True,
+        default="configs/evaluations/paper_info_extract.yaml",
         help="Path to evaluation configuration file (YAML)",
     )
     parser.add_argument(
         "-g",
         "--gold",
         type=str,
-        required=True,
+        # required=True,
+        default="dataset/paper_info_extract/dataset_json/gold_answer_v1.json",
         help="Path to gold standard answer dataset file (JSON)",
     )
     parser.add_argument(
@@ -159,46 +167,52 @@ async def run_evaluation(
             logger.error("No agent outputs found")
             return 1
 
-        # Load eval config and create evaluator
+        # Load eval config and create evaluators
         eval_config = ConfigParser.load_config(eval_config_path)
 
-        from src.core.evaluator import create_evaluator
+        from src.core.evaluator import create_evaluator, AggregatedResults
 
-        evaluator = create_evaluator(eval_config)
+        evaluators = create_evaluator(eval_config)
+        evaluator_names = list(eval_config.get("eval_metrics", {}).keys())
 
-        # Evaluate each output, matched by task_id
-        results = []
+        if not evaluators:
+            logger.error("No evaluators created from config")
+            return 1
+
+        # Evaluate each output against each evaluator, matched by task_id
+        per_evaluator_results: dict[str, list] = {name: [] for name in evaluator_names}
         for ao in agent_outputs:
             if ao.task_id not in gold_map:
                 logger.warning(f"Gold answer not found for task_id: {ao.task_id}, skipping")
                 continue
 
-            result = await evaluator.evaluate(
-                task_id=ao.task_id,
-                predicted_output=ao.response,
-                expected_output=gold_map[ao.task_id],
-                metadata=None,
-            )
-            result.cost = ao.cost
-            results.append(result)
+            for i, ev in enumerate(evaluators):
+                result = await ev.evaluate(
+                    task_id=ao.task_id,
+                    predicted_output=ao.response,
+                    expected_output=gold_map[ao.task_id],
+                    metadata=None,
+                )
+                per_evaluator_results[evaluator_names[i]].append(result)
 
-        if not results:
+        all_empty = all(len(v) == 0 for v in per_evaluator_results.values())
+        if all_empty:
             logger.error("No results after matching agent outputs with gold answers")
             return 1
 
-        # Aggregate results
-        aggregated = await evaluator.aggregate(results)
+        # Aggregate per evaluator
+        aggregated_by_name: dict[str, AggregatedResults] = {}
+        for i, ev in enumerate(evaluators):
+            name = evaluator_names[i]
+            aggregated_by_name[name] = await ev.aggregate(per_evaluator_results[name])
 
         # Save results
-        _save_evaluation_results(aggregated, output_path, eval_config)
+        _save_evaluation_results(aggregated_by_name, output_path, eval_config)
 
         # Log summary
         logger.info("EVALUATION COMPLETE")
-        logger.info(f"Total Tasks:       {aggregated.total_tasks}")
-        logger.info(f"Successful:        {aggregated.successful_tasks} ({aggregated.success_rate * 100:.1f}%)")
-        logger.info(f"Average Score:    {aggregated.avg_score * 100:.1f}%")
-        logger.info(f"Total Cost:       ${aggregated.total_cost:.4f}")
-        logger.info(f"Avg Time/Task:    {aggregated.avg_execution_time:.1f}s")
+        for name, agg in aggregated_by_name.items():
+            logger.info(f"[{name}] Tasks: {agg.total_tasks} | Metrics: {agg.metrics_summary} | AvgTime: {agg.avg_execution_time:.1f}s")
 
         return 0
 
@@ -207,46 +221,57 @@ async def run_evaluation(
         return 1
 
 
-def _save_evaluation_results(aggregated, output_path: str, eval_config: dict) -> None:
-    """Save aggregated evaluation results."""
+def _save_evaluation_results(
+    aggregated_by_name: dict[str, AggregatedResults],
+    output_path: str,
+    eval_config: dict,
+) -> None:
+    """Save aggregated evaluation results, grouped by evaluator name."""
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    evaluators_out = {}
+    for name, agg in aggregated_by_name.items():
+        evaluators_out[name] = {
+            "total_tasks": agg.total_tasks,
+            "avg_execution_time": agg.avg_execution_time,
+            "metrics_summary": agg.metrics_summary,
+            "per_task_results": [
+                {
+                    "task_id": r.task_id,
+                    "metrics": r.metrics,
+                    "execution_time": r.execution_time,
+                }
+                for r in agg.per_task_results
+            ],
+        }
 
     data = {
         "timestamp": datetime.now().isoformat(),
         "eval_config": eval_config,
-        "total_tasks": aggregated.total_tasks,
-        "successful_tasks": aggregated.successful_tasks,
-        "success_rate": aggregated.success_rate,
-        "avg_score": aggregated.avg_score,
-        "avg_execution_time": aggregated.avg_execution_time,
-        "total_cost": aggregated.total_cost,
-        "metrics_summary": aggregated.metrics_summary,
+        "evaluators": evaluators_out,
     }
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-    # Also save per-task results as JSONL
+    # Also save per-task results as JSONL with evaluator tag
     jsonl_path = out_path.with_suffix(".jsonl")
     with open(jsonl_path, "w", encoding="utf-8") as f:
-        for r in aggregated.per_task_results:
-            f.write(
-                json.dumps(
-                    {
-                        "task_id": r.task_id,
-                        "success": r.success,
-                        "score": r.score,
-                        "metrics": r.metrics,
-                        "details": r.details,
-                        "error": r.error,
-                        "execution_time": r.execution_time,
-                        "cost": r.cost,
-                    },
-                    ensure_ascii=False,
+        for name, agg in aggregated_by_name.items():
+            for r in agg.per_task_results:
+                f.write(
+                    json.dumps(
+                        {
+                            "evaluator": name,
+                            "task_id": r.task_id,
+                            "metrics": r.metrics,
+                            "execution_time": r.execution_time,
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
                 )
-                + "\n"
-            )
 
     logger.info(f"Results saved to: {out_path}")
     logger.info(f"Per-task results: {jsonl_path}")

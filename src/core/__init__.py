@@ -27,10 +27,10 @@ from .composite_scorer import (
 from .evaluator import (
     AggregatedResults,
     BaseEvaluator,
+    BertScoreEvaluator,
+    CitationEvaluator,
     EvaluationResult,
     ExactMatchEvaluator,
-    MetricBasedEvaluator,
-    PartialMatchEvaluator,
     RougeEvaluator,
     create_evaluator,
 )
@@ -56,10 +56,10 @@ __all__ = [
     # Evaluator
     "AggregatedResults",
     "BaseEvaluator",
+    "BertScoreEvaluator",
+    "CitationEvaluator",
     "EvaluationResult",
     "ExactMatchEvaluator",
-    "MetricBasedEvaluator",
-    "PartialMatchEvaluator",
     "RougeEvaluator",
     "create_evaluator",
     # Composite scoring
