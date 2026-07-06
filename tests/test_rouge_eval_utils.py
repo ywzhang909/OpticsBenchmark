@@ -9,13 +9,13 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 @pytest.fixture(scope="module")
 def rouge_module():
     """Import rouge_eval_utils once per module (downloads nltk data)."""
-    from utils.rouge_eval_utils import compute_rouge, ensure_nltk_resources
+    from algorithm.rouge_eval_utils import compute_rouge, ensure_nltk_resources
 
     ensure_nltk_resources()
     return compute_rouge

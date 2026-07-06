@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from utils.jaccard_similarity_utils import (
+from algorithm.jaccard_similarity_utils import (
     char_ngram_jaccard,
     dice_coefficient,
     extract_keywords_by_tf,

@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 try:
     import torch
@@ -28,7 +28,7 @@ except ImportError:
     SENTENCEPIECE_AVAILABLE = False
 
 try:
-    from utils.sentence_similarity_utils import SentenceEmbedder, _mean_pooling, compute_similarity_matrix
+    from algorithm.sentence_similarity_utils import SentenceEmbedder, _mean_pooling, compute_similarity_matrix
 
     SENTENCE_SIM_AVAILABLE = True
 except (ImportError, OSError):

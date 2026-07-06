@@ -2,21 +2,25 @@
 
 import argparse
 import json
+import sys
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 
-from utils.bertScore_eval_utils import compute_bert_score
-from utils.bleu_eval_utils import compute_bleu
-from utils.cider_eval_utils import compute_cider
-from utils.edit_distance_utils import normalized_edit_similarity
-from utils.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
-from utils.hungarian_algorithm_utils import hungarian_match
-from utils.jaccard_similarity_utils import jaccard_similarity
-from utils.meteor_eval_utils import compute_meteor
-from utils.perplexity_eval_utils import compute_perplexity
-from utils.rouge_eval_utils import compute_rouge
-from utils.sentence_similarity_utils import SentenceEmbedder
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.algorithm.bertScore_eval_utils import compute_bert_score
+from src.algorithm.bleu_eval_utils import compute_bleu
+from src.algorithm.cider_eval_utils import compute_cider
+from src.algorithm.edit_distance_utils import normalized_edit_similarity
+from src.algorithm.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
+from src.algorithm.hungarian_algorithm_utils import hungarian_match
+from src.algorithm.jaccard_similarity_utils import jaccard_similarity
+from src.algorithm.meteor_eval_utils import compute_meteor
+from src.algorithm.perplexity_eval_utils import compute_perplexity
+from src.algorithm.rouge_eval_utils import compute_rouge
+from src.algorithm.sentence_similarity_utils import SentenceEmbedder
 
 ENTRY_NAMES = frozenset({
     "title",

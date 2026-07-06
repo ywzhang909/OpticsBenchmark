@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 try:
     import torch
@@ -21,7 +21,7 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 try:
-    from utils.perplexity_eval_utils import compute_perplexity
+    from algorithm.perplexity_eval_utils import compute_perplexity
 
     PERPLEXITY_AVAILABLE = True
 except (ImportError, OSError):

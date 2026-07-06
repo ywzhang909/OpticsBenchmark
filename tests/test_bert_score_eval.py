@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 try:
-    from utils.bertScore_eval_utils import compute_bert_score
+    from algorithm.bertScore_eval_utils import compute_bert_score
 
     BERTSCORE_AVAILABLE = True
 except (ImportError, OSError):

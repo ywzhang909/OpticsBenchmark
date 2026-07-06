@@ -15,14 +15,14 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = str(Path(__file__).resolve().parents[1] / "scripts")
+SCRIPTS_DIR = str(Path(__file__).resolve().parents[1] / "src")
 
 
 @pytest.fixture(scope="module")
 def citation_utils():
     """Import citation_eval_utils once per module via sys.path."""
     sys.path.insert(0, SCRIPTS_DIR)
-    from utils.citation_eval_utils import extract_citations, remove_citations
+    from algorithm.citation_eval_utils import extract_citations, remove_citations
 
     return remove_citations, extract_citations
 

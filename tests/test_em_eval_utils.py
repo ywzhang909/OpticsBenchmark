@@ -7,9 +7,9 @@ Tests for text normalization utilities in em_eval_utils.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from utils.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
+from algorithm.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
 
 
 class TestNormalizeText:

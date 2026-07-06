@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 try:
     import nltk
@@ -24,7 +24,7 @@ except ImportError:
     NLTK_WORDNET_AVAILABLE = False
 
 try:
-    from utils.meteor_eval_utils import compute_meteor
+    from algorithm.meteor_eval_utils import compute_meteor
 
     METEOR_AVAILABLE = True
 except (ImportError, OSError):

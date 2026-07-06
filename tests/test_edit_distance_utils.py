@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from utils.edit_distance_utils import (
+from algorithm.edit_distance_utils import (
     levenshtein_distance,
     normalized_edit_similarity,
     word_error_rate,

@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "utils"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "algorithm"))
 
 from hungarian_algorithm_utils import hungarian_match
 
