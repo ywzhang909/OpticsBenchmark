@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.core.runner import AgentRunner
 from src.utils.logger import logger, setup_logger
 from src.utils.parser import ConfigParser
+from src.evaluators import create_evaluator
+from src.module import AggregatedResults
 
 
 def parse_args() -> argparse.Namespace:
@@ -169,8 +170,6 @@ async def run_evaluation(
 
         # Load eval config and create evaluators
         eval_config = ConfigParser.load_config(eval_config_path)
-
-        from src.core.evaluator import create_evaluator, AggregatedResults
 
         evaluators = create_evaluator(eval_config)
         evaluator_names = list(eval_config.get("eval_metrics", {}).keys())
