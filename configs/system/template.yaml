@@ -1,0 +1,24 @@
+# OptiS Benchmark - System Configuration Template
+# Copy this file to customize for your environment.
+
+logging:
+  level: "INFO"
+  console: true
+  # file: "logs/eval.log"
+  # format: "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
+  # rotation: "100 MB"
+  # retention: "30 days"
+  # compression: "zip"
+
+# parallel:
+#   max_concurrency: 4
+
+# sandbox:
+#   enabled: false
+#   timeout: 300
+
+# rate_limit:
+#   requests_per_minute: 60
+
+# security:
+#   allow_env_var_expansion: true

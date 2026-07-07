@@ -24,7 +24,6 @@ class BaseEvaluator(ABC):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """
         Evaluate a single prediction.
@@ -33,7 +32,6 @@ class BaseEvaluator(ABC):
             task_id: Unique identifier for the task
             predicted_output: The agent's predicted output
             expected_output: The expected/ground truth output
-            metadata: Additional task metadata
 
         Returns:
             EvaluationResult with score and details

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-try:
-    from src.algorithm.bleu_eval_utils import compute_bleu
-except ImportError:
-    pass
+from src.algorithm.bleu_eval_utils import compute_bleu
 
 
 class BLEUScorer:

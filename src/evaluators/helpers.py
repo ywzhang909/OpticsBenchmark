@@ -2,12 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
-    from src.algorithm.em_eval_utils import normalize_text
-    from src.algorithm.hungarian_algorithm_utils import hungarian_match
-    from src.algorithm.sentence_similarity_utils import SentenceEmbedder
-except ImportError:
-    pass
+from src.algorithm.em_eval_utils import normalize_text
+from src.algorithm.hungarian_algorithm_utils import hungarian_match
+from src.algorithm.sentence_similarity_utils import SentenceEmbedder
 
 _SENTENCE_EMBEDDER: SentenceEmbedder | None = None
 

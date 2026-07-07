@@ -107,7 +107,7 @@ def _run_nli_autoais(passage, claim):
 
     return inference
 
-def compute_citation_f1(question, pred_answer, citations, at_most_citations=None):
+def compute_citation_f1(pred_answer, citations, at_most_citations=None):
     """
     Compute AutoAIS score.
 
@@ -202,15 +202,14 @@ def compute_citation_f1(question, pred_answer, citations, at_most_citations=None
       if joint_entail == -1:
           joint_entail = _run_nli_autoais(joint_passage, target_sent)
           autoais_log.append(
-              {
-                  "question": question,
-                  "output": pred_answer,
-                  "claim": sent,
-                  "passage": [joint_passage],
-                  "model_type": "NLI",
-                  "model_output": joint_entail,
-              }
-          )
+                {
+                    "output": pred_answer,
+                    "claim": sent,
+                    "passage": [joint_passage],
+                    "model_type": "NLI",
+                    "model_output": joint_entail,
+                }
+            )
 
       entail += joint_entail
       if len(ref) > 1:
@@ -262,7 +261,6 @@ def main():
     import json
 
     parser = argparse.ArgumentParser(description="Citation F1 Evaluation (AutoAIS)")
-    parser.add_argument("--question", type=str, required=True, help="Question text")
     parser.add_argument("--pred", type=str, required=True, help="Predicted answer with citations")
     parser.add_argument(
         "--citations",
@@ -272,11 +270,11 @@ def main():
     )
     args = parser.parse_args()
 
-    with open(args.citations, "r", encoding="utf-8") as f:
+    with open(args.citations, encoding="utf-8") as f:
         citations = json.load(f)
 
     try:
-        result = compute_citation_f1(args.question, args.pred, citations)
+        result = compute_citation_f1(args.pred, citations)
     except Exception as e:
         result = {"error": str(e)}
     print(json.dumps(result, ensure_ascii=False, indent=2))

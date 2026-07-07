@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-try:
-    from src.algorithm.bertScore_eval_utils import compute_bert_score, compute_bert_score_batch
-except ImportError:
-    pass
+from src.algorithm.bertScore_eval_utils import compute_bert_score, compute_bert_score_batch
 
 
 class BERTScoreScorer:

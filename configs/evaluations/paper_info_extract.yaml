@@ -63,3 +63,8 @@ eval_metrics:
       - "method"
       - "performance metrics"
       - "ten keywords"
+
+  # --- Citation Evaluator ---
+  # Precision, recall, F1 for retrieved papers (via DOI/title matching).
+  # Extracts papers from the "papers" key in predicted/gold data.
+  citation: {}

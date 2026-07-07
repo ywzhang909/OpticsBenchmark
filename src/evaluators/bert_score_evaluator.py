@@ -23,7 +23,6 @@ class BertScoreEvaluator(BaseEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Evaluate using BERTScore metrics."""
         start_time = time.time()

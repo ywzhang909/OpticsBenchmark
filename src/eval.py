@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import json
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -50,7 +51,7 @@ Examples:
         "--input",
         type=str,
         # required=True,
-        default="self_test/dataset/paper_info_extract/test_v1.json",
+        default="self_test/dataset/paper_info_extract/test_v1.jsonl",
         help="Path to agent outputs JSONL file (from Phase 1)",
     )
     parser.add_argument(
@@ -95,8 +96,8 @@ Examples:
     parser.add_argument(
         "--system-config",
         type=str,
-        default="configs/system.yaml",
-        help="Path to system configuration file (default: configs/system.yaml)",
+        default="configs/system/template.yaml",
+        help="Path to system configuration file (default: configs/system/template.yaml)",
     )
 
     return parser.parse_args()
@@ -171,28 +172,41 @@ async def run_evaluation(
         # Load eval config and create evaluators
         eval_config = ConfigParser.load_config(eval_config_path)
 
-        evaluators = create_evaluator(eval_config)
-        evaluator_names = list(eval_config.get("eval_metrics", {}).keys())
+        named_evaluators = create_evaluator(eval_config)
 
-        if not evaluators:
+        if not named_evaluators:
             logger.error("No evaluators created from config")
             return 1
 
+        logger.info(
+            f"Created {len(named_evaluators)} evaluators: "
+            f"{[name for name, _ in named_evaluators]}"
+        )
+
         # Evaluate each output against each evaluator, matched by task_id
-        per_evaluator_results: dict[str, list] = {name: [] for name in evaluator_names}
+        per_evaluator_results: dict[str, list] = {
+            name: [] for name, _ in named_evaluators
+        }
+        logger.info(
+            f"Evaluating {len(agent_outputs)} agent outputs "
+            f"across {len(named_evaluators)} evaluators"
+        )
+
+        eval_start = time.time()
         for ao in agent_outputs:
             if ao.task_id not in gold_map:
                 logger.warning(f"Gold answer not found for task_id: {ao.task_id}, skipping")
                 continue
 
-            for i, ev in enumerate(evaluators):
+            for name, ev in named_evaluators:
                 result = await ev.evaluate(
                     task_id=ao.task_id,
                     predicted_output=ao.response,
                     expected_output=gold_map[ao.task_id],
-                    metadata=None,
                 )
-                per_evaluator_results[evaluator_names[i]].append(result)
+                per_evaluator_results[name].append(result)
+        total_eval_time = time.time() - eval_start
+        logger.info(f"Total evaluation time: {total_eval_time:.2f}s")
 
         all_empty = all(len(v) == 0 for v in per_evaluator_results.values())
         if all_empty:
@@ -201,8 +215,7 @@ async def run_evaluation(
 
         # Aggregate per evaluator
         aggregated_by_name: dict[str, AggregatedResults] = {}
-        for i, ev in enumerate(evaluators):
-            name = evaluator_names[i]
+        for name, ev in named_evaluators:
             aggregated_by_name[name] = await ev.aggregate(per_evaluator_results[name])
 
         # Save results

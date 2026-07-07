@@ -6,7 +6,16 @@ This module provides functionality to compute BERTScore between a predicted
 answer and one or more reference answers, returning precision, recall, and F1.
 """
 
-from bert_score import score as bert_score
+from bert_score import BERTScorer
+
+_scorer_cache: dict[str, BERTScorer] = {}
+
+
+def _get_scorer(model_name: str = "roberta-large") -> BERTScorer:
+    """Get or create a cached BERTScorer instance for the given model."""
+    if model_name not in _scorer_cache:
+        _scorer_cache[model_name] = BERTScorer(lang="en", model_type=model_name)
+    return _scorer_cache[model_name]
 
 
 def _validate_input(pred_answer: str, gold_answer: list) -> dict | None:
@@ -38,9 +47,8 @@ def compute_bert_score_batch(
     """
     if not pred_answers or not gold_answers:
         return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
-    P, R, F1 = bert_score(
-        pred_answers, gold_answers, lang="en", verbose=False, model_type=model_name
-    )
+    scorer = _get_scorer(model_name)
+    P, R, F1 = scorer.score(pred_answers, gold_answers)
     return {
         "precision": round(P.mean().item(), 4),
         "recall": round(R.mean().item(), 4),
@@ -70,10 +78,9 @@ def compute_bert_score(
     if early is not None:
         return early
 
+    scorer = _get_scorer(model_name)
     candidates = [pred_answer] * len(gold_answer)
-    P, R, F1 = bert_score(
-        candidates, gold_answer, lang="en", verbose=False, model_type=model_name
-    )
+    P, R, F1 = scorer.score(candidates, gold_answer)
 
     best_idx = F1.argmax().item()
     return {

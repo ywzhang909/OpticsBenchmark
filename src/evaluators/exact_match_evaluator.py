@@ -19,7 +19,6 @@ class ExactMatchEvaluator(BaseEvaluator):
         task_id: str,
         predicted_output: Any,
         expected_output: Any,
-        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Evaluate exact match by comparing parsed JSON entries."""
         start_time = time.time()

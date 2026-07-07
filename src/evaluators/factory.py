@@ -18,7 +18,7 @@ EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
 }
 
 
-def create_evaluator(config: dict[str, Any]) -> list[BaseEvaluator]:
+def create_evaluator(config: dict[str, Any]) -> list[tuple[str, BaseEvaluator]]:
     """
     Factory function to create evaluator instances based on eval_metrics config.
 
@@ -26,7 +26,7 @@ def create_evaluator(config: dict[str, Any]) -> list[BaseEvaluator]:
         config: Evaluator configuration containing eval_metrics dict
 
     Returns:
-        List of configured evaluator instances
+        List of (name, evaluator_instance) tuples
     """
     eval_metrics = config.get("eval_metrics", "")
 
@@ -34,11 +34,11 @@ def create_evaluator(config: dict[str, Any]) -> list[BaseEvaluator]:
         logger.error("'eval_metrics' is empty or not configured in the evaluation config.")
         return []
 
-    evaluators: list[BaseEvaluator] = []
+    evaluators: list[tuple[str, BaseEvaluator]] = []
     for eval_type, eval_cfg in eval_metrics.items():
         if eval_type in EVALUATOR_MAP:
             cls = EVALUATOR_MAP[eval_type]
-            evaluators.append(cls(eval_cfg if eval_cfg else {}))
+            evaluators.append((eval_type, cls(eval_cfg if eval_cfg else {})))
         else:
             logger.warning(f"Unknown evaluator type '{eval_type}', skipping.")
 

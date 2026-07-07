@@ -9,10 +9,8 @@ It supports multiple reference texts and chooses the best score for each instanc
 import nltk
 from rouge_score import rouge_scorer
 
-try:
-    from scripts.utils.em_eval_utils import normalize_text
-except ModuleNotFoundError:
-    from src.algorithm.em_eval_utils import normalize_text
+from src.algorithm.em_eval_utils import normalize_text
+
 
 def ensure_nltk_resources():
     """Download required NLTK resources if not already present."""

@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
-    from src.algorithm.rouge_eval_utils import compute_rouge
-except ImportError:
-    pass
+from src.algorithm.rouge_eval_utils import compute_rouge
 
 
 class ROGUEScorer:

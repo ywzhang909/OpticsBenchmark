@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-try:
-    from src.algorithm.em_eval_utils import compute_exact_match, record_doi_punctuation
-except ImportError:
-    pass
+from src.algorithm.em_eval_utils import compute_exact_match, record_doi_punctuation
 
 
 class ExactMatchScorer:
