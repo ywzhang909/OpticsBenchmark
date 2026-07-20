@@ -353,8 +353,8 @@ class OpenAIAgent(BaseAgent):
                 if file_path_obj.exists():
                     with file_path_obj.open("rb") as fh:
                         file_obj = await self.client.files.create(
-                            file=fh,
-                            purpose="assistants"
+                            file=file_path_obj,
+                            purpose="file-extract"
                         )
                     chat_messages.append({"role": "user", "content": content, "file_ids": [file_obj.id]})
                 else:
@@ -407,7 +407,7 @@ class OpenAIAgent(BaseAgent):
                     if file_path_obj.exists():
                         file_obj = await self.client.files.create(
                             file=file_path_obj.open("rb"),
-                            purpose="assistants"
+                            purpose="file-extract"
                         )
                         file_ids.append(file_obj.id)
                 if file_ids:

@@ -30,6 +30,7 @@ eval_metrics:
   # --- Exact Match Evaluator ---
   # Compares normalized string equality per JSON entry.
   exact_match:
+    priority: 4
     info_names:
       - "title"
       - "publication year"
@@ -43,6 +44,7 @@ eval_metrics:
   # --- ROUGE Evaluator ---
   # ROUGE-1/2/L precision/recall/F1 for text fields.
   rouge:
+    priority: 3
     info_names:
       - "objective"
       - "novelty"
@@ -53,6 +55,7 @@ eval_metrics:
   # --- BERTScore Evaluator ---
   # BERTScore using transformer embeddings for semantic similarity.
   bert_score:
+    priority: 2
     info_names:
       - "abstract"
       - "method"
@@ -62,6 +65,7 @@ eval_metrics:
   # --- Citation Evaluator ---
   # Precision, recall, F1 for retrieved/cited papers.
   citation:
+    priority: 1
     info_names:
       - "papers"
       - "references"

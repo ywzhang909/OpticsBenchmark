@@ -4,16 +4,24 @@ from typing import Any
 
 from src.algorithm.em_eval_utils import normalize_text
 from src.algorithm.hungarian_algorithm_utils import hungarian_match
+from src.algorithm.model_registry import model_registry
 from src.algorithm.sentence_similarity_utils import SentenceEmbedder
 
-_SENTENCE_EMBEDDER: SentenceEmbedder | None = None
+_EMBEDDER_PREFIX = "sentence_embedder"
 
 
 def _get_sentence_embedder(model_name: str = "BAAI/bge-m3") -> SentenceEmbedder:
-    global _SENTENCE_EMBEDDER
-    if _SENTENCE_EMBEDDER is None:
-        _SENTENCE_EMBEDDER = SentenceEmbedder(model_name=model_name)
-    return _SENTENCE_EMBEDDER
+    """获取或创建缓存的 SentenceEmbedder 实例。"""
+    key = f"{_EMBEDDER_PREFIX}:{model_name}"
+    return model_registry.get_or_load(
+        key,
+        lambda: SentenceEmbedder(model_name=model_name),
+    )
+
+
+def unload_sentence_embedder(model_name: str = "BAAI/bge-m3") -> None:
+    """显式卸载指定的 SentenceEmbedder，释放 GPU 显存。"""
+    model_registry.unload(f"{_EMBEDDER_PREFIX}:{model_name}")
 
 
 def _try_parse_json(data: Any) -> Any:

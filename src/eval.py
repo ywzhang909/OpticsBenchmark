@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -24,9 +25,9 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.runner import AgentRunner  # noqa: E402
-from src.evaluators import create_evaluator  # noqa: E402
+from src.evaluators import create_evaluator, sort_evaluators_by_priority  # noqa: E402
 from src.module import AggregatedResults  # noqa: E402
-from src.utils.logger import logger, setup_logger  # noqa: E402
+from src.utils import logger, setup_logger  # noqa: E402
 from src.utils.parser import ConfigParser  # noqa: E402
 
 
@@ -148,11 +149,15 @@ async def run_evaluation(
     output_path: str,
 ) -> int:
     """Phase 2: Evaluate agent outputs and compute metrics."""
-    logger.info("Evaluation (Phase 2 - Metric Scoring)")
-    logger.info(f"Input:       {input_path}")
-    logger.info(f"Gold:        {gold_path}")
-    logger.info(f"Eval Config: {eval_config_path}")
-    logger.info(f"Output:      {output_path}")
+    logger.info("=" * 60)
+    logger.info("Phase 2: Evaluation (Metric Scoring)")
+    logger.info("=" * 60)
+    logger.info("+-- Configuration " + "-" * 42 + "+")
+    logger.info(f"|  Input:       {input_path}")
+    logger.info(f"|  Gold:        {gold_path}")
+    logger.info(f"|  Eval Config: {eval_config_path}")
+    logger.info(f"|  Output:      {output_path}")
+    logger.info("+--" + "-" * 57 + "+")
 
     try:
         # Load gold standard answers
@@ -178,33 +183,49 @@ async def run_evaluation(
             logger.error("No evaluators created from config")
             return 1
 
-        logger.info(
-            f"Created {len(named_evaluators)} evaluators: "
-            f"{[name for name, _ in named_evaluators]}"
-        )
+        # 按 YAML 配置中的 priority 排序评估器（重模型在前）
+        named_evaluators = sort_evaluators_by_priority(named_evaluators, eval_config)
+
+        logger.info(f"Evaluators created: {len(named_evaluators)}")
+        for i, (name, _) in enumerate(named_evaluators, 1):
+            logger.info(f"  {i}. {name}")
 
         # Evaluate each output against each evaluator, matched by task_id
         per_evaluator_results: dict[str, list] = {
             name: [] for name, _ in named_evaluators
         }
-        logger.info(
-            f"Evaluating {len(agent_outputs)} agent outputs "
-            f"across {len(named_evaluators)} evaluators"
-        )
 
         eval_start = time.time()
-        for ao in agent_outputs:
-            if ao.task_id not in gold_map:
-                logger.warning(f"Gold answer not found for task_id: {ao.task_id}, skipping")
-                continue
+        for ev_idx, (name, ev) in enumerate(named_evaluators, 1):
+            logger.info("-" * 60)
+            logger.info(f"[{ev_idx}/{len(named_evaluators)}] Running evaluator: {name}")
+            logger.info("-" * 60)
 
-            for name, ev in named_evaluators:
-                result = await ev.evaluate(
-                    task_id=ao.task_id,
-                    predicted_output=ao.response,
-                    expected_output=gold_map[ao.task_id],
-                )
-                per_evaluator_results[name].append(result)
+            # 加载此评估器所需的 GPU 模型
+            await ev.setup()
+
+            try:
+                # 使用 tqdm 进度条
+                progress = tqdm(agent_outputs, desc=f"  {name}", unit="task", leave=True)
+                for ao in progress:
+                    if ao.task_id not in gold_map:
+                        logger.warning(f"  Skipping task {ao.task_id}: gold answer not found")
+                        continue
+                    result = await ev.evaluate(
+                        task_id=ao.task_id,
+                        predicted_output=ao.response,
+                        expected_output=gold_map[ao.task_id],
+                    )
+                    per_evaluator_results[name].append(result)
+                    progress.set_postfix({"done": len(per_evaluator_results[name])})
+                    # 输出每个任务的详细日志
+                    metrics_str = ", ".join(f"{k}: {v:.4f}" for k, v in result.metrics.items()) if result.metrics else "no metrics"
+                    logger.info(f"  Task {ao.task_id} completed ({result.execution_time:.2f}s) - {metrics_str}")
+            finally:
+                # 无论成功失败，都释放 GPU 显存
+                await ev.teardown()
+                logger.info(f"  {name} completed, GPU memory released")
+
         total_eval_time = time.time() - eval_start
         logger.info(f"Total evaluation time: {total_eval_time:.2f}s")
 
@@ -222,9 +243,29 @@ async def run_evaluation(
         _save_evaluation_results(aggregated_by_name, output_path, eval_config)
 
         # Log summary
+        logger.info("")
+        logger.info("=" * 60)
         logger.info("EVALUATION COMPLETE")
+        logger.info("=" * 60)
+
+        # 构建表格
+        separator = "+" + "-" * 16 + "+" + "-" * 7 + "+" + "-" * 27 + "+" + "-" * 10 + "+"
+        header = f"| {'Evaluator':<14} | {'Tasks':>5} | {'Metrics':<25} | {'Avg Time':>8} |"
+
+        logger.info("")
+        logger.info(separator)
+        logger.info(header)
+        logger.info(separator)
+
         for name, agg in aggregated_by_name.items():
-            logger.info(f"[{name}] Tasks: {agg.total_tasks} | Metrics: {agg.metrics_summary} | AvgTime: {agg.avg_execution_time:.1f}s")
+            metrics_str = ", ".join(f"{k}: {v:.4f}" for k, v in agg.metrics_summary.items())
+            if len(metrics_str) > 25:
+                metrics_str = metrics_str[:22] + "..."
+            row = f"| {name:<14} | {agg.total_tasks:>5} | {metrics_str:<25} | {agg.avg_execution_time:>6.1f}s |"
+            logger.info(row)
+
+        logger.info(separator)
+        logger.info("")
 
         return 0
 

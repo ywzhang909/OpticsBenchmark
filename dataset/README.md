@@ -11,7 +11,7 @@ dataset/
 ├── paper_info_extract/           # [就绪] 论文信息提取任务
 │   ├── dataset_json/
 │   │   ├── dataset_v1.json      # 15 条评测样本（含论文标题 + PDF 路径）
-│   │   └── gold_answer_v1.json  # 13 字段结构化标准答案（1325 行，含每篇论文的完整标注）
+│   │   └── gold_answer_v1.json  # 13 字段结构化标准答案（含每篇论文的完整标注）
 │   └── data_v1/                 # 15 篇原始 PDF 论文（2015–2026 年，以 metasurface/metamaterial 为主）
 ├── info_extraction/              # [就绪] 信息抽取扩展数据
 │   └── AO/                      # 自适应光学（Adaptive Optics）领域
@@ -227,10 +227,8 @@ print(f'Fields: {list(gold[0][\"data\"].keys())}')
 ## 数据准备
 
 ```bash
-# 自动下载（如数据集托管在远程仓库）
-bash scripts/download_data.sh
-
-# 或手动将数据放置到对应子目录
+# 手动将数据放置到对应子目录
+# 或从远程仓库克隆数据
 ```
 
 ---

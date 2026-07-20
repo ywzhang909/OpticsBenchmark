@@ -1,6 +1,6 @@
 # Evaluation Utility Modules
 
-This directory contains evaluation metric implementations used by the OptiS Benchmark evaluation scripts (primarily `scripts/optics_paper_extract_eval.py`). Each module is self-contained with a consistent interface, making them suitable for both standalone use and integration into the larger evaluation pipeline.
+This directory contains evaluation metric implementations used by the OptiS Benchmark evaluators (`src/evaluators/`) and the evaluation pipeline. Each module is self-contained with a consistent interface, making them suitable for both standalone use and integration into the larger evaluation pipeline.
 
 ---
 
@@ -20,6 +20,7 @@ This directory contains evaluation metric implementations used by the OptiS Benc
 | [sentence_similarity_utils.py](#sentence_similarity_utilspy) | Semantic Embeddings | torch, transformers | Heavy |
 | [hungarian_algorithm_utils.py](#hungarian_algorithm_utilspy) | Assignment Matching | numpy, scipy | Lightweight |
 | [citation_eval_utils.py](#citation_eval_utilspy) | Citation Structure | torch, transformers, nltk | Heavy |
+| [model_registry.py](#model_registrypy) | Model Registry | none | Lightweight |
 
 ---
 
@@ -353,6 +354,19 @@ Removes citation markers from text, extracts citation IDs, runs Natural Language
 | End-to-end citation verification | Requires large NLI model + GPU |
 | Distinguishes citation existence from correctness | NLI model may have biases |
 | Structured output with per-citation analysis | Slower than lexical methods |
+
+---
+
+## model_registry.py
+
+**Model Registry — centralized registry for evaluation model configurations.**
+
+### Principle
+Provides a centralized mapping of model names to their configurations, enabling consistent model loading across evaluation modules.
+
+### Applications
+- Used internally by other algorithm modules for model selection.
+- Ensures consistent model configuration across the evaluation pipeline.
 
 ---
 

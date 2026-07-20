@@ -8,14 +8,28 @@ BAAI/bge-m3, and it can be easily swapped to any other model by changing
 the ``model_name`` parameter.
 """
 
+import argparse
+import gc
+import json
+
 from __future__ import annotations
 
 import numpy as np
+import torch
+from transformers import (
+    AlbertModel,
+    AlbertTokenizer,
+    AutoModel,
+    AutoTokenizer,
+    BertModel,
+    BertTokenizer,
+    RobertaModel,
+    RobertaTokenizer,
+)
 
 
 def _mean_pooling(embeddings, attention_mask):
     """Mean pooling on token-level embeddings weighted by attention mask."""
-    import torch
 
     mask = attention_mask.unsqueeze(-1).expand(embeddings.size()).float()
     return (embeddings * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-9)
@@ -42,8 +56,6 @@ class SentenceEmbedder:
         batch_size: int = 32,
         max_length: int = 512,
     ) -> None:
-        import torch
-
         self.model_name = model_name
         self.batch_size = batch_size
         self.max_length = max_length
@@ -53,19 +65,35 @@ class SentenceEmbedder:
         self.model = self._load_model(model_name).to(self.device)
         self.model.eval()
 
+    def close(self) -> None:
+        """释放模型，回收 GPU 显存。"""
+        if hasattr(self, "model"):
+            del self.model
+        if hasattr(self, "tokenizer"):
+            del self.tokenizer
+
+        gc.collect()
+        try:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
     @staticmethod
     def _load_tokenizer(model_name: str):
         """Load tokenizer with fallback for transformers 5.x compatibility."""
-        from transformers import AutoTokenizer
-
         try:
             return AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         except (ValueError, OSError):
             pass
         # Fallback: some older models (e.g. prajjwal1/bert-tiny) don't have
         # config.model_type needed by AutoTokenizer in transformers 5.x.
-        from transformers import BertTokenizer, AlbertTokenizer, RobertaTokenizer
-
         for cls in [BertTokenizer, AlbertTokenizer, RobertaTokenizer]:
             try:
                 return cls.from_pretrained(model_name)
@@ -79,15 +107,11 @@ class SentenceEmbedder:
     @staticmethod
     def _load_model(model_name: str):
         """Load model with fallback for transformers 5.x compatibility."""
-        from transformers import AutoModel
-
         try:
             return AutoModel.from_pretrained(model_name, trust_remote_code=True)
         except (ValueError, OSError):
             pass
         # Fallback: try specific model classes
-        from transformers import BertModel, AlbertModel, RobertaModel
-
         for cls in [BertModel, AlbertModel, RobertaModel]:
             try:
                 return cls.from_pretrained(model_name)
@@ -108,8 +132,6 @@ class SentenceEmbedder:
             Float32 array of shape ``(len(sentences), hidden_dim)`` with
             L2-normalized embeddings.
         """
-        import torch
-
         all_embeddings: list[np.ndarray] = []
 
         for i in range(0, len(sentences), self.batch_size):
@@ -169,9 +191,6 @@ def compute_similarity_matrix(
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="Sentence Similarity Matrix")
     group_pred = parser.add_mutually_exclusive_group(required=True)
     group_pred.add_argument("--pred-sentences", type=str, nargs="+", help="Predicted sentences")
@@ -189,13 +208,13 @@ def main():
     args = parser.parse_args()
 
     if args.pred_file:
-        with open(args.pred_file, "r", encoding="utf-8") as f:
+        with open(args.pred_file, encoding="utf-8") as f:
             pred_sents = [line.rstrip("\n") for line in f if line.strip()]
     else:
         pred_sents = args.pred_sentences
 
     if args.gold_file:
-        with open(args.gold_file, "r", encoding="utf-8") as f:
+        with open(args.gold_file, encoding="utf-8") as f:
             gold_sents = [line.rstrip("\n") for line in f if line.strip()]
     else:
         gold_sents = args.gold_sentences

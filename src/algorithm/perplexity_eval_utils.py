@@ -10,12 +10,16 @@ Uses GPT-2 by default (lightweight, fast). For domain-specific evaluation,
 swap to a causal LM fine-tuned on scientific/ optics text.
 """
 
+import argparse
+import json
+
 from __future__ import annotations
 
 import math
 from typing import Any
 
 import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def _validate_input(text: str) -> str | None:
@@ -57,8 +61,6 @@ def compute_perplexity(
             "num_tokens": 0,
             "model_name": model_name,
         }
-
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -110,9 +112,6 @@ def compute_perplexity(
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="Perplexity Evaluation")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--text", type=str, help="Input text")

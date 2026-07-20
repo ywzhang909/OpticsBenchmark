@@ -16,6 +16,7 @@ from .agent import (
     create_agent,
 )
 from .llm_judge import DEFAULT_RUBRICS, JudgePromptBuilder, JudgeResult, LLMJudge, Rubric
+from .llm_runner import LLMOutput, LLMPredRunner, LLMRunnerConfig
 from .runner import (
     AgentRunner,
     RunnerConfig,
@@ -57,6 +58,10 @@ __all__ = [
     "JudgeResult",
     "LLMJudge",
     "Rubric",
+    # LLM Runner
+    "LLMOutput",
+    "LLMRunnerConfig",
+    "LLMPredRunner",
     # Runner
     "AgentOutput",
     "AgentRunner",

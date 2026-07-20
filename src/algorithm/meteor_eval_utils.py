@@ -12,6 +12,9 @@ judgment because it uses recall, stemming, and synonym matching.
 Uses NLTK's METEOR implementation which requires WordNet data.
 """
 
+import argparse
+import json
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,8 +22,6 @@ from typing import Any
 
 def _ensure_wordnet() -> None:
     """Download WordNet data if not already present."""
-    import nltk
-
     try:
         nltk.data.find("wordnet")
     except LookupError:
@@ -89,9 +90,6 @@ def compute_meteor(
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="METEOR Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")

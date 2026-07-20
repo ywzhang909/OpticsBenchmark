@@ -6,16 +6,28 @@ This module provides functionality to compute BERTScore between a predicted
 answer and one or more reference answers, returning precision, recall, and F1.
 """
 
+import argparse
+import json
+
 from bert_score import BERTScorer
 
-_scorer_cache: dict[str, BERTScorer] = {}
+from src.algorithm.model_registry import model_registry
+
+_BERT_SCORER_PREFIX = "bert_scorer"
 
 
 def _get_scorer(model_name: str = "roberta-large") -> BERTScorer:
-    """Get or create a cached BERTScorer instance for the given model."""
-    if model_name not in _scorer_cache:
-        _scorer_cache[model_name] = BERTScorer(lang="en", model_type=model_name)
-    return _scorer_cache[model_name]
+    """获取或创建缓存的 BERTScorer 实例。"""
+    key = f"{_BERT_SCORER_PREFIX}:{model_name}"
+    return model_registry.get_or_load(
+        key,
+        lambda: BERTScorer(lang="en", model_type=model_name),
+    )
+
+
+def unload_bert_scorer(model_name: str = "roberta-large") -> None:
+    """显式卸载指定的 BERTScorer 模型，释放 GPU 显存。"""
+    model_registry.unload(f"{_BERT_SCORER_PREFIX}:{model_name}")
 
 
 def _validate_input(pred_answer: str, gold_answer: list) -> dict | None:
@@ -91,9 +103,6 @@ def compute_bert_score(
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="BERTScore Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")

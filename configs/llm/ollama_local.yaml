@@ -1,0 +1,29 @@
+# =============================================================================
+# Ollama Local Model Configuration
+# OptiS Benchmark - LLM Prediction
+# =============================================================================
+
+llm:
+  provider:
+    type: "ollama"
+    host: "http://localhost:11434"
+
+  model:
+    type: "ollama"
+    name: "llama3.1"
+
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 4096
+
+task:
+  dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+  prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+  file_input: true
+  max_samples: 10
+  shuffle: false
+
+execution:
+  concurrency: 1
+  timeout: 300
+  output_path: "results/llm_outputs_ollama.jsonl"

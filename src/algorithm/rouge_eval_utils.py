@@ -6,6 +6,9 @@ This module provides functionality to calculate ROUGE scores between generated t
 It supports multiple reference texts and chooses the best score for each instance.
 """
 
+import argparse
+import json
+
 import nltk
 from rouge_score import rouge_scorer
 
@@ -68,9 +71,6 @@ def _rouge_calculation(hypothese, reference, metrics=None):
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="ROUGE Score Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, help="Gold/reference text")

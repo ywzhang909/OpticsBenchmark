@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.utils.logger import logger
+from src.utils import logger
 
 from .base import BaseEvaluator
 from .bert_score_evaluator import BertScoreEvaluator
@@ -16,6 +16,12 @@ EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
     "bert_score": BertScoreEvaluator,
     "citation": CitationEvaluator,
 }
+
+# 评估器按 GPU 开销分类
+GPU_INTENSIVE_EVALUATORS = {"citation", "bert_score"}
+GPU_LIGHT_EVALUATORS = {"rouge"}
+CPU_ONLY_EVALUATORS = {"exact_match"}
+ALL_GPU_EVALUATORS = GPU_INTENSIVE_EVALUATORS | GPU_LIGHT_EVALUATORS
 
 
 def create_evaluator(config: dict[str, Any]) -> list[tuple[str, BaseEvaluator]]:
@@ -47,3 +53,34 @@ def create_evaluator(config: dict[str, Any]) -> list[tuple[str, BaseEvaluator]]:
         return []
 
     return evaluators
+
+
+def sort_evaluators_by_priority(
+    named_evaluators: list[tuple[str, BaseEvaluator]],
+    config: dict[str, Any],
+) -> list[tuple[str, BaseEvaluator]]:
+    """根据 YAML 配置中的 priority 字段对评估器排序。
+
+    priority 值越小越先执行。未配置 priority 的评估器默认为 999。
+    同一 priority 内保持原始顺序。
+
+    YAML 配置示例:
+        eval_metrics:
+          citation:
+            priority: 1
+          bert_score:
+            priority: 2
+          rouge:
+            priority: 3
+          exact_match:
+            priority: 4
+    """
+    eval_metrics_config = config.get("eval_metrics", {})
+
+    def _get_priority(name: str) -> int:
+        cfg = eval_metrics_config.get(name, {})
+        if isinstance(cfg, dict):
+            return cfg.get("priority", 999)
+        return 999
+
+    return sorted(named_evaluators, key=lambda x: _get_priority(x[0]))

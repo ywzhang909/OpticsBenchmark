@@ -16,6 +16,7 @@ from typing import Any
 
 from src.core.agent import AgentConfig, AgentOutput, BaseAgent, create_agent
 from src.core.config import TaskConfig
+from src.utils import logger
 
 
 @dataclass
@@ -104,7 +105,7 @@ class AgentRunner:
         if not isinstance(records, list):
             raise ValueError(f"Expected JSON array in dataset, got {type(records).__name__}")
 
-        # Build prompt from prompt_config: try task_file first, then system_file + template_file
+        # Build prompt from prompt_config: task_file
         prompt = ""
         prompt_cfg = self.config.task_config.prompt_config
         task_file = prompt_cfg.get("task_file", "")
@@ -112,20 +113,19 @@ class AgentRunner:
             prompt_path = Path(task_file)
             if prompt_path.exists():
                 prompt = prompt_path.read_text(encoding="utf-8")
-
-        if not prompt:
-            system_file = prompt_cfg.get("system_file", "")
-            template_file = prompt_cfg.get("template_file", "")
-            parts = []
-            if system_file:
-                sp = Path(system_file)
-                if sp.exists():
-                    parts.append(sp.read_text(encoding="utf-8"))
-            if template_file:
-                tp = Path(template_file)
-                if tp.exists():
-                    parts.append(tp.read_text(encoding="utf-8"))
-            prompt = "\n\n".join(parts)
+                # 删除前两行（注释行 + 空行）
+                lines = prompt.split("\n")
+                if len(lines) > 2:
+                    prompt = "\n".join(lines[2:])
+                else:
+                    logger.warning(
+                        f"Prompt file '{task_file}' has only {len(lines)} lines, "
+                        f"expected at least 3. Using raw content."
+                    )
+            else:
+                logger.warning(f"Prompt file not found: {task_file}")
+        else:
+            logger.warning("No 'task_file' specified in prompt_config")
 
         for i, record in enumerate(records):
             task_id = i + 1

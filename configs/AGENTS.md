@@ -4,28 +4,25 @@
 
 ## Overview
 
-Four-part config system: pluggable agent configs (7 LLM providers, 11 model configs), task configs (8 task types), evaluation configs, and a global system config. All snake_case, `${ENV_VAR}` for secrets.
+Four-part config system: pluggable agent configs (4 LLM providers, 9 model configs), task configs (3 task types), evaluation configs, and a global system config template. All snake_case, `${ENV_VAR}` for secrets.
 
 ## Files
 
 ```
 configs/
-├── agents/              # 7 provider subdirectories, 18 YAML files
+├── agents/              # 4 provider subdirectories, 9 YAML files
 │   ├── anthropic/      # claude-3.yaml + template.yaml
-│   ├── bedrock/        # bedrock.yaml + template.yaml
 │   ├── google/         # gemini.yaml + template.yaml
-│   ├── groq/           # groq.yaml + template.yaml
 │   ├── ollama/         # ollama.yaml + template.yaml
-│   ├── openai/         # 5 model configs (gpt-4, deepseek-v4-pro, llama4-scout,
-│   │                   #   mistral-medium-3.5, qwen3.7-max) + template.yaml
-│   └── together/       # together.yaml + template.yaml
-├── tasks/               # 9 YAML files: lens_design, system_analysis, paper_review,
-│                        #   paper_retrieval_eval, paper_info_extract, multi_doc_summary,
-│                        #   optics_question_answer, research_overview + template
-├── evaluation/          # 1 YAML file: template.yaml
-├── eval_scoring.yaml    # Composite scoring config (dimensions, weights, anti-patterns)
-└── system.yaml          # Global: logging, parallel, sandbox, rate-limit,
-                         #   evaluation, export, security, paths
+│   └── openai/         # 6 model configs (gpt-4, deepseek-v4-pro, llama4-scout,
+│                       #   mistral-medium-3.5, qwen3.5-plus, qwen3.7-max) + template.yaml
+├── tasks/               # 3 YAML files + template: paper_info_extract,
+│                        #   paper_review, optics_question_answer
+├── evaluations/         # paper_info_extract.yaml + template.yaml
+├── llm/                 # LLM provider configs (4 YAML files)
+├── system/
+│   └── template.yaml    # Global settings template
+└── README.md
 ```
 
 ## Conventions
@@ -107,7 +104,7 @@ llm_judge:              # composite only
   model: "gpt-4"
 ```
 
-### System YAML (`configs/system.yaml`)
+### System YAML (`configs/system/template.yaml`)
 ```yaml
 logging:
   level: "INFO"
@@ -123,7 +120,6 @@ rate_limit:
 
 ## Known Issues
 
-- `system.yaml` references Docker sandbox (`image: optis_benchmark/sandbox:latest`) but no Dockerfile exists.
-- `system.yaml` security config `save_api_keys: false` has `# NEVER set to true in production` comment but no runtime enforcement.
+- `system/template.yaml` is a minimal template with most settings commented out — not a full config.
 - Agent configs list `provider` but factory is hardcoded to known providers — no plugin/discovery mechanism.
-- `eval_scoring.yaml` overlaps with the composite scoring config that could be placed in `configs/evaluation/`.
+- Provider directories are incomplete: Groq, Bedrock, Together AI configs are in `configs/llm/` but agent configs only exist for Anthropic, Google, Ollama, and OpenAI.

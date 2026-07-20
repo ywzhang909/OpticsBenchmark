@@ -4,9 +4,16 @@ import time
 from typing import Any
 
 from src.module import AggregatedResults, EvaluationResult
+from src.utils import logger
 
 from .base import BaseEvaluator
-from .helpers import _get_sentence_embedder, _try_parse_json, normalize_dict_key, sentenceMatch
+from .helpers import (
+    _get_sentence_embedder,
+    _try_parse_json,
+    normalize_dict_key,
+    sentenceMatch,
+    unload_sentence_embedder,
+)
 from .scorer import ROGUEScorer
 
 
@@ -17,6 +24,16 @@ class RougeEvaluator(BaseEvaluator):
     Computes ROUGE-1, ROUGE-2, and ROUGE-L scores via ROGUEScorer.
     Supports both direct string input and structured dict fields (via info_names config).
     """
+
+    async def setup(self) -> None:
+        """预加载 SentenceEmbedder 模型（用于 Hungarian 匹配）。"""
+        match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
+        _get_sentence_embedder(match_model)
+
+    async def teardown(self) -> None:
+        """释放 SentenceEmbedder 模型，回收 GPU 显存。"""
+        match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
+        unload_sentence_embedder(match_model)
 
     async def evaluate(
         self,
@@ -73,7 +90,6 @@ class RougeEvaluator(BaseEvaluator):
                 execution_time=time.time() - start_time,
             )
         except Exception as e:
-            from src.utils.logger import logger
             logger.error(f"Error in RougeEvaluator for task {task_id}: {e}")
             return EvaluationResult(
                 task_id=task_id,

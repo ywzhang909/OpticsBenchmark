@@ -52,18 +52,13 @@ pip install -r requirements.txt
 
 This project uses **BERTScore** which requires PyTorch. `uv sync` installs the **CPU version** by default.
 
-If you have an **NVIDIA GPU**, auto-detect and install the GPU-accelerated version:
+If you have an **NVIDIA GPU**, install the GPU-accelerated version:
 
 ```bash
-# Recommended: auto-detect CUDA driver and install matching PyTorch
-uv run python scripts/install_torch.py
-
-# Or manually specify a CUDA version
+# Manually specify a CUDA version
 uv pip install torch --torch-backend=cu130 --upgrade
 ```
 
-> The `install_torch.py` script updates `pyproject.toml` so subsequent `uv sync` calls use the correct PyTorch index.
->
 > Supported backends: `auto`, `cpu`, `cu118`, `cu121`, `cu124`, `cu126`, `cu128`, `cu130`
 
 ---
@@ -86,7 +81,9 @@ EOF
 ### Download Datasets
 
 ```bash
-bash scripts/download_data.sh
+# Dataset files are included in the repository under dataset/
+# If data is hosted remotely, clone or download to the appropriate subdirectory
+ls dataset/paper_info_extract/data_v1/  # Verify PDF papers are present
 ```
 
 ### Run an Evaluation (Two-Phase Pipeline)
@@ -95,29 +92,29 @@ bash scripts/download_data.sh
 
 ```bash
 # Using the installed CLI entry point
-optis -a configs/agents/openai/gpt-4.yaml -t lens_design
+optis -a configs/agents/openai/gpt-4.yaml -t paper_info_extract
 
 # Or run directly
-python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design
+python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract
 
 # All tasks with 4 concurrent workers
 python src/main.py -a configs/agents/anthropic/claude-3.yaml --all-tasks -c 4
 
 # Specify output path
-python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design -o results/agent_outputs.jsonl
+python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract -o results/agent_outputs.jsonl
 
 # Dry run to validate config without calling APIs
-python src/main.py -a configs/agents/openai/gpt-4.yaml -t lens_design --dry-run
+python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract --dry-run
 ```
 
 **Phase 2** — Evaluate agent outputs with scoring metrics:
 
 ```bash
 # Evaluate agent outputs using eval config and gold answers
-python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml
+python src/eval.py -i results/agent_outputs.jsonl -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json -e configs/evaluations/paper_info_extract.yaml
 
 # Specify output path for evaluation results
-python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml -o results/eval_results.json
+python src/eval.py -i results/agent_outputs.jsonl -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json -e configs/evaluations/paper_info_extract.yaml -o results/eval_results.json
 ```
 
 ---
@@ -127,54 +124,85 @@ python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e config
 ```
 OpticsBenchmark/
 ├── configs/                        # Configuration center
-│   ├── system.yaml                # Global system config
-│   ├── agents/                    # Agent configs (7 providers, 11 model configs + templates)
-│   └── tasks/                     # Task configs (8 task types + template)
+│   ├── system/template.yaml       # Global system config template
+│   ├── agents/                    # Agent configs (4 providers, 6 model configs + templates)
+│   │   ├── anthropic/             # Claude 3.5 Sonnet
+│   │   ├── google/                # Gemini 1.5 Pro
+│   │   ├── ollama/                # Local Ollama models
+│   │   └── openai/                # 5 OpenAI-compatible models (GPT-4, DeepSeek, Llama, Mistral, Qwen)
+│   ├── evaluations/               # Evaluation configs
+│   ├── llm/                       # LLM provider configs (4 YAML files)
+│   └── tasks/                     # Task configs (3 task types + template)
 ├── src/                           # Core source package
 │   ├── __init__.py
 │   ├── main.py                    # Phase 1: Agent output generator (CLI: optis)
 │   ├── eval.py                    # Phase 2: Evaluation engine
+│   ├── llm_pred.py               # LLM prediction runner
 │   ├── core/
-│   │   ├── agent.py              # BaseAgent ABC + 7 LLM providers + factory
+│   │   ├── agent.py              # BaseAgent ABC + 7 LLM providers + factory (1306 lines)
 │   │   ├── config.py             # Shared TaskConfig dataclass
-│   │   ├── evaluator.py          # 6 evaluator types + ROGUEScorer + analyzers + report generator
-│   │   ├── composite_scorer.py   # Multi-dimensional weighted scoring (PluginEval-style)
 │   │   ├── llm_judge.py          # LLM-as-judge with anchored rubrics
-│   │   └── runner.py             # Async parallel AgentRunner
+│   │   ├── llm_runner.py         # LLMPredRunner for prediction
+│   │   └── runner.py             # Async parallel AgentRunner (259 lines)
+│   ├── evaluators/               # Metric evaluators
+│   │   ├── base.py               # BaseEvaluator ABC
+│   │   ├── factory.py            # create_evaluator() config-driven factory
+│   │   ├── helpers.py            # JSON parsing, sentence matching, dict normalization
+│   │   ├── exact_match_evaluator.py
+│   │   ├── rouge_evaluator.py
+│   │   ├── bert_score_evaluator.py
+│   │   ├── citation_evaluator.py
+│   │   └── scorer/               # Thin wrappers → algorithm/* functions
+│   ├── algorithm/                # Pure-math evaluation algorithms (12 modules)
+│   │   ├── em_eval_utils.py
+│   │   ├── rouge_eval_utils.py
+│   │   ├── bleu_eval_utils.py
+│   │   ├── meteor_eval_utils.py
+│   │   ├── cider_eval_utils.py
+│   │   ├── bertScore_eval_utils.py
+│   │   ├── perplexity_eval_utils.py
+│   │   ├── edit_distance_utils.py
+│   │   ├── jaccard_similarity_utils.py
+│   │   ├── hungarian_algorithm_utils.py
+│   │   ├── sentence_similarity_utils.py
+│   │   └── citation_eval_utils.py
+│   ├── llm/                      # LLM abstraction layer (8 model classes, 7 providers)
+│   │   ├── base.py               # BaseLLM ABC
+│   │   ├── models/               # Model-specific LLM implementations
+│   │   └── providers/            # Provider-specific API clients
 │   ├── environments/
 │   │   ├── base_env.py           # BaseEnvironment ABC + LocalEnvironment
 │   │   └── zos_env.py            # Zemax ZOS-API integration (stub)
+│   ├── module/
+│   │   └── result.py             # EvaluationResult + AggregatedResults dataclasses
 │   ├── utils/
 │   │   ├── logger.py             # Loguru-based logging (console + file + rotation)
-│   │   └── parser.py             # YAML/JSONL/config parser with env-var expansion
+│   │   ├── parser.py             # YAML/JSONL/config parser with env-var expansion
+│   │   └── generate_report.py    # HTML/Markdown report generator
 │   └── tools/
 │       └── quick_llm_selector.py # Interactive CLI tool for testing/comparing providers
 ├── dataset/                       # Evaluation datasets
-│   ├── paper_info_extract/       # 16 PDF papers + JSON dataset/gold-answer files
-│   ├── info_extraction/          # AO paper analysis files (160+ texts)
+│   ├── paper_info_extract/       # 15 PDF papers + JSON dataset/gold-answer files
+│   ├── info_extraction/          # AO paper analysis files (274 texts)
+│   ├── paper_review/             # Paper review dataset (empty, pending)
 │   └── optics_question_answer/   # Q&A dataset (empty, pending)
 ├── prompts/                       # LLM prompt templates
 │   ├── system/                   # System prompts (optical_agent, research_agent)
-│   ├── templates/                # Task-specific templates (6 tasks)
+│   ├── templates/                # Task-specific templates
 │   └── paper_info_extract/       # Custom prompt for paper info extraction task
-├── scripts/                       # Evaluation & utility scripts
-│   ├── install_torch.py          # PyTorch CUDA auto-installation
-│   ├── optics_paper_extract_eval.py # Paper extraction evaluation pipeline
-│   ├── generate_report.py        # Standalone HTML/Markdown report generator
-│   ├── download_data.sh          # Dataset download script
-│   ├── run_eval.sh               # Evaluation automation wrapper
-│   └── utils/                    # 12 standalone evaluation utility modules
-├── tests/                         # Pytest test suite (21 test files)
-├── docs/                          # Chinese + English technical documentation
+├── utils/                         # Standalone utility scripts
+│   ├── list_openai_support_models.py
+│   └── paper_data_to_dateset.py
+├── self_test/                     # Self-test datasets
+├── tests/                         # Pytest test suite (20 test files)
+├── docs/                          # Chinese technical documentation
 │   ├── foundation/               # Optical basics, agent theory, evaluation methodology
 │   ├── theory.md                 # Evaluation theory
 │   ├── contribution.md           # Contribution guide
 │   └── ...                       # Design docs
-├── website/                       # Static leaderboard page (index.html)
 ├── pyproject.toml                 # Single-source config (build, deps, tools)
 ├── requirements.txt
-├── environment.yml
-└── uv.lock
+└── environment.yml
 ```
 
 ---
@@ -186,10 +214,10 @@ OpticsBenchmark/
 | OpenAI | `configs/agents/openai/gpt-4.yaml` (+ 4 more: DeepSeek, Llama 4, Mistral, Qwen) | `openai` |
 | Anthropic (Claude 3.5 Sonnet) | `configs/agents/anthropic/claude-3.yaml` | `anthropic` |
 | Google Gemini (1.5 Pro) | `configs/agents/google/gemini.yaml` | `google-genai` |
-| Groq (free inference, Llama 3.1 70B) | `configs/agents/groq/groq.yaml` | `groq` |
+| Groq (free inference, Llama 3.1 70B) | via `src/llm/providers/GroqProvider.py` | `groq` |
 | Ollama (local models) | `configs/agents/ollama/ollama.yaml` | `httpx` |
-| AWS Bedrock (Claude 3.5 Sonnet) | `configs/agents/bedrock/bedrock.yaml` | `boto3` |
-| Together AI (Llama 3.3 70B Instruct) | `configs/agents/together/together.yaml` | `httpx` |
+| AWS Bedrock (Claude 3.5 Sonnet) | via `src/llm/providers/BedrockProvider.py` | `boto3` |
+| Together AI (Llama 3.3 70B Instruct) | via `src/llm/providers/TogetherAIProvider.py` | `httpx` |
 
 Per-provider features:
 - **Anthropic**: Configurable `thinking_budget` for extended thinking
@@ -200,44 +228,38 @@ Per-provider features:
 
 ## Supported Tasks
 
-| Task ID | Description | Difficulty | Samples | Evaluation Metrics |
-|---------|-------------|------------|---------|-------------------|
-| `lens_design` | Lens design and optimization | 3 | 50 | Metric-based (MTF, spot size) |
-| `system_analysis` | Optical system performance analysis | 2 | 75 | Metric-based |
-| `paper_review` | Academic paper review | 3 | 50 | ROUGE-L, citation accuracy |
-| `paper_retrieval_eval` | Paper retrieval and citation | 2 | 100 | Precision, recall, F1 |
-| `paper_info_extract` | 13-field structured extraction from optical science papers | 2 | 100 | Structured output + metric |
-| `multi_doc_summary` | Multi-document summarization | 3 | 50 | ROUGE-1/2/L composite |
-| `optics_question_answer` | Optics question answering | 2 | 80 | Exact Match, ROUGE-L |
-| `research_overview` | Research area overview generation | 4 | 30 | ROUGE-L, coverage |
+| Task ID | Description | Difficulty | Environment | Evaluation Metrics |
+|---------|-------------|------------|-------------|-------------------|
+| `paper_info_extract` | 13-field structured extraction from optical science papers | 2 | Optical sandbox | Exact Match, ROUGE, BERTScore |
+| `paper_review` | Academic paper review | 3 | Local | ROUGE-L, content coverage |
+| `optics_question_answer` | Optics question answering | 2 | Optical sandbox | Exact Match, ROUGE-L |
 
 The `paper_info_extract` task supports structured output (`structured_output: true`), generating a JSON Schema from the gold-answer file at runtime. It also uses `file_input: true` to read PDF files directly.
+
+Additional task configs are planned: `lens_design`, `system_analysis`, `paper_retrieval_eval`, `multi_doc_summary`, `research_overview`.
 
 ---
 
 ## Evaluation Types
 
-### Core Evaluators (`src/core/evaluator.py`)
+### Core Evaluators (`src/evaluators/`)
 
 | Evaluator | Scoring Method | Description |
 |-----------|----------------|-------------|
-| MetricBasedEvaluator | `metric_based` | Numeric optical performance metrics |
-| ExactMatchEvaluator | `exact_match` | Normalized string equality |
-| PartialMatchEvaluator | `partial_match` | Jaccard similarity for strings, key matching for dicts |
-| SummarizationEvaluator | `summarization` / `rouge` | ROUGE-1/2/L weighted composite via ROGUEScorer |
-| CitationEvaluator | `citation` / `retrieval` | Precision, recall, F1 for citation accuracy |
-| CompositeEvaluator | `composite` | Multi-dimensional weighted scoring with LLM judge and anti-pattern penalties |
+| ExactMatchEvaluator | `exact_match` | Normalized string equality per JSON field |
+| RougeEvaluator | `rouge` | ROUGE-1/2/L with Hungarian sentence alignment |
+| BertScoreEvaluator | `bert_score` | BERTScore P/R/F1 with transformer embeddings |
+| CitationEvaluator | `citation` | Precision, recall, F1 for citation accuracy |
 
-Additional utility classes in `evaluator.py`:
-- **ROGUEScorer** — ROUGE-1/2/L computation engine
+Additional components:
+- **LLMJudge** (`src/core/llm_judge.py`) — LLM-as-judge with structured rubrics (PluginEval Layer 2)
+- **ReportGenerator** (`src/utils/generate_report.py`) — HTML/Markdown report generation from evaluation results
 - **ResultAnalyzer** — Per-task result analysis and aggregation
 - **ErrorAnalyzer** — Error classification and pattern detection
-- **EvaluationQA** — Q&A evaluation support
-- **ReportGenerator** — HTML/Markdown report generation from evaluation results
 
-### Standalone Metric Modules (`scripts/utils/`)
+### Standalone Metric Modules (`src/algorithm/`)
 
-These 12 independent evaluation utilities are used by `scripts/optics_paper_extract_eval.py` and also tested individually:
+These 12 independent evaluation utility modules are self-contained with consistent interfaces:
 
 | Module | Metric | Description |
 |--------|--------|-------------|
@@ -262,7 +284,7 @@ OptiS Benchmark implements a **three-layer evaluation architecture** inspired by
 
 ### Composite Weighted Scoring
 
-The composite scoring engine (`CompositeScorer`) blends scores across 8 optical-design dimensions:
+The composite scoring engine blends scores across 8 optical-design dimensions:
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
@@ -325,14 +347,14 @@ The evaluation is split into **two independent phases**, allowing re-evaluation 
 Usage: python src/main.py -a <agent_config> -t <task_set> [options]
 
 Arguments:
-  -a, --agent-config PATH    Agent YAML config file (required)
-  -t, --task-set NAME        Task set to run (required unless --all-tasks)
+  -a, --agent-config PATH    Agent YAML config file (default: configs/agents/openai/qwen3.5-plus.yaml)
+  -t, --task-set NAME        Task set name or path to task config (default: configs/tasks/paper_info_extract.yaml)
   --all-tasks                Run all available task sets
   -o, --output PATH          Output JSONL path (default: results/agent_outputs.jsonl)
   -c, --concurrency N        Max concurrent agent sessions (default: 1)
   --timeout SECONDS          Per-task timeout (default: 300)
   --max-samples N            Limit samples per task
-  --system-config PATH       System config path (default: configs/system.yaml)
+  --system-config PATH       System config path (default: configs/system/template.yaml)
   --dry-run                  Validate config without calling APIs
   --log-level LEVEL          Logging level (default: INFO)
   --log-file PATH            Log file path
@@ -345,11 +367,11 @@ Arguments:
 Usage: python src/eval.py -i <agent_outputs> -g <gold> -e <eval_config> [options]
 
 Arguments:
-  -i, --input PATH           Agent outputs JSONL file (required)
-  -g, --gold PATH            Gold standard answer dataset file (JSON) (required)
-  -e, --eval-config PATH     Evaluation configuration YAML file (required)
+  -i, --input PATH           Agent outputs JSONL file (default: self_test/dataset/paper_info_extract/test_v1.jsonl)
+  -g, --gold PATH            Gold standard answer dataset file (JSON) (default: dataset/paper_info_extract/dataset_json/gold_answer_v1.json)
+  -e, --eval-config PATH     Evaluation configuration YAML file (default: configs/evaluations/paper_info_extract.yaml)
   -o, --output PATH          Output results path (default: results/eval_results.json)
-  --system-config PATH       System config path (default: configs/system.yaml)
+  --system-config PATH       System config path (default: configs/system/template.yaml)
   --log-level LEVEL          Logging level (default: INFO)
   --log-file PATH            Log file path
 ```
@@ -381,36 +403,21 @@ python -m src.tools.quick_llm_selector --provider gpt-4 --prompt "Hello" --forma
 
 ## Scripts
 
-### Paper Extraction Evaluation
-
-Evaluates paper information extraction predictions against gold-standard data using all 12 metric modules:
+### Standalone Utility Scripts
 
 ```bash
-python scripts/optics_paper_extract_eval.py \
-  --pred-file results/predictions.json \
-  --gold-file dataset/processed/gold.json \
-  --match --rouge --bertScore
+# List supported OpenAI models
+python utils/list_openai_support_models.py
+
+# Convert paper data to dataset format
+python utils/paper_data_to_dateset.py
 ```
 
 ### Report Generation
 
-Two report generation options are available:
-
 ```bash
-# Standalone script (from evaluation results JSON)
-python scripts/generate_report.py results/eval_results.json --format html
-python scripts/generate_report.py results/eval_results.json --format markdown
-python scripts/generate_report.py results/eval_results.json --format both
-
-# In-code generation (via ReportGenerator in evaluator.py)
-python -c "from src.core.evaluator import ReportGenerator; ..."
-```
-
-### Automation
-
-```bash
-# Full evaluation pipeline wrapper
-bash scripts/run_eval.sh
+# Generate HTML/Markdown report from evaluation results
+python src/utils/generate_report.py results/eval_results.json --format html
 ```
 
 ---
@@ -419,16 +426,16 @@ bash scripts/run_eval.sh
 
 ```bash
 # Run all tests
-pytest tests/
+uv run pytest tests/
 
 # Specific test file
-pytest tests/test_evaluator_base.py
+uv run pytest tests/test_evaluator_base.py
 
 # With coverage
-pytest tests/ --cov=src --cov-report=html
+uv run pytest tests/ --cov=src --cov-report=html
 
 # Skip network-dependent tests
-pytest tests/ --ignore=tests/test_bert_score_eval.py
+uv run pytest tests/ --ignore=tests/test_bert_score_eval.py
 ```
 
 ---
@@ -444,8 +451,8 @@ pytest tests/ --ignore=tests/test_bert_score_eval.py
 
 ### Adding a New Evaluator
 
-1. Create an evaluator class in `src/core/evaluator.py` extending `BaseEvaluator`
-2. Register it in the `create_evaluator()` factory
+1. Create an evaluator class in `src/evaluators/` extending `BaseEvaluator`
+2. Register it in `create_evaluator()` factory (`src/evaluators/factory.py`)
 3. Reference the scoring method in task config YAML
 
 ### Adding a New Task
@@ -459,11 +466,9 @@ pytest tests/ --ignore=tests/test_bert_score_eval.py
 
 ## Dependencies
 
-**Core**: `openai`, `anthropic`, `pydantic`, `pyyaml`, `python-dotenv`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`
+**Core**: `openai`, `anthropic`, `pydantic`, `pyyaml`, `python-dotenv`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`, `accelerate`, `protobuf`
 
 **Dev**: `pytest`, `pytest-asyncio`, `pytest-cov`, `black`, `isort`, `ruff`, `mypy`, `pre-commit`
-
-**Docs**: `sphinx`, `sphinx-rtd-theme`
 
 ---
 

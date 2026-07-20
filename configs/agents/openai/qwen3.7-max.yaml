@@ -14,7 +14,7 @@ agent:
 model:
   provider: "openai"
   name: "qwen3-max"
-  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_base: "http://localhost:8001/v1"
   api_key: "${QWEN_API_KEY}"
 
   setup:

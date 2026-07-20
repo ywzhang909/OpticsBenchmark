@@ -49,6 +49,8 @@ dependencies = [
     "tiktoken>=0.13.0",
     "pypdf2>=3.0.1",
     "python-docx>=1.2.0",
+    "accelerate>=1.14.0",
+    "protobuf>=7.35.1",
 ]
 
 [project.optional-dependencies]

@@ -18,6 +18,14 @@ class BaseEvaluator(ABC):
         """Initialize evaluator with configuration."""
         self.config = config
 
+    async def setup(self) -> None:
+        """加载此评估器所需的 GPU 模型。子类可重写。"""
+        pass
+
+    async def teardown(self) -> None:
+        """释放 GPU 模型。子类可重写。"""
+        pass
+
     @abstractmethod
     async def evaluate(
         self,

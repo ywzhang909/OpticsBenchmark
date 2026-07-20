@@ -11,6 +11,8 @@ In addition to raw similarity, keyword coverage measures how well a
 predicted output covers the important terms present in the reference.
 """
 
+import argparse
+import json
 import re
 from collections import Counter
 from typing import List, Set
@@ -220,9 +222,6 @@ def keyword_coverage(pred_text: str, gold_keywords: List[str]) -> dict:
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="Jaccard Similarity & Keyword Coverage")
     parser.add_argument("--s1", type=str, required=True, help="First text")
     parser.add_argument("--s2", type=str, required=True, help="Second text")

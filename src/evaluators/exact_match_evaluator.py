@@ -54,7 +54,7 @@ class ExactMatchEvaluator(BaseEvaluator):
                 execution_time=time.time() - start_time,
             )
         except Exception as e:
-            from src.utils.logger import logger
+            from src.utils import logger
             logger.error(f"Error in ExactMatchEvaluator for task {task_id}: {e}")
             return EvaluationResult(
                 task_id=task_id,

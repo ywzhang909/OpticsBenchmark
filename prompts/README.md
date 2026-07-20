@@ -13,13 +13,8 @@ prompts/
 ├── system/                        # Agent system prompts (role definition)
 │   ├── optical_agent.txt         # Optical design & engineering agent
 │   └── research_agent.txt        # Academic research & paper analysis agent
-├── templates/                     # Task-specific prompt templates (Handlebars)
-│   ├── lens_design.txt           # Lens design optimization
-│   ├── system_analysis.txt       # Optical system performance analysis
-│   ├── paper_review.txt          # Academic paper review
-│   ├── paper_retrieval.txt       # Paper retrieval & citation
-│   ├── multi_doc_summary.txt     # Multi-document summarization
-│   └── research_overview.txt     # Research field overview
+├── templates/                     # Task-specific prompt templates
+│   └── paper_review.txt          # Paper review task template
 ├── paper_info_extract/            # Paper info extraction task
 │   └── zero-shot_v1.0.txt       # Zero-shot extraction prompt
 ├── paper_review/                  # Paper review task
@@ -61,16 +56,13 @@ Define the agent's role, expertise, work principles, and output format. They are
 
 ## Task Prompt Templates (`templates/`)
 
-Handlebars-style templates with `{{variable}}` and `{{#each}}` constructs. Variables are injected from task YAML configs (`configs/tasks/*.yaml`) at runtime.
+Currently contains one task-specific prompt template. Additional templates are planned.
 
-| Template | Task | Variables | Language |
-|----------|------|-----------|----------|
-| `lens_design.txt` | Lens design optimization | `focal_length`, `f_number`, `field_of_view`, `working_distance`, `wavelength_range`, `mtf_frequency`, `mtf_target`, `wavefront_error`, `distortion_target`, `transmission_target`, `constraints` | Chinese |
-| `system_analysis.txt` | Optical system analysis | `system_type`, `application`, `entrance_pupil`, `focal_length`, `lens_file`, `system_data`, `analysis_items` | Chinese |
-| `paper_review.txt` | Paper review & critique | `paper_id`, `title`, `authors`, `venue`, `year`, `paper_content` | Chinese |
-| `paper_retrieval.txt` | Paper retrieval & citation | `topic`, `time_range`, `specific_keywords`, `query` | Chinese |
-| `multi_doc_summary.txt` | Multi-document summarization | `topic`, `num_documents`, `total_length`, `document_sources`, `summary_type`, `documents` | Chinese |
-| `research_overview.txt` | Research field overview | `field`, `subfields`, `time_range`, `language`, `research_topic` | Chinese |
+| Template | Task | Language |
+|----------|------|----------|
+| `paper_review.txt` | Paper review & critique | Chinese |
+
+Additional templates are planned: `lens_design.txt`, `system_analysis.txt`, `paper_retrieval.txt`, `multi_doc_summary.txt`, `research_overview.txt`.
 
 ### Template Features
 
@@ -109,17 +101,15 @@ Agent config                         Task config
          │                                  │
          ▼                                  ▼
 ┌─────────────────┐            ┌──────────────────────────┐
-│ optical_agent   │◄───────────│ lens_design.yaml         │
+│ optical_agent   │◄───────────│ paper_info_extract.yaml  │
 │ research_agent  │            │ paper_review.yaml        │
-└─────────────────┘            │ system_analysis.yaml    │
+└─────────────────┘            │ optics_question_answer.yaml│
                                │   ...                    │
        ┌───────────────────────┤                          │
        │                       │ template_file            │
        ▼                       └──────────────────────────┘
 ┌─────────────────┐
-│ lens_design.txt │  ← Handlebars template with {{variables}}
-│ paper_review.txt│
-│   ...           │
+│ paper_review.txt│  ← Handlebars template with {{variables}}
 └─────────────────┘
        │
        ▼

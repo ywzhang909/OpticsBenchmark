@@ -2,7 +2,7 @@
 
 **Path:** `src/` — Core Python package for OptiS Benchmark.
 
-Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. Agent implementations (7 LLM providers), metric evaluators (6 types), pure-math algorithms (13 modules), execution sandboxes, and CLI utilities are organized into 7 subpackages.
+Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. Agent implementations (7 LLM providers), metric evaluators (4 types), pure-math algorithms (12 modules), LLM abstraction layer (8 models, 7 providers), execution sandboxes, and CLI utilities are organized into 8 subpackages.
 
 ---
 
@@ -11,22 +11,19 @@ Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, 
 ```
 src/
 ├── __init__.py               # Package root; re-exports core symbols; __version__ = "1.0.0"
-├── main.py                   # Phase 1 CLI: run agents to generate outputs
-├── eval.py                   # Phase 2 CLI: evaluate agent outputs against gold answers
+├── main.py                   # Phase 1 CLI: run agents to generate outputs (307 lines)
+├── eval.py                   # Phase 2 CLI: evaluate agent outputs against gold answers (377 lines)
+├── llm_pred.py               # LLM prediction runner (169 lines)
 │
 ├── core/                     # Pipeline orchestration
 │   ├── __init__.py
-│   ├── agent.py              # 1281 lines — BaseAgent ABC + 7 LLM providers
+│   ├── agent.py              # 1306 lines — BaseAgent ABC + 7 LLM providers
 │   ├── config.py             # TaskConfig dataclass (YAML-loaded)
 │   ├── llm_judge.py          # LLM-as-judge evaluator (PluginEval Layer 2)
-│   └── runner.py             # Async AgentRunner with semaphore concurrency
+│   ├── llm_runner.py         # LLMPredRunner for prediction
+│   └── runner.py             # Async AgentRunner with semaphore concurrency (259 lines)
 │
-├── environments/              # Execution sandboxes
-│   ├── __init__.py
-│   ├── base_env.py           # BaseEnvironment ABC + LocalEnvironment (subprocess)
-│   └── zos_env.py            # ZOSAPIEnvironment — Zemax OpticStudio stub (PythonNET)
-│
-├── evaluators/                # Metric evaluators
+├── evaluators/               # Metric evaluators
 │   ├── __init__.py
 │   ├── base.py               # BaseEvaluator ABC
 │   ├── factory.py            # create_evaluator() — config-driven factory
@@ -43,7 +40,7 @@ src/
 │       ├── bleu_scorer.py
 │       └── citation_scorer.py
 │
-├── algorithm/                 # Pure-math evaluation algorithms (no side effects)
+├── algorithm/                # Pure-math evaluation algorithms (12 modules)
 │   ├── __init__.py
 │   ├── em_eval_utils.py          # Text normalization + exact match
 │   ├── rouge_eval_utils.py       # ROUGE-1/2/L via rouge_score library
@@ -56,7 +53,34 @@ src/
 │   ├── edit_distance_utils.py    # Levenshtein, WER, normalized edit similarity
 │   ├── jaccard_similarity_utils.py   # Jaccard, Dice, keyword F1
 │   ├── hungarian_algorithm_utils.py  # Optimal assignment via scipy
-│   └── sentence_similarity_utils.py  # Transformer embedder (BAAI/bge-m3)
+│   ├── sentence_similarity_utils.py  # Transformer embedder (BAAI/bge-m3)
+│   └── model_registry.py            # Model registry for evaluation
+│
+├── llm/                      # LLM abstraction layer (8 models, 7 providers)
+│   ├── __init__.py
+│   ├── base.py               # BaseLLM ABC (38 lines)
+│   ├── models/               # Model-specific LLM implementations
+│   │   ├── ClaudeLLM.py
+│   │   ├── DeepSeekLLM.py
+│   │   ├── GeminiLLM.py
+│   │   ├── GroqLLM.py
+│   │   ├── LlamaLLM.py
+│   │   ├── MistralLLM.py
+│   │   ├── OllamaLLM.py
+│   │   └── QwenLLM.py
+│   └── providers/            # Provider-specific API clients
+│       ├── AnthropicProvider.py
+│       ├── BedrockProvider.py
+│       ├── GoogleProvider.py
+│       ├── GroqProvider.py
+│       ├── OllamaProvider.py
+│       ├── OpenAIProvider.py
+│       └── TogetherAIProvider.py
+│
+├── environments/              # Execution sandboxes
+│   ├── __init__.py
+│   ├── base_env.py           # BaseEnvironment ABC + LocalEnvironment (subprocess)
+│   └── zos_env.py            # ZOSAPIEnvironment — Zemax OpticStudio stub (PythonNET)
 │
 ├── module/                    # Shared data structures
 │   ├── __init__.py
@@ -115,10 +139,11 @@ src/
 
 | File | Key Symbols | Description |
 |------|-------------|-------------|
-| `agent.py` | `BaseAgent` (ABC), `AgentConfig`, `AgentOutput`, `Message`, `ToolCall`, `create_agent()` | Agent interface + 7 LLM provider implementations |
+| `agent.py` | `BaseAgent` (ABC), `AgentConfig`, `AgentOutput`, `Message`, `ToolCall`, `create_agent()` | Agent interface + 7 LLM provider implementations (1306 lines) |
 | `config.py` | `TaskConfig` | YAML-loaded task configuration dataclass |
-| `runner.py` | `AgentRunner`, `RunnerConfig`, `TaskInstance` | Async orchestrator with semaphore-based concurrency |
+| `runner.py` | `AgentRunner`, `RunnerConfig`, `TaskInstance` | Async orchestrator with semaphore-based concurrency (259 lines) |
 | `llm_judge.py` | `LLMJudge`, `JudgePromptBuilder`, `Rubric`, `DEFAULT_RUBRICS` | LLM-as-judge evaluator with structured rubrics |
+| `llm_runner.py` | `LLMPredRunner` | LLM prediction runner |
 
 **7 LLM Providers** (in `agent.py`):
 
@@ -194,6 +219,19 @@ gold_sentences     ───┘                                            │
 | `jaccard_similarity_utils` | Jaccard, Dice, keyword F1 | none (pure Python) |
 | `hungarian_algorithm_utils` | `hungarian_match()` | `scipy` |
 | `sentence_similarity_utils` | `SentenceEmbedder`, `compute_similarity_matrix()` | `transformers`, `torch` |
+| `model_registry` | Model registry for evaluation | none |
+
+---
+
+### `llm/` — LLM Abstraction Layer
+
+Separate abstraction layer from `core/agent.py`, providing model-specific and provider-specific implementations.
+
+| Module | Key Symbols | Description |
+|--------|-------------|-------------|
+| `base.py` | `BaseLLM` (ABC) | Base LLM interface (38 lines) |
+| `models/` | `ClaudeLLM`, `DeepSeekLLM`, `GeminiLLM`, `GroqLLM`, `LlamaLLM`, `MistralLLM`, `OllamaLLM`, `QwenLLM` | Model-specific LLM implementations |
+| `providers/` | `AnthropicProvider`, `BedrockProvider`, `GoogleProvider`, `GroqProvider`, `OllamaProvider`, `OpenAIProvider`, `TogetherAIProvider` | Provider-specific API clients |
 
 ---
 
@@ -240,20 +278,19 @@ class AggregatedResults:
 # Phase 1: Run agent on tasks
 uv run python src/main.py \
   -a configs/agents/openai/gpt-4.yaml \
-  -t lens_design
+  -t paper_info_extract
 
 # Phase 2: Evaluate agent outputs
 uv run python src/eval.py \
-  --agent-output results/agent_outputs/agent_output.json \
-  --eval-config configs/evaluations/paper_info_extract.yaml
+  -i results/agent_outputs.jsonl \
+  -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \
+  -e configs/evaluations/paper_info_extract.yaml
 
 # Interactive LLM provider comparison
 uv run python -m src.tools.quick_llm_selector
 
 # Generate HTML report from results
-uv run python src/utils/generate_report.py \
-  --input results/evaluation_results.json \
-  --output report.html
+uv run python src/utils/generate_report.py results/eval_results.json --format html
 ```
 
 ---
@@ -268,6 +305,7 @@ eval.py  ──► core/runner ──► evaluators/factory ──► evaluators
               └── utils/ ──► logger.py, parser.py            └── helpers ──► algorithm/
                                                                   (sentence embedding, hungarian)
 
+llm_pred.py ──► llm/* ──► core/agent
 environments/base_env.py  ◄── environments/zos_env.py
 tools/quick_llm_selector  ──► core/agent (factory)
 module/result.py          ◄── used by evaluators + eval.py
@@ -277,8 +315,8 @@ module/result.py          ◄── used by evaluators + eval.py
 
 ## Known Issues
 
-- `src/algorithm/rouge_eval_utils.py` imports `scripts.utils.em_eval_utils` (outside the installable package) — packaging issue.
 - `ZOSAPIEnvironment` high-level methods return placeholder data; real integration requires PythonNET + Zemax OpticStudio.
 - `utils/general.py` is an empty placeholder.
 - No `BaseAgent` implementation for `AgentProvider.LOCAL`.
 - Agent factory (`create_agent()`) is hardcoded — no plugin/discovery mechanism.
+- `llm/` abstraction layer exists separately from `core/agent.py` — potential duplication.

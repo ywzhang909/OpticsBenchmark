@@ -1,27 +1,38 @@
-import torch
-import re
+import argparse
 import copy
-import numpy as np
-from tqdm import tqdm
+import json
+import re
+import tempfile
+
+import torch
 from nltk import sent_tokenize
-from src.utils import logger
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
 )
 
+from src.algorithm.model_registry import model_registry
+from src.utils.logger import logger
+
 OSU_AUTOAIS_MODEL = "osunlp/attrscore-flan-t5-xl"
-claim_autoais_model = None
-claim_autoais_tokenizer = None
+_CITATION_NLI_KEY = f"citation_nli:{OSU_AUTOAIS_MODEL}"
+_CITATION_TOKENIZER_KEY = f"citation_nli_tokenizer:{OSU_AUTOAIS_MODEL}"
 input_prompt = "As an Attribution Validator, your task is to verify whether a given reference can support the given claim. A claim can be either a plain sentence or a question followed by its answer. Specifically, your response should clearly indicate the relationship: Attributable, Contradictory or Extrapolatory. A contradictory error occurs when you can infer that the answer contradicts the fact presented in the context, while an extrapolatory error means that you cannot infer the correctness of the answer based on the information provided in the context. \n\nClaim: {claim}\n Reference: {output}"
 
 def get_max_memory():
-    """Get the maximum memory available for the current GPU for loading models."""
-    free_in_GB = int(torch.cuda.mem_get_info()[0] / 1024**3)
-    max_memory = f"{free_in_GB - 6}GB"
+    """Get the maximum memory available across all GPUs for loading models."""
     n_gpus = torch.cuda.device_count()
-    max_memory = dict.fromkeys(range(n_gpus), max_memory)
-    return max_memory
+    total_free = sum(
+        int(torch.cuda.mem_get_info(i)[0] / 1024**3) for i in range(n_gpus)
+    )
+    per_gpu = max(total_free // n_gpus - 1, 1)
+    if total_free // n_gpus < 2:
+        logger.warning(
+            f"GPU average free memory ({total_free // n_gpus}GB) < 2GB safety margin. "
+            f"Allocating {per_gpu}GB per GPU. "
+            f"Consider stopping other GPU processes (e.g. VLLM)."
+        )
+    return dict.fromkeys(range(n_gpus), f"{per_gpu}GB")
 
 def remove_citations(text):
     """
@@ -80,32 +91,56 @@ def extract_citations(text):
     citations = [f"[{i}]" for i in citations]
     return citations
 
+
+def _get_citation_model():
+    """获取或创建 citation NLI 模型（通过 ModelRegistry 缓存）。"""
+    def _loader():
+        offload_dir = tempfile.mkdtemp(prefix="citation_offload_")
+        return AutoModelForSeq2SeqLM.from_pretrained(
+            OSU_AUTOAIS_MODEL,
+            dtype=torch.bfloat16,
+            max_memory=get_max_memory(),
+            device_map="auto",
+            offload_folder=offload_dir,
+        )
+    return model_registry.get_or_load(_CITATION_NLI_KEY, _loader)
+
+
+def _get_citation_tokenizer():
+    """获取或创建 citation NLI tokenizer（通过 ModelRegistry 缓存）。"""
+    return model_registry.get_or_load(
+        _CITATION_TOKENIZER_KEY,
+        lambda: AutoTokenizer.from_pretrained(OSU_AUTOAIS_MODEL, use_fast=False),
+    )
+
+
+def unload_citation_model() -> None:
+    """显式卸载 citation NLI 模型，释放 GPU 显存。"""
+    model_registry.unload(_CITATION_NLI_KEY)
+    model_registry.unload(_CITATION_TOKENIZER_KEY)
+
+
 def _run_nli_autoais(passage, claim):
     """
     Run inference for assessing AIS between a premise and hypothesis.
     Adapted from https://github.com/google-research-datasets/Attributed-QA/blob/main/evaluation.py
     """
-    # global autoais_model, autoais_tokenizer
-    # input_text = "premise: {} hypothesis: {}".format(passage, claim)
-    # input_ids = autoais_tokenizer(input_text, return_tensors="pt").input_ids.to(autoais_model.device)
-    # with torch.inference_mode():
-    #     outputs = autoais_model.generate(input_ids, max_new_tokens=10)
-    # result = autoais_tokenizer.decode(outputs[0], skip_special_tokens=True)
-    # inference = 1 if result == "1" else 0
-    global claim_autoais_model, claim_autoais_tokenizer
+    autoais_model = _get_citation_model()
+    autoais_tokenizer = _get_citation_tokenizer()
     input_text = input_prompt.format_map({"output": passage, "claim": claim})
-    input_ids = claim_autoais_tokenizer(input_text, return_tensors="pt").input_ids.to(
-        claim_autoais_model.device
+    input_ids = autoais_tokenizer(input_text, return_tensors="pt").input_ids.to(
+        autoais_model.device
     )
     with torch.inference_mode():
-        outputs = claim_autoais_model.generate(input_ids, max_new_tokens=10)
-    result = claim_autoais_tokenizer.decode(outputs[0], skip_special_tokens=True)
+        outputs = autoais_model.generate(input_ids, max_new_tokens=10)
+    result = autoais_tokenizer.decode(outputs[0], skip_special_tokens=True)
     if result == "Attributable":
         inference = 1.0
     else:
         inference = 0.0
 
     return inference
+
 
 def compute_citation_f1(pred_answer, citations, at_most_citations=None):
     """
@@ -116,18 +151,8 @@ def compute_citation_f1(pred_answer, citations, at_most_citations=None):
               - docs should be a list of items with fields `title` and `text` (or `phrase` and `sent` for QA-extracted docs)
         citation: check citations and use the corresponding references.
     """
-
-    global claim_autoais_model, claim_autoais_tokenizer
-
-    if claim_autoais_model is None:
-        logger.info("Loading Claims AutoAIS model...")
-        claim_autoais_model = AutoModelForSeq2SeqLM.from_pretrained(
-            OSU_AUTOAIS_MODEL,
-            torch_dtype=torch.bfloat16,
-            max_memory=get_max_memory(),
-            device_map="auto",
-        )
-        claim_autoais_tokenizer = AutoTokenizer.from_pretrained(OSU_AUTOAIS_MODEL, use_fast=False)
+    _get_citation_model()
+    _get_citation_tokenizer()
 
     logger.info("Running AutoAIS...")
 
@@ -257,9 +282,6 @@ def compute_citation_f1(pred_answer, citations, at_most_citations=None):
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="Citation F1 Evaluation (AutoAIS)")
     parser.add_argument("--pred", type=str, required=True, help="Predicted answer with citations")
     parser.add_argument(

@@ -3,10 +3,18 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from src.algorithm.bertScore_eval_utils import _get_scorer, unload_bert_scorer
 from src.module import AggregatedResults, EvaluationResult
+from src.utils import logger
 
 from .base import BaseEvaluator
-from .helpers import _get_sentence_embedder, _try_parse_json, normalize_dict_key, sentenceMatch
+from .helpers import (
+    _get_sentence_embedder,
+    _try_parse_json,
+    normalize_dict_key,
+    sentenceMatch,
+    unload_sentence_embedder,
+)
 from .scorer import BERTScoreScorer
 
 
@@ -17,6 +25,20 @@ class BertScoreEvaluator(BaseEvaluator):
     Computes BERTScore precision, recall, and F1 via BERTScoreScorer.
     Supports both direct string input and structured dict fields (via info_names config).
     """
+
+    async def setup(self) -> None:
+        """预加载 BERTScorer 和 SentenceEmbedder 模型。"""
+        model_name = self.config.get("model_name", "roberta-large")
+        match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
+        _get_scorer(model_name)
+        _get_sentence_embedder(match_model)
+
+    async def teardown(self) -> None:
+        """释放 BERTScorer 和 SentenceEmbedder 模型，回收 GPU 显存。"""
+        model_name = self.config.get("model_name", "roberta-large")
+        match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
+        unload_bert_scorer(model_name)
+        unload_sentence_embedder(match_model)
 
     async def evaluate(
         self,
@@ -77,7 +99,6 @@ class BertScoreEvaluator(BaseEvaluator):
                 execution_time=time.time() - start_time,
             )
         except Exception as e:
-            from src.utils.logger import logger
             logger.error(f"Error in BertScoreEvaluator for task {task_id}: {e}")
             return EvaluationResult(
                 task_id=task_id,

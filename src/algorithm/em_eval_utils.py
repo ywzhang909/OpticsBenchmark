@@ -6,6 +6,8 @@ This module provides utility functions for exact match evaluation,
 including text normalization for consistent comparison.
 """
 
+import argparse
+import json
 import re
 import string
 
@@ -65,14 +67,10 @@ def compute_exact_match(a_gold, a_pred):
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(description="Exact Match Evaluation")
     parser.add_argument("--gold", type=str, required=True, help="Gold/reference text")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     args = parser.parse_args()
-
-    import json
 
     result = {
         "exact_match": compute_exact_match(args.gold, args.pred),

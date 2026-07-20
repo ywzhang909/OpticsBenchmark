@@ -20,7 +20,7 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.runner import AgentRunner, RunnerConfig  # noqa: E402
-from src.utils.logger import logger, setup_logger  # noqa: E402
+from src.utils import logger, setup_logger  # noqa: E402
 from src.utils.parser import ConfigParser  # noqa: E402
 
 
@@ -51,7 +51,8 @@ Examples:
         "-a",
         "--agent-config",
         type=str,
-        required=True,
+        # required=True,
+        default="configs/agents/openai/qwen3.5-plus.yaml",
         help="Path to agent configuration file (YAML)",
     )
 
@@ -61,6 +62,7 @@ Examples:
         "-t",
         "--task-set",
         type=str,
+        default="configs/tasks/paper_info_extract.yaml",
         help="Task set name (without .yaml extension) or path to task config",
     )
     task_group.add_argument(
@@ -120,7 +122,7 @@ Examples:
     sys_group.add_argument(
         "--system-config",
         type=str,
-        default="configs/system.yaml",
+        default="configs/system/template.yaml",
         help="Path to system configuration file (default: configs/system.yaml)",
     )
 

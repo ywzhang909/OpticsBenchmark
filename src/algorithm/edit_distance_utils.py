@@ -149,9 +149,6 @@ def word_edit_similarity(pred: str, ref: str) -> float:
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="Edit Distance Evaluation")
     parser.add_argument("--s1", type=str, required=True, help="First string")
     parser.add_argument("--s2", type=str, required=True, help="Second string")
