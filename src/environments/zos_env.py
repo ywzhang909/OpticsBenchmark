@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import socket
+import subprocess
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -163,8 +164,6 @@ class ZOSAPIEnvironment(BaseEnvironment):
 
     async def _execute_shell(self, command: str) -> dict[str, Any]:
         """Execute a shell command."""
-        import subprocess
-
         try:
             result = subprocess.run(
                 command,

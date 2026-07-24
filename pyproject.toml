@@ -64,12 +64,17 @@ dev = [
     "mypy>=1.7.0",
     "pre-commit>=3.5.0",
 ]
+providers = [
+    "boto3>=1.28.0",
+    "google-genai>=1.0.0",
+    "groq>=0.4.0",
+]
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=2.0.0",
 ]
 all = [
-    "optis_benchmark[dev,docs]",
+    "optis_benchmark[dev,providers,docs]",
 ]
 
 [project.scripts]

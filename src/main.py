@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+import traceback
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -297,8 +298,6 @@ def main() -> int:
         return 130
     except Exception as e:
         logger.error(f"Fatal error: {e}")
-        import traceback
-
         traceback.print_exc()
         return 1
 

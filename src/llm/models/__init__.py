@@ -2,24 +2,33 @@
 LLM Models - 各模型调用逻辑
 
 每个 LLM 模型类封装该模型的调用逻辑，支持通过不同 Provider 进行调用。
+使用延迟导入，缺失可选依赖时不会在模块导入阶段报错。
 """
 
-from src.llm.models.ClaudeLLM import ClaudeLLM
-from src.llm.models.DeepSeekLLM import DeepSeekLLM
-from src.llm.models.GeminiLLM import GeminiLLM
-from src.llm.models.GroqLLM import GroqLLM
-from src.llm.models.LlamaLLM import LlamaLLM
-from src.llm.models.MistralLLM import MistralLLM
-from src.llm.models.OllamaLLM import OllamaLLM
-from src.llm.models.QwenLLM import QwenLLM
+from __future__ import annotations
 
-__all__ = [
-    "QwenLLM",
-    "DeepSeekLLM",
-    "LlamaLLM",
-    "MistralLLM",
-    "GeminiLLM",
-    "ClaudeLLM",
-    "GroqLLM",
-    "OllamaLLM",
-]
+from typing import Any
+
+_MODEL_CLASSES: dict[str, str] = {
+    "QwenLLM": "src.llm.models.QwenLLM",
+    "DeepSeekLLM": "src.llm.models.DeepSeekLLM",
+    "LlamaLLM": "src.llm.models.LlamaLLM",
+    "MistralLLM": "src.llm.models.MistralLLM",
+    "GeminiLLM": "src.llm.models.GeminiLLM",
+    "ClaudeLLM": "src.llm.models.ClaudeLLM",
+    "GroqLLM": "src.llm.models.GroqLLM",
+    "OllamaLLM": "src.llm.models.OllamaLLM",
+    "GlmLLM": "src.llm.models.GlmLLM",
+}
+
+__all__ = list(_MODEL_CLASSES.keys())
+
+
+def __getattr__(name: str) -> Any:
+    """延迟导入：访问 src.llm.models.XXX 时才真正导入。"""
+    if name in _MODEL_CLASSES:
+        import importlib
+
+        mod = importlib.import_module(_MODEL_CLASSES[name])
+        return getattr(mod, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

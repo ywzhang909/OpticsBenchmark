@@ -18,6 +18,8 @@ Pure Python implementation — no external ML dependencies.
 
 from __future__ import annotations
 
+import argparse
+import json
 import math
 from collections import Counter
 from typing import Any
@@ -154,9 +156,6 @@ def compute_cider(
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="CIDEr Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")

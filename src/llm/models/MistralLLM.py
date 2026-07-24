@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from src.llm.base import BaseLLM
+from src.llm.base import BaseLLM, build_response_format
 from src.llm.providers.OpenAIProvider import OpenAIProvider
 
 
@@ -51,6 +51,11 @@ class MistralLLM(BaseLLM):
 
         request_kwargs.update(setup.get("api_params", {}))
 
+        if setup.get("response_format", False):
+            rf = build_response_format(kwargs.get("gold_answer_path"))
+            if rf:
+                request_kwargs["response_format"] = rf
+
         try:
             response = await provider.client.chat.completions.create(**request_kwargs)
             latency = time.time() - start_time
@@ -60,6 +65,7 @@ class MistralLLM(BaseLLM):
 
             usage = response.usage.model_dump() if response.usage else {}
             cost = self._calculate_cost(usage)
+            self._log_usage(usage, cost, latency)
 
             return {
                 "content": content,

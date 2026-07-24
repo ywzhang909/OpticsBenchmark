@@ -12,6 +12,7 @@ import asyncio
 import json
 import sys
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -367,8 +368,6 @@ def main() -> int:
         return 130
     except Exception as e:
         logger.error(f"Fatal error: {e}")
-        import traceback
-
         traceback.print_exc()
         return 1
 

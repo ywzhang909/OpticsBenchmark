@@ -166,7 +166,7 @@ OpticsBenchmark/
 │   │   ├── hungarian_algorithm_utils.py
 │   │   ├── sentence_similarity_utils.py
 │   │   └── citation_eval_utils.py
-│   ├── llm/                      # LLM abstraction layer (8 model classes, 7 providers)
+│   ├── llm/                      # LLM abstraction layer (9 model classes, 7 providers)
 │   │   ├── base.py               # BaseLLM ABC
 │   │   ├── models/               # Model-specific LLM implementations
 │   │   └── providers/            # Provider-specific API clients

@@ -56,13 +56,14 @@ src/
 │   ├── sentence_similarity_utils.py  # Transformer embedder (BAAI/bge-m3)
 │   └── model_registry.py            # Model registry for evaluation
 │
-├── llm/                      # LLM abstraction layer (8 models, 7 providers)
+├── llm/                      # LLM abstraction layer (9 models, 7 providers)
 │   ├── __init__.py
 │   ├── base.py               # BaseLLM ABC (38 lines)
 │   ├── models/               # Model-specific LLM implementations
 │   │   ├── ClaudeLLM.py
 │   │   ├── DeepSeekLLM.py
 │   │   ├── GeminiLLM.py
+│   │   ├── GlmLLM.py
 │   │   ├── GroqLLM.py
 │   │   ├── LlamaLLM.py
 │   │   ├── MistralLLM.py
@@ -230,7 +231,7 @@ Separate abstraction layer from `core/agent.py`, providing model-specific and pr
 | Module | Key Symbols | Description |
 |--------|-------------|-------------|
 | `base.py` | `BaseLLM` (ABC) | Base LLM interface (38 lines) |
-| `models/` | `ClaudeLLM`, `DeepSeekLLM`, `GeminiLLM`, `GroqLLM`, `LlamaLLM`, `MistralLLM`, `OllamaLLM`, `QwenLLM` | Model-specific LLM implementations |
+| `models/` | `ClaudeLLM`, `DeepSeekLLM`, `GeminiLLM`, `GlmLLM`, `GroqLLM`, `LlamaLLM`, `MistralLLM`, `OllamaLLM`, `QwenLLM` | Model-specific LLM implementations |
 | `providers/` | `AnthropicProvider`, `BedrockProvider`, `GoogleProvider`, `GroqProvider`, `OllamaProvider`, `OpenAIProvider`, `TogetherAIProvider` | Provider-specific API clients |
 
 ---

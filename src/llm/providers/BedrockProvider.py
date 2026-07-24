@@ -7,7 +7,6 @@ Bedrock Provider - 封装 AWS Bedrock boto3 客户端
 from __future__ import annotations
 
 import asyncio
-import boto3
 import json
 import os
 from typing import Any
@@ -29,7 +28,15 @@ class BedrockProvider:
             region: AWS 区域
             aws_key: AWS Access Key ID
             aws_secret: AWS Secret Access Key
+        Raises:
+            ImportError: boto3 未安装时抛出
         """
+        try:
+            import boto3
+        except ImportError:
+            raise ImportError(
+                "boto3 未安装。请运行: pip install boto3 或 uv sync --extra providers"
+            )
         self._client = boto3.client(
             "bedrock-runtime",
             region_name=region,

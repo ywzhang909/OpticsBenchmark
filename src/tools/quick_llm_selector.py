@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 import time
 from dataclasses import dataclass
@@ -16,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+from src.core.agent import AgentConfig, Message, create_agent
 
 
 class OutputFormat(Enum):
@@ -130,8 +133,6 @@ class QuickLLMSelector:
         system_prompt: str = "",
     ) -> dict:
         """Test a single provider with a prompt."""
-        from src.core.agent import AgentConfig, Message, create_agent
-
         # Load config
         config = AgentConfig.from_yaml(provider.config_path)
 
@@ -237,8 +238,6 @@ class QuickLLMSelector:
 
     def format_result_json(self, result: dict) -> str:
         """Format result as JSON."""
-        import json
-
         return json.dumps(result, indent=2)
 
 

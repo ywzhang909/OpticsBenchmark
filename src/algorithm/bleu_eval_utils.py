@@ -11,6 +11,8 @@ BLEU complements ROUGE (which is recall-oriented) by being precision-oriented.
 Together they provide a balanced view of text generation quality.
 """
 
+import argparse
+import json
 import math
 from collections import Counter
 from typing import List
@@ -142,9 +144,6 @@ def compute_bleu(
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="BLEU Score Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")

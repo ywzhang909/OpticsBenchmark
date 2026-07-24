@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from typing import Any
+
+import numpy as np
 
 from src.algorithm.em_eval_utils import normalize_text
 from src.algorithm.hungarian_algorithm_utils import hungarian_match
@@ -25,8 +28,6 @@ def unload_sentence_embedder(model_name: str = "BAAI/bge-m3") -> None:
 
 
 def _try_parse_json(data: Any) -> Any:
-    import json
-
     if isinstance(data, str):
         try:
             return json.loads(data)
@@ -54,7 +55,6 @@ def sentenceMatch(
         embedder = _get_sentence_embedder(model_name)
     pred_embs = embedder.encode(pred_sentences)
     gold_embs = embedder.encode(gold_sentences)
-    import numpy as np
 
     sim_matrix = np.dot(pred_embs, gold_embs.T).astype(np.float32)
     assignments, _ = hungarian_match(sim_matrix)

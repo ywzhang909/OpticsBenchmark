@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from src.llm.base import BaseLLM
+from src.llm.base import BaseLLM, build_response_format
 from src.llm.providers.AnthropicProvider import AnthropicProvider
 
 
@@ -77,6 +77,17 @@ class ClaudeLLM(BaseLLM):
         # api_params 覆盖
         request_kwargs.update(setup.get("api_params", {}))
 
+        if setup.get("response_format", False):
+            rf = build_response_format(kwargs.get("gold_answer_path"))
+            if rf:
+                js = rf["json_schema"]
+                request_kwargs["output_config"] = {
+                    "format": {
+                        "type": "json_schema",
+                        "schema": js["schema"],
+                    }
+                }
+
         try:
             response = await provider.client.messages.create(**request_kwargs)
             latency = time.time() - start_time
@@ -91,6 +102,7 @@ class ClaudeLLM(BaseLLM):
                 "output_tokens": response.usage.output_tokens,
             }
             cost = self._calculate_cost(usage)
+            self._log_usage(usage, cost, latency)
 
             return {
                 "content": content,
@@ -106,6 +118,17 @@ class ClaudeLLM(BaseLLM):
                 "latency": time.time() - start_time,
                 "error": str(e),
             }
+
+    def _calculate_cost(self, usage: dict[str, Any]) -> float:
+        input_cost_per_1k = 0.003
+        output_cost_per_1k = 0.015
+
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+
+        return (input_tokens / 1000) * input_cost_per_1k + (
+            output_tokens / 1000
+        ) * output_cost_per_1k
 
     def _calculate_cost(self, usage: dict[str, Any]) -> float:
         input_cost_per_1k = 0.003

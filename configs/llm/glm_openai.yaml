@@ -1,21 +1,24 @@
 # =============================================================================
-# Qwen 3.5 Plus - OpenAI Provider Configuration
+# GLM (智谱AI) - OpenAI Provider Configuration
 # OptiS Benchmark - LLM Prediction
 # =============================================================================
+#
+# Uses OpenAI SDK to call Zhipu GLM API.
+# Endpoint: https://open.bigmodel.cn/api/paas/v4
 
 llm:
   provider:
     type: "openai"
-    api_key: "${QWEN_API_KEY}"
-    base_url: "https://ws-aj78yn2iu5pmdg27.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    api_key: "${GLM_API_KEY}"
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
 
   model:
-    type: "qwen"
-    name: "qwen-long"
+    type: "glm"
+    name: "glm-4.5-air"
 
   setup:
     temperature: 0.0
-    max_completion_tokens: 4096
+    max_tokens: 4096
     top_p: 1.0
     frequency_penalty: 0.0
     presence_penalty: 0.0

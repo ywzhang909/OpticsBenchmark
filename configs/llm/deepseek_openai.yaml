@@ -1,33 +1,24 @@
 # =============================================================================
-# Qwen 3.5 Plus - OpenAI Provider Configuration
+# DeepSeek V4 Pro - OpenAI Provider Configuration
 # OptiS Benchmark - LLM Prediction
 # =============================================================================
 
 llm:
   provider:
     type: "openai"
-    api_key: "${QWEN_API_KEY}"
-    base_url: "https://ws-aj78yn2iu5pmdg27.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    api_key: "${DEEPSEEK_API_KEY}"
+    base_url: "https://api.deepseek.com/v1"
 
   model:
-    type: "qwen"
-    name: "qwen-long"
+    type: "deepseek"
+    name: "deepseek-v4-pro"
 
   setup:
     temperature: 0.0
     max_completion_tokens: 4096
     top_p: 1.0
-    frequency_penalty: 0.0
-    presence_penalty: 0.0
 
     response_format: true
-
-    # tools:
-    #   web_search: false
-    #   file_search: []
-    #   tool_search: {}
-    #   mcp_server: {}
-    # tool_choice: "auto"
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"

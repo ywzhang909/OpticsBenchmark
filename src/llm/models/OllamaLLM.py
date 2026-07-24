@@ -51,6 +51,12 @@ class OllamaLLM(BaseLLM):
             },
         }
 
+        # Ollama 本地模型不支持 response_format 结构化输出
+        # if setup.get("response_format", False):
+        #     rf = build_response_format(kwargs.get("gold_answer_path"))
+        #     if rf:
+        #         request_body["format"] = rf["json_schema"]["schema"]
+
         try:
             response = await provider.client.post("/api/chat", json=request_body)
             response.raise_for_status()
@@ -64,11 +70,13 @@ class OllamaLLM(BaseLLM):
                 "prompt_tokens": data.get("prompt_eval_count", 0),
                 "completion_tokens": data.get("eval_count", 0),
             }
+            cost = 0.0
+            self._log_usage(usage, cost, latency)
 
             return {
                 "content": content,
                 "usage": usage,
-                "cost": 0.0,
+                "cost": cost,
                 "latency": latency,
             }
         except Exception as e:

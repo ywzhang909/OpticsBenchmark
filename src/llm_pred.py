@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+import traceback
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -53,7 +54,7 @@ Examples:
         "--config",
         type=str,
         # required=True,
-        default="configs/llm/qwen_openai.yaml",
+        default="configs/llm/glm_openai.yaml",
         help="LLM config file path (YAML)",
     )
     parser.add_argument(
@@ -160,7 +161,6 @@ def main() -> int:
         return 130
     except Exception as e:
         logger.error(f"Fatal error: {e}")
-        import traceback
         traceback.print_exc()
         return 1
 

@@ -8,11 +8,11 @@ BAAI/bge-m3, and it can be easily swapped to any other model by changing
 the ``model_name`` parameter.
 """
 
+from __future__ import annotations
+
 import argparse
 import gc
 import json
-
-from __future__ import annotations
 
 import numpy as np
 import torch

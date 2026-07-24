@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any
 
 import yaml
 
+from src.llm import create_llm, create_provider
 from src.utils import logger
 
 # ---------------------------------------------------------------------------
@@ -150,8 +152,6 @@ class LLMPredRunner:
 
     async def setup(self) -> None:
         """创建 Provider 和 LLM 实例。"""
-        from src.llm import create_llm, create_provider
-
         self.provider = create_provider(self.config.provider_config)
         self.llm = create_llm(self.config.model_config)
         self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
@@ -189,6 +189,20 @@ class LLMPredRunner:
         if prompt_file:
             prompt = self._load_prompt(prompt_file)
 
+        # 加载 gold_answer，构建 title → id 映射（忽略大小写）
+        gold_answer_path = self.config.task_config.get("gold_answer_path", "")
+        title_to_id: dict[str, int] = {}
+        if gold_answer_path:
+            ga_path = Path(gold_answer_path)
+            if not ga_path.exists():
+                raise FileNotFoundError(f"Gold answer 文件不存在: {gold_answer_path}")
+            with open(ga_path, encoding="utf-8") as f:
+                gold_records = json.load(f)
+            for gr in gold_records:
+                title = gr.get("data", {}).get("title", "")
+                if title:
+                    title_to_id[title.lower()] = gr.get("id", -1)
+
         # 限制样本数
         max_samples = self.config.task_config.get("max_samples")
         if max_samples is not None:
@@ -196,13 +210,20 @@ class LLMPredRunner:
 
         # 打乱顺序
         if self.config.task_config.get("shuffle", False):
-            import random
             random.shuffle(records)
 
         tasks = []
         for i, record in enumerate(records):
+            title = record.get("title", "")
+            if title_to_id:
+                task_id = title_to_id.get(title.lower())
+                if task_id is None:
+                    logger.warning(f"无法匹配 title '{title}'，跳过该记录")
+                    continue
+            else:
+                task_id = i + 1
             tasks.append({
-                "task_id": i + 1,
+                "task_id": task_id,
                 "prompt": prompt,
                 "record": record,
             })
@@ -260,21 +281,26 @@ class LLMPredRunner:
         try:
             # 构建消息
             messages: list[dict[str, str]] = []
+
+            record = task["record"]
+            if isinstance(record, dict):
+                for key, value in record.items():
+                    messages.append({key: value})
+            elif isinstance(record, str):
+                messages.append({"record": record})
+
             prompt = task.get("prompt", "")
             if prompt:
-                messages.append({"role": "system", "content": prompt})
-
-            # 用户消息
-            record = task["record"]
-            user_content = record.get("instruction", record.get("content", ""))
-            messages.append({"role": "user", "content": user_content})
+                messages.append({"prompt": prompt})
 
             # 调用 LLM
             setup = self.config.setup_config
+            gold_answer_path = self.config.task_config.get("gold_answer_path")
             result = await self.llm.chat(
                 messages=messages,
                 provider=self.provider,
                 setup=setup,
+                gold_answer_path=gold_answer_path,
             )
 
             latency = time.time() - start_time

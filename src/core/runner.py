@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -148,8 +149,6 @@ class AgentRunner:
             tasks = tasks[: self.config.task_config.max_samples]
 
         if self.config.task_config.shuffle:
-            import random
-
             random.shuffle(tasks)
 
         return tasks
@@ -160,8 +159,6 @@ class AgentRunner:
         Returns:
             List of AgentOutput with raw agent responses.
         """
-        from loguru import logger
-
         await self.setup()
 
         tasks = self.load_tasks()
@@ -186,8 +183,6 @@ class AgentRunner:
 
     async def _execute_agent(self, task: TaskInstance) -> AgentOutput:
         """Run agent on a single task without evaluation."""
-        from loguru import logger
-
         start = time.time()
         try:
             self.agent.reset()

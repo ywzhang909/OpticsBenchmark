@@ -10,7 +10,8 @@ import time
 from typing import Any
 
 from google.genai import types
-from src.llm.base import BaseLLM
+
+from src.llm.base import BaseLLM, build_response_format
 from src.llm.providers.GoogleProvider import GoogleProvider
 
 
@@ -56,6 +57,10 @@ class GeminiLLM(BaseLLM):
                 contents.append({"role": "model", "parts": [{"text": msg["content"]}]})
 
         # 构建配置
+        rf = None
+        if setup.get("response_format", False):
+            rf = build_response_format(kwargs.get("gold_answer_path"))
+
         config = types.GenerateContentConfig(
             system_instruction=system_instruction if system_instruction else None,
             temperature=setup.get("temperature"),
@@ -80,6 +85,8 @@ class GeminiLLM(BaseLLM):
                 if setup.get("thinking")
                 else None
             ),
+            response_mime_type="application/json" if rf else None,
+            response_json_schema=rf,
         )
 
         try:
@@ -101,6 +108,7 @@ class GeminiLLM(BaseLLM):
                 ),
             }
             cost = self._calculate_cost(usage)
+            self._log_usage(usage, cost, latency)
 
             return {
                 "content": content,

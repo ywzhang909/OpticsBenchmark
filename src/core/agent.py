@@ -7,13 +7,17 @@ for different LLM providers (OpenAI, Anthropic, Google Gemini, Groq, Ollama, etc
 
 from __future__ import annotations
 
+import asyncio
+import base64
 import json
 import os
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 
@@ -334,9 +338,6 @@ class OpenAIAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to OpenAI Chat Completions API."""
-        import time
-        from urllib.parse import urlparse
-
         start_time = time.time()
 
         # Build messages for Chat Completions
@@ -521,9 +522,6 @@ class AnthropicAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to Anthropic API."""
-        import time
-        from pathlib import Path
-
         start_time = time.time()
 
         # Build messages for API format
@@ -540,7 +538,6 @@ class AnthropicAgent(BaseAgent):
                 file_path_obj = Path(self.file_path)
                 content = msg.content
                 if file_path_obj.exists():
-                    import base64
                     with file_path_obj.open("rb") as fh:
                         encoded = base64.b64encode(fh.read()).decode("utf-8")
                     media_type = (
@@ -733,8 +730,6 @@ class GoogleAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to Google Gemini API."""
-        import time
-
         from google.genai import types
 
         start_time = time.time()
@@ -901,8 +896,6 @@ class GroqAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to Groq API."""
-        import time
-
         start_time = time.time()
 
         # Convert messages to API format
@@ -1002,8 +995,6 @@ class OllamaAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to Ollama API."""
-        import time
-
         start_time = time.time()
 
         # Convert messages to Ollama format
@@ -1084,8 +1075,6 @@ class BedrockAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to AWS Bedrock API."""
-        import time
-
         start_time = time.time()
 
         # Convert messages to Bedrock format (varies by model)
@@ -1119,8 +1108,6 @@ class BedrockAgent(BaseAgent):
         response_format, first_answer = self._build_structured_output()
 
         try:
-            import asyncio
-
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(
                 None,
@@ -1196,8 +1183,6 @@ class TogetherAIAgent(BaseAgent):
         tools: list[dict] | None = None,
     ) -> AgentOutput:
         """Send chat request to Together AI API."""
-        import time
-
         start_time = time.time()
 
         # Convert messages to API format

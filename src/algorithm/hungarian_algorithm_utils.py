@@ -7,6 +7,11 @@ for BERTScore matrices using the Hungarian algorithm. The optimization
 objective is to maximize total BERTScore by minimizing (1 - BERTScore).
 """
 
+import argparse
+import csv
+import json
+import os
+
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -38,9 +43,6 @@ def hungarian_match(sim_matrix: np.ndarray) -> tuple[list[tuple[int, int]], floa
 
 
 def main():
-    import argparse
-    import json
-
     parser = argparse.ArgumentParser(description="Hungarian Algorithm — Optimal Assignment")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -52,12 +54,8 @@ def main():
     args = parser.parse_args()
 
     if args.matrix_file:
-        import os
-
         _, ext = os.path.splitext(args.matrix_file)
         if ext.lower() == ".csv":
-            import csv
-
             matrix = []
             with open(args.matrix_file, "r") as f:
                 reader = csv.reader(f)

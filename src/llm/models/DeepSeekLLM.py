@@ -7,6 +7,7 @@ DeepSeekLLM - DeepSeek 模型调用类
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
@@ -41,16 +42,82 @@ class DeepSeekLLM(BaseLLM):
         start_time = time.time()
         setup = kwargs.get("setup", {})
 
-        # DeepSeek API 使用 max_tokens 而非 max_completion_tokens
+        # 处理 messages
+        processed_messages: list[dict[str, str]] = []
+        for message in messages:
+            for key, value in message.items():
+                if key == "prompt":
+                    processed_messages.append({"role": "user", "content": value})
+                elif key == "location":
+                    file_object = await provider.client.files.create(
+                        file=Path(value),
+                        purpose="file-extract"
+                    )
+                    processed_messages.append({"role": "system", "content": f'fileid://{file_object.id}'})
+
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
-            "messages": messages,
-            "temperature": setup.get("temperature", 0.0),
-            "max_tokens": setup.get("max_completion_tokens", 4096),
+            "messages": processed_messages,
+            "thinking": setup.get("thinking", "disabled"),
+            "reasoning_effort": setup.get("reasoning_effort", "max"),
+            "stream": setup.get("stream", False),
+            "temperature": setup.get("temperature", 1.0),
+            "max_tokens": setup.get("max_tokens", 4096),
             "top_p": setup.get("top_p", 1.0),
+            "logprobs": setup.get("logprobs", False),
+            "top_logprobs": setup.get("top_logprobs", 0),
         }
 
-        request_kwargs.update(setup.get("api_params", {}))
+        if setup.get("response_format", False):
+            request_kwargs["response_format"] = {"type": "json_object"}
+
+        if setup.get("stop"):
+            request_kwargs["stop"] = setup["stop"]
+
+        tools_config = setup.get("tools", {})
+        if tools_config:
+            tools = []
+            if tools_config.get("mcp_server", {}):
+                tools.append({
+                    "type": "mcp",
+                    "server_label": tools_config["mcp_server"].get("server_label", None),
+                    "server_description": tools_config["mcp_server"].get("server_description", None),
+                    "server_url": tools_config["mcp_server"].get("server_url", None),
+                    "require_approval": tools_config["mcp_server"].get("require_approval", None),
+                })
+            if tools_config.get("web_search", False):
+                tools.append({"type": "web_search"})
+            if tools_config.get("file_search", []):
+                vector_store = await provider.client.vector_stores.create(name="knowledge_base")
+                file_ids = []
+                for file_url in tools_config["file_search"]:
+                    file_path_obj = Path(file_url)
+                    if file_path_obj.exists():
+                        file_obj = await provider.client.files.create(
+                            file=file_path_obj.open("rb"),
+                            purpose="file-extract"
+                        )
+                        file_ids.append(file_obj.id)
+                if file_ids:
+                    await provider.client.vector_stores.file_batches.create_and_poll(
+                        vector_store_id=vector_store.id,
+                        file_ids=file_ids
+                    )
+                tools.append({
+                    "type": "file_search",
+                    "vector_store_ids": [vector_store.id],
+                })
+            if tools_config.get("tool_search", {}):
+                custom_namespace = {
+                    "type": "namespace",
+                    "name": tools_config["tool_search"].get("name", "unknown"),
+                    "description": tools_config["tool_search"].get("description", "unknown"),
+                    "tools": tools,
+                }
+                request_kwargs["tools"] = [custom_namespace, {"type": "tool_search"}]
+            else:
+                request_kwargs["tools"] = tools
+            request_kwargs["tool_choice"] = setup.get("tool_choice", "auto")
 
         try:
             response = await provider.client.chat.completions.create(**request_kwargs)
@@ -61,6 +128,7 @@ class DeepSeekLLM(BaseLLM):
 
             usage = response.usage.model_dump() if response.usage else {}
             cost = self._calculate_cost(usage)
+            self._log_usage(usage, cost, latency)
 
             return {
                 "content": content,

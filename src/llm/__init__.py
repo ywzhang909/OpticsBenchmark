@@ -10,51 +10,40 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.llm.base import BaseLLM
-from src.llm.models import (
-    ClaudeLLM,
-    DeepSeekLLM,
-    GeminiLLM,
-    GroqLLM,
-    LlamaLLM,
-    MistralLLM,
-    OllamaLLM,
-    QwenLLM,
-)
-from src.llm.providers import (
-    AnthropicProvider,
-    BedrockProvider,
-    GoogleProvider,
-    GroqProvider,
-    OllamaProvider,
-    OpenAIProvider,
-    TogetherAIProvider,
-)
-
 # ---------------------------------------------------------------------------
-# Provider / LLM 类型映射
+# Provider / LLM 类型映射（延迟导入）
 # ---------------------------------------------------------------------------
 
-_PROVIDER_MAP: dict[str, type] = {
-    "openai": OpenAIProvider,
-    "anthropic": AnthropicProvider,
-    "google": GoogleProvider,
-    "groq": GroqProvider,
-    "ollama": OllamaProvider,
-    "bedrock": BedrockProvider,
-    "together": TogetherAIProvider,
+_PROVIDER_MAP: dict[str, str] = {
+    "openai": "src.llm.providers.OpenAIProvider",
+    "anthropic": "src.llm.providers.AnthropicProvider",
+    "google": "src.llm.providers.GoogleProvider",
+    "groq": "src.llm.providers.GroqProvider",
+    "ollama": "src.llm.providers.OllamaProvider",
+    "bedrock": "src.llm.providers.BedrockProvider",
+    "together": "src.llm.providers.TogetherAIProvider",
 }
 
-_LLM_MAP: dict[str, type] = {
-    "qwen": QwenLLM,
-    "deepseek": DeepSeekLLM,
-    "llama": LlamaLLM,
-    "mistral": MistralLLM,
-    "gemini": GeminiLLM,
-    "claude": ClaudeLLM,
-    "groq": GroqLLM,
-    "ollama": OllamaLLM,
+_LLM_MAP: dict[str, str] = {
+    "qwen": "src.llm.models.QwenLLM",
+    "deepseek": "src.llm.models.DeepSeekLLM",
+    "llama": "src.llm.models.LlamaLLM",
+    "mistral": "src.llm.models.MistralLLM",
+    "gemini": "src.llm.models.GeminiLLM",
+    "claude": "src.llm.models.ClaudeLLM",
+    "groq": "src.llm.models.GroqLLM",
+    "ollama": "src.llm.models.OllamaLLM",
+    "glm": "src.llm.models.GlmLLM",
 }
+
+
+def _lazy_import(dotted_path: str) -> Any:
+    """按需导入：'src.llm.providers.OpenAIProvider' -> OpenAIProvider 类。"""
+    import importlib
+
+    module_path, _, class_name = dotted_path.rpartition(".")
+    mod = importlib.import_module(module_path)
+    return getattr(mod, class_name)
 
 
 # ---------------------------------------------------------------------------
@@ -79,11 +68,11 @@ def create_provider(provider_config: dict[str, Any]) -> Any:
     if not provider_type:
         raise ValueError("provider_config 必须包含 'type' 字段")
 
-    cls = _PROVIDER_MAP.get(provider_type)
-    if cls is None:
+    dotted = _PROVIDER_MAP.get(provider_type)
+    if dotted is None:
         raise ValueError(f"不支持的 Provider 类型: {provider_type}")
 
-    # 过滤掉 type 字段，其余作为构造参数
+    cls = _lazy_import(dotted)
     kwargs = {k: v for k, v in provider_config.items() if k != "type"}
     return cls(**kwargs)
 
@@ -105,10 +94,11 @@ def create_llm(model_config: dict[str, Any]) -> Any:
     if not model_type:
         raise ValueError("model_config 必须包含 'type' 字段")
 
-    cls = _LLM_MAP.get(model_type)
-    if cls is None:
+    dotted = _LLM_MAP.get(model_type)
+    if dotted is None:
         raise ValueError(f"不支持的 LLM 模型类型: {model_type}")
 
+    cls = _lazy_import(dotted)
     model_name = model_config.get("name", "")
     return cls(model_name=model_name)
 
@@ -116,23 +106,8 @@ def create_llm(model_config: dict[str, Any]) -> Any:
 __all__ = [
     # 基类
     "BaseLLM",
-    # Provider 类
-    "OpenAIProvider",
-    "AnthropicProvider",
-    "GoogleProvider",
-    "GroqProvider",
-    "OllamaProvider",
-    "BedrockProvider",
-    "TogetherAIProvider",
-    # LLM 类
-    "QwenLLM",
-    "DeepSeekLLM",
-    "LlamaLLM",
-    "MistralLLM",
-    "GeminiLLM",
-    "ClaudeLLM",
-    "GroqLLM",
-    "OllamaLLM",
+    # 工具函数
+    "build_response_format",
     # 工厂函数
     "create_provider",
     "create_llm",

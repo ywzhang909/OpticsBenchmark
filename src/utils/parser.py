@@ -8,10 +8,13 @@ used in optical design.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 
 @dataclass
@@ -86,8 +89,6 @@ class YAMLParser:
     @staticmethod
     def read(file_path: str | Path) -> dict[str, Any]:
         """Read YAML file."""
-        import yaml
-
         with open(file_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
 
@@ -97,8 +98,6 @@ class YAMLParser:
         data: dict[str, Any],
     ) -> None:
         """Write data to YAML file."""
-        import yaml
-
         with open(file_path, "w", encoding="utf-8") as f:
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
 
@@ -116,8 +115,6 @@ class ConfigParser:
 
         Supports ${VAR_NAME} syntax.
         """
-        import os
-
         if isinstance(value, str):
 
             def replace_env(match):

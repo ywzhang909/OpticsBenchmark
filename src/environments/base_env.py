@@ -7,6 +7,7 @@ This module defines the base environment interface for optical design tasks.
 from __future__ import annotations
 
 import subprocess
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -94,8 +95,6 @@ class BaseEnvironment(ABC):
         Returns:
             EnvironmentResponse with file contents
         """
-        import time
-
         start = time.time()
 
         try:
@@ -138,8 +137,6 @@ class BaseEnvironment(ABC):
         Returns:
             EnvironmentResponse indicating success/failure
         """
-        import time
-
         start = time.time()
 
         try:
@@ -177,8 +174,6 @@ class BaseEnvironment(ABC):
         Returns:
             EnvironmentResponse with list of files
         """
-        import time
-
         start = time.time()
 
         try:
@@ -315,8 +310,6 @@ class LocalEnvironment(BaseEnvironment):
         Returns:
             EnvironmentResponse with execution results
         """
-        import time
-
         start = time.time()
 
         if timeout is None:

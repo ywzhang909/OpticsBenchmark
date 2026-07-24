@@ -7,11 +7,12 @@ QwenLLM - 通义千问模型调用类
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from src.llm.base import BaseLLM
 from src.llm.providers.OpenAIProvider import OpenAIProvider
+from src.utils import logger
 
 
 class QwenLLM(BaseLLM):
@@ -45,30 +46,107 @@ class QwenLLM(BaseLLM):
         start_time = time.time()
         setup = kwargs.get("setup", {})
 
-        # 判断 token 参数名
-
-        api_base = kwargs.get("api_base", "")
-        host = urlparse(api_base).hostname if api_base else None
-        tokens_param = (
-            "max_tokens"
-            if host and any(host.endswith(h) for h in self._USE_MAX_TOKENS_HOSTS)
-            else "max_completion_tokens"
-        )
+        # 处理 messages
+        processed_messages: list[dict[str, str]] = []
+        for message in messages:
+            for key, value in message.items():
+                if key == "prompt":
+                    processed_messages.append({"role": "user", "content": value})
+                elif key == "location":
+                    file_object = await provider.client.files.create(
+                        file=Path(value),
+                        purpose="file-extract"
+                    )
+                    processed_messages.append({"role": "system", "content": f'fileid://{file_object.id}'})
 
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
-            "messages": messages,
-            "temperature": setup.get("temperature", 0.0),
-            tokens_param: setup.get("max_completion_tokens", 4096),
-            "top_p": setup.get("top_p", 1.0),
+            "messages": processed_messages,
+            "max_completion_tokens": setup.get("max_completion_tokens", 4096),
+            "logprobs": setup.get("logprobs", False),
+            "top_logprobs": setup.get("top_logprobs", 0),
+            "parallel_tool_calls": setup.get("parallel_tool_calls", False)
         }
 
-        # extra_body（如 enable_thinking）
-        if setup.get("extra_body"):
-            request_kwargs["extra_body"] = setup["extra_body"]
+        if setup.get("response_format", False):
+            request_kwargs["response_format"] = {"type": "json_object"}
+
+        extra_body: dict[str, Any] = {
+            "repetition_penalty": setup.get("repetition_penalty", 1.0),
+            "enable_thinking": setup.get("enable_thinking", False),
+            "preserve_thinking": setup.get("preserve_thinking", False),
+            "enable_search": setup.get("enable_search", False),
+            "clear_thinking": setup.get("clear_thinking", False),
+        }
+
+        if extra_body["enable_thinking"]:
+            extra_body["thinking_budget"] = setup.get("thinking_budget", 4096)
+
+        if setup.get("reasoning_effort") and "thinking_budget" in extra_body:
+            raise ValueError("reasoning_effort 与 thinking_budget 不支持同时设置")
+
+        if setup.get("reasoning_effort"):
+            extra_body["reasoning_effort"] = setup["reasoning_effort"]
+
+        if setup.get("temperature"):
+            request_kwargs["temperature"] = setup["temperature"]
+
+        if setup.get("top_p"):
+            request_kwargs["top_p"] = setup["top_p"]
+
+        if setup.get("presence_penalty"):
+            request_kwargs["presence_penalty"] = setup["presence_penalty"]
+
+        if setup.get("stop"):
+            request_kwargs["stop"] = setup["stop"]
+
+        tools_config = setup.get("tools", {})
+        if tools_config:
+            tools = []
+            if tools_config.get("mcp_server", {}):
+                tools.append({
+                    "type": "mcp",
+                    "server_label": tools_config["mcp_server"].get("server_label", None),
+                    "server_description": tools_config["mcp_server"].get("server_description", None),
+                    "server_url": tools_config["mcp_server"].get("server_url", None),
+                    "require_approval": tools_config["mcp_server"].get("require_approval", None),
+                })
+            if tools_config.get("web_search", False):
+                tools.append({"type": "web_search"})
+            if tools_config.get("file_search", []):
+                vector_store = await provider.client.vector_stores.create(name="knowledge_base")
+                file_ids = []
+                for file_url in tools_config["file_search"]:
+                    file_path_obj = Path(file_url)
+                    if file_path_obj.exists():
+                        file_obj = await provider.client.files.create(
+                            file=file_path_obj.open("rb"),
+                            purpose="file-extract"
+                        )
+                        file_ids.append(file_obj.id)
+                if file_ids:
+                    await provider.client.vector_stores.file_batches.create_and_poll(
+                        vector_store_id=vector_store.id,
+                        file_ids=file_ids
+                    )
+                tools.append({
+                    "type": "file_search",
+                    "vector_store_ids": [vector_store.id],
+                })
+            if tools_config.get("tool_search", {}):
+                custom_namespace = {
+                    "type": "namespace",
+                    "name": tools_config["tool_search"].get("name", "unknown"),
+                    "description": tools_config["tool_search"].get("description", "unknown"),
+                    "tools": tools,
+                }
+                request_kwargs["tools"] = [custom_namespace, {"type": "tool_search"}]
+            else:
+                request_kwargs["tools"] = tools
+            request_kwargs["tool_choice"] = setup.get("tool_choice", "auto")
 
         # api_params 覆盖
-        request_kwargs.update(setup.get("api_params", {}))
+        request_kwargs.update({"extra_body": extra_body})
 
         try:
             response = await provider.client.chat.completions.create(**request_kwargs)
@@ -79,6 +157,7 @@ class QwenLLM(BaseLLM):
 
             usage = response.usage.model_dump() if response.usage else {}
             cost = self._calculate_cost(usage)
+            self._log_usage(usage, cost, latency)
 
             return {
                 "content": content,
@@ -87,6 +166,7 @@ class QwenLLM(BaseLLM):
                 "latency": latency,
             }
         except Exception as e:
+            logger.error(f"Error in QwenLLM: {e}")
             return {
                 "content": "",
                 "usage": {},

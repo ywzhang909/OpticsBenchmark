@@ -31,20 +31,6 @@ model:
 
 system_prompt_file: "prompts/system/optical_agent.txt"
 
-tools:
-  enabled:
-    - "file_read"
-    - "file_write"
-    - "bash_execute"
-    - "python_execute"
-    - "optical_api"
-
-  optical_software:
-    zemax:
-      enabled: true
-      connection: "zosapi"
-      workspace_path: "/tmp/zemax_workspace"
-
 execution:
   max_retries: 3
   timeout: 300
