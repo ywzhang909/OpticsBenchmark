@@ -295,6 +295,7 @@ def _save_evaluation_results(
                     "task_id": r.task_id,
                     "metrics": r.metrics,
                     "execution_time": r.execution_time,
+                    **({"details": r.details} if r.details else {}),
                 }
                 for r in agg.per_task_results
             ],
@@ -314,18 +315,15 @@ def _save_evaluation_results(
     with open(jsonl_path, "w", encoding="utf-8") as f:
         for name, agg in aggregated_by_name.items():
             for r in agg.per_task_results:
-                f.write(
-                    json.dumps(
-                        {
-                            "evaluator": name,
-                            "task_id": r.task_id,
-                            "metrics": r.metrics,
-                            "execution_time": r.execution_time,
-                        },
-                        ensure_ascii=False,
-                    )
-                    + "\n"
-                )
+                entry: dict[str, Any] = {
+                    "evaluator": name,
+                    "task_id": r.task_id,
+                    "metrics": r.metrics,
+                    "execution_time": r.execution_time,
+                }
+                if r.details:
+                    entry["details"] = r.details
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     logger.info(f"Results saved to: {out_path}")
     logger.info(f"Per-task results: {jsonl_path}")

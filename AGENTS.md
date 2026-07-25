@@ -1,8 +1,8 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-05-23
+**Generated:** 2026-07-25
 **Commit:** a02e906
-**Branch:** main
+**Branch:** feature/qualitative-evaluation
 
 ## OVERVIEW
 OptiS Benchmark — open-source evaluation framework for LLM-based agents in optical design tasks. Python 3.10+, uv-managed, async-parallel architecture.
@@ -25,15 +25,18 @@ OpticsBenchmark/
 |------|----------|-------|
 | CLI entry point | `src/main.py` | argparse → `optis` command |
 | Agent implementations | `src/core/agent.py` | 1306 lines, 7 LLM providers |
-| Evaluators & scorers | `src/evaluators/` | 4 evaluator types + 5 scorers |
+| Evaluators & scorers | `src/evaluators/` | 6 evaluator types + 5 scorers |
 | LLM abstraction | `src/llm/` | 8 model classes, 7 provider classes |
+| LLM-as-judge | `src/core/llm_judge.py` | `LLMJudge`, `Rubric`, `JudgePromptBuilder` — qualitative eval |
+| Qualitative evaluator | `src/evaluators/qualitative_evaluator.py` | LLM-as-judge evaluator with structured rubrics |
+| Rubric-based evaluator | `src/evaluators/rubric_based_evaluator.py` | Per-field rubric scoring with hallucination detection; supports raw_http mode for WAF-blocked endpoints |
 | Algorithm modules | `src/algorithm/` | 12 pure-math evaluation modules |
 | Async runner | `src/core/runner.py` | Semaphore-based concurrency (259 lines) |
 | Zemax integration | `src/environments/zos_env.py` | ZOS-API stub (PythonNET) |
 | Local env | `src/environments/base_env.py` | Shell execution sandbox |
 | Config loading | `src/utils/parser.py` | JSONL/YAML/env-var expansion |
 | Interactive LLM test | `src/tools/quick_llm_selector.py` | CLI provider comparison |
-| Test fixtures | `tests/conftest.py` | 15 fixtures, async event loop |
+| Test fixtures | `tests/conftest.py` | 19 fixtures, async event loop |
 | System config | `configs/system/template.yaml` | Parallel, sandbox, rate-limit, security |
 
 ## CONVENTIONS
@@ -54,12 +57,15 @@ OpticsBenchmark/
 - ZOS-API integration is stub-only (ZOSAPIEnvironment methods return placeholder data).
 - `configs/system/template.yaml` is a minimal template with most settings commented out.
 - `llm/` abstraction layer exists separately from `core/agent.py` — potential duplication.
+- `tests/test_meteor_eval_utils.py` and `tests/test_perplexity_eval_utils.py` fail at collection due to `from __future__` import order in `algorithm/` modules.
+- 37 pre-existing test failures unrelated to new changes (fixture deprecations, API changes, field renames).
 
 ## COMMANDS
 ```bash
 uv sync                          # Install dependencies
 uv run pytest tests/             # Run tests (verbose, short traceback)
 uv run pytest --cov=src          # With coverage
+uv run pytest -m "not online"    # Skip tests that need a live LLM endpoint
 uv run ruff check .              # Lint
 uv run mypy src/                 # Type check (lenient mode)
 uv run python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract  # Run eval

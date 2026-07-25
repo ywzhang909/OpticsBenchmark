@@ -286,6 +286,17 @@ class RubricBasedEvaluator(BaseEvaluator):
     async def _create_llm_callable(self) -> Any:
         """Create an LLM callable from ``judge_config``.
 
+        Two modes:
+
+        * **Agent mode** (default) — uses ``create_agent()`` from
+          ``src.core.agent``. Suitable for standard OpenAI / Anthropic / etc.
+          endpoints.
+
+        * **Raw HTTP mode** (``judge_config.raw_http: true``) — uses ``httpx``
+          directly, bypassing the OpenAI client library. Useful when the
+          endpoint's WAF (e.g. Cloudflare) blocks the official OpenAI Python
+          library's User-Agent.
+
         Returns ``None`` if no ``judge_config`` is provided (offline mode).
         """
         judge_cfg = self.config.get("judge_config")
@@ -296,6 +307,17 @@ class RubricBasedEvaluator(BaseEvaluator):
             )
             return None
 
+        # -- resolve helper -------------------------------------------------
+        def _expand_val(v: str) -> str:
+            if isinstance(v, str) and v.startswith("${") and v.endswith("}"):
+                return os.environ.get(v[2:-1], "")
+            return v
+
+        # -- raw HTTP mode (bypasses the OpenAI client library) -------------
+        if judge_cfg.get("raw_http", False):
+            return await self._create_raw_http_callable(judge_cfg, _expand_val)
+
+        # -- agent mode (default) ------------------------------------------
         try:
             from src.core.agent import (
                 AgentConfig,
@@ -308,11 +330,6 @@ class RubricBasedEvaluator(BaseEvaluator):
             provider_str = judge_cfg.get("provider", "openai")
             model = judge_cfg.get("model", "gpt-4")
             temperature = judge_cfg.get("temperature", 0.0)
-
-            def _expand_val(v: str) -> str:
-                if isinstance(v, str) and v.startswith("${") and v.endswith("}"):
-                    return os.environ.get(v[2:-1], "")
-                return v
 
             agent_config = AgentConfig(
                 name="rubric-judge",
@@ -348,6 +365,56 @@ class RubricBasedEvaluator(BaseEvaluator):
                 e,
             )
             return None
+
+    async def _create_raw_http_callable(
+        self,
+        judge_cfg: dict[str, Any],
+        expand_val: Any,
+    ) -> Any:
+        """Create an LLM callable using raw ``httpx``.
+
+        Useful when the target API endpoint blocks the official OpenAI
+        Python library's User-Agent (e.g. Cloudflare WAF).
+        """
+        import httpx
+
+        api_base = expand_val(judge_cfg.get("api_base", ""))
+        api_key = expand_val(judge_cfg.get("api_key", ""))
+        model = judge_cfg.get("model", "gpt-4")
+        temperature = judge_cfg.get("temperature", 0.0)
+        max_tokens = judge_cfg.get("max_tokens", 4096)
+
+        # Ensure trailing slash for proper URL joining
+        base = api_base.rstrip("/") + "/"
+        endpoint = base + "chat/completions"
+
+        timeout = httpx.Timeout(120.0)
+
+        async def llm_callable(prompt: str) -> str:
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(endpoint, json=payload, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+            choice = data["choices"][0]
+            msg = choice.get("message", {})
+            content = msg.get("content") or ""
+            # Some vLLM endpoints return ``content: null`` with the actual
+            # response in a ``reasoning`` field.
+            if not content and msg.get("reasoning"):
+                content = msg["reasoning"]
+            return content
+
+        return llm_callable
 
     # ---- per-field evaluation -------------------------------------------
 

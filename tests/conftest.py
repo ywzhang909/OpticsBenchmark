@@ -15,6 +15,7 @@ from src.evaluators import (
     CitationEvaluator,
     ExactMatchEvaluator,
     RougeEvaluator,
+    RubricBasedEvaluator,
 )
 from src.module import EvaluationResult
 
@@ -145,3 +146,68 @@ class MockTask:
     prompt: str
     expected_output: dict[str, Any]
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# =============================================================================
+# RubricBasedEvaluator fixtures
+# =============================================================================
+
+VLLM_BASE_URL = "https://impecunious909.asia/vllm/v1"
+VLLM_MODEL = "qwen"
+VLLM_API_KEY = "sk-11235813"
+
+
+@pytest.fixture
+def rubric_judge_config() -> dict[str, Any]:
+    """Judge config pointing at a vLLM endpoint (OpenAI-compatible).
+
+    Uses ``raw_http: true`` because the endpoint's Cloudflare WAF blocks
+    the official OpenAI Python library's User-Agent.
+    """
+    return {
+        "provider": "openai",
+        "model": VLLM_MODEL,
+        "api_base": VLLM_BASE_URL,
+        "api_key": VLLM_API_KEY,
+        "temperature": 0.0,
+        "raw_http": True,
+    }
+
+
+@pytest.fixture
+def rubric_evaluator_offline() -> RubricBasedEvaluator:
+    """RubricBasedEvaluator with no LLM callable (offline mode)."""
+    return RubricBasedEvaluator({})
+
+
+@pytest.fixture
+def rubric_evaluator_online(
+    rubric_judge_config: dict[str, Any],
+) -> RubricBasedEvaluator:
+    """RubricBasedEvaluator configured with the live vLLM endpoint."""
+    return RubricBasedEvaluator({"judge_config": rubric_judge_config})
+
+
+@pytest.fixture
+def rubric_sample_data() -> dict[str, Any]:
+    """Realistic paper info extraction sample for rubric evaluation."""
+    return {
+        "predicted": {
+            "ten keywords": "diffractive optics, meta-lens, "
+            "wavefront shaping, computational imaging, PSF",
+            "objective": "Design a meta-lens for wide-field "
+            "imaging in the visible spectrum",
+            "novelty": "Inverse-design algorithm for meta-lens",
+            "method": "FDTD simulations with adjoint optimization",
+            "performance metrics": "Efficiency: 85%, Strehl: 0.92, FOV: 60°",
+        },
+        "expected": {
+            "ten keywords": "meta-lens, diffractive optics, "
+            "wavefront engineering, computational imaging, PSF",
+            "objective": "Design and optimize a meta-lens for "
+            "wide-field imaging in visible spectrum",
+            "novelty": "Novel inverse-design for meta-lens",
+            "method": "FDTD with adjoint topology optimization",
+            "performance metrics": "Efficiency: 85%, Strehl: 0.95, FOV: 60°",
+        },
+    }

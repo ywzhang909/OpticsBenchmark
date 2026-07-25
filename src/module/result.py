@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -10,6 +11,7 @@ class EvaluationResult:
     task_id: str
     metrics: dict[str, float] = field(default_factory=dict)
     execution_time: float = 0.0
+    details: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class AggregatedResults:

@@ -31,6 +31,9 @@ eval_metrics:
       provider: "openai"
       model: "gpt-4"
       temperature: 0.0
+      # raw_http: true   # set true to bypass OpenAI client library (for
+                          # endpoints where Cloudflare WAF blocks the
+                          # official OpenAI Python library User-Agent)
     # Optional: override default field-to-JSON-key mapping.
     # field_map:
     #   keywords: "ten keywords"

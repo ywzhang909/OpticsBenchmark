@@ -130,7 +130,7 @@ OpticsBenchmark/
 │   │   ├── google/                # Gemini 1.5 Pro
 │   │   ├── ollama/                # Local Ollama models
 │   │   └── openai/                # 5 OpenAI-compatible models (GPT-4, DeepSeek, Llama, Mistral, Qwen)
-│   ├── evaluations/               # Evaluation configs
+│   ├── evaluations/               # Evaluation configs (paper_info_extract, rubric_based, etc.)
 │   ├── llm/                       # LLM provider configs (4 YAML files)
 │   └── tasks/                     # Task configs (3 task types + template)
 ├── src/                           # Core source package
@@ -152,6 +152,8 @@ OpticsBenchmark/
 │   │   ├── rouge_evaluator.py
 │   │   ├── bert_score_evaluator.py
 │   │   ├── citation_evaluator.py
+│   │   ├── qualitative_evaluator.py  # LLM-as-judge with structured rubrics
+│   │   ├── rubric_based_evaluator.py # Per-field rubric scoring with hallucination detection
 │   │   └── scorer/               # Thin wrappers → algorithm/* functions
 │   ├── algorithm/                # Pure-math evaluation algorithms (12 modules)
 │   │   ├── em_eval_utils.py
@@ -250,6 +252,8 @@ Additional task configs are planned: `lens_design`, `system_analysis`, `paper_re
 | RougeEvaluator | `rouge` | ROUGE-1/2/L with Hungarian sentence alignment |
 | BertScoreEvaluator | `bert_score` | BERTScore P/R/F1 with transformer embeddings |
 | CitationEvaluator | `citation` | Precision, recall, F1 for citation accuracy |
+| QualitativeEvaluator | `qualitative` | LLM-as-judge with structured rubrics (PluginEval Layer 2) |
+| RubricBasedEvaluator | `rubric_based` | Per-field rubric scoring (Accuracy, Completeness, Readability) with hallucination detection; raw_http mode for WAF-blocked endpoints |
 
 Additional components:
 - **LLMJudge** (`src/core/llm_judge.py`) — LLM-as-judge with structured rubrics (PluginEval Layer 2)
@@ -429,13 +433,16 @@ python src/utils/generate_report.py results/eval_results.json --format html
 uv run pytest tests/
 
 # Specific test file
-uv run pytest tests/test_evaluator_base.py
+uv run pytest tests/test_rubric_based_evaluator.py
 
 # With coverage
 uv run pytest tests/ --cov=src --cov-report=html
 
 # Skip network-dependent tests
-uv run pytest tests/ --ignore=tests/test_bert_score_eval.py
+uv run pytest tests/ -m "not online"
+
+# Only run online tests (live LLM endpoint)
+uv run pytest tests/ -m "online"
 ```
 
 ---

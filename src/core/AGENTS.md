@@ -16,6 +16,7 @@ Pipeline orchestration module: LLM agent interface (7 providers), async parallel
 | `__init__.py` | — | Re-exports all public symbols |
 
 Note: Evaluators have been refactored into `src/evaluators/` subpackage.
+`LLMJudge` is consumed by `src/evaluators/qualitative_evaluator.py`.
 
 ## KEY PATTERNS
 - **Factory functions**: `create_agent()` — config-driven instantiation.
