@@ -5,7 +5,7 @@ End-to-end pipeline:
 1. Read a paper file (PDF or TXT)
 2. Parse structured fields
 3. Evaluate using RubricBasedEvaluator (offline or online via vLLM)
-4. Generate a detailed Markdown report with Mermaid charts (xychart-beta)
+4. Generate a detailed Markdown report with Mermaid charts
 
 Usage::
 
@@ -36,6 +36,7 @@ from loguru import logger
 
 from src.evaluators import RubricBasedEvaluator
 from src.module import EvaluationResult
+from src.tools.md_report_builder import MdReportBuilder
 from src.tools.paper_reader import parse_ao_analysis, read_file
 
 # ---------------------------------------------------------------------------
@@ -146,49 +147,14 @@ async def evaluate_paper(
 
 
 # ---------------------------------------------------------------------------
-# Mermaid chart helpers
+# Report generation (uses MdReportBuilder)
 # ---------------------------------------------------------------------------
 
 
-def _mermaid_bar(title: str, labels: list[str], values: list[float],
-                 color: str = "#4a90d9") -> str:
-    """Generate a vertical bar chart via Mermaid ``xychart``.
-
-    Per the official docs (https://mermaid.js.org/syntax/xyChart.html)::
-
-        xychart
-            title "Title"
-            x-axis ["A", "B", "C"]
-            y-axis "Score (1-5)" 0 --> 5
-            bar [4.5, 3.0, 5.0]
-
-    The diagram keyword is ``xychart`` (NOT ``xychart-beta``).
-    """
-    quoted = ", ".join(f'"{l}"' for l in labels)
-    vals = ", ".join(f"{v:.2f}" for v in values)
-    return (
-        "```mermaid\n"
-        "xychart\n"
-        f'    title "{title}"\n'
-        f"    x-axis [{quoted}]\n"
-        '    y-axis "Score (1-5)" 0 --> 5\n'
-        f"    bar [{vals}]\n"
-        "```"
-    )
-
-
-def _mermaid_pie(title: str, data: dict[str, float]) -> str:
-    """Generate a Mermaid pie chart."""
-    lines = ["```mermaid", f"pie title {title}"]
-    for label, val in data.items():
-        lines.append(f'    "{label}" : {val}')
-    lines.append("```")
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Report generation
-# ---------------------------------------------------------------------------
+def _star_rating(value: float, total: int = 5) -> str:
+    """Generate a star-rating string like ``★★★★★``."""
+    filled = round(value)
+    return "★" * filled + "☆" * (total - filled)
 
 
 def generate_report(
@@ -197,8 +163,9 @@ def generate_report(
     commit_id: str,
     source_file: str,
     duration_sec: float,
+    lang: str = "en",
 ) -> str:
-    """Generate a complete Markdown evaluation report with Mermaid charts.
+    """Generate a complete Markdown evaluation report.
 
     Args:
         parsed: Parsed paper fields.
@@ -206,6 +173,7 @@ def generate_report(
         commit_id: Git commit hash.
         source_file: Original input file path.
         duration_sec: Total execution time.
+        lang: Language code for the report (``"en"`` or ``"zh_CN"``).
 
     Returns:
         Markdown string.
@@ -220,77 +188,70 @@ def generate_report(
     hallu_count = len(hallu_items)
     total_checked = hallucination.get("total_checked_items", 0)
 
-    lines: list[str] = []
-
-    # ---- header ----
+    md = MdReportBuilder(lang=lang)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    lines.extend([
-        "# Paper Evaluation Report",
-        "",
-        f"**Generated:** {ts}",
-        f"**Commit:** `{commit_id}`",
-        f"**Source:** `{source_file}`",
-        f"**Duration:** {duration_sec:.1f}s",
-        "",
-    ])
 
-    # Offline-mode warning
+    # -- Header + metadata --
+    md.h1(md.t("report_title"))
+    md.meta_block({
+        md.t("generated"): ts,
+        md.t("commit"): md.code(commit_id),
+        md.t("source"): md.code(source_file),
+        md.t("duration"): f"{duration_sec:.1f}s",
+    })
+
+    # -- Offline-mode warning --
     all_zero = all(
         metrics.get(k, 0.0) == 0.0
         for k in ("accuracy", "completeness", "readability")
     )
     if all_zero:
-        lines.extend([
-            "> **⚠️ Offline mode** — all scores are 0.0 because no LLM judge "
-            "was configured. Run with `--online` to use the vLLM endpoint for "
-            "real LLM-based scoring.",
-            "",
-        ])
+        md.blockquote(md.t("offline_warning"))
 
-    # ---- paper meta ----
-    lines.append("## Paper Meta Information")
-    lines.append("")
-    lines.append("| Field | Value |")
-    lines.append("|-------|-------|")
+    # -- Paper meta table --
+    md.h2(md.t("paper_meta"))
+    meta_rows: list[list[str]] = []
     for key in ("title", "year", "doi", "journal", "keywords", "authors"):
         val = parsed.get(key, "")
-        lines.append(f"| {key.capitalize()} | {val or '—'} |")
-    lines.append("")
+        meta_rows.append([key.capitalize(), val or "—"])
+    md.table([md.t("field"), md.t("value")], meta_rows)
 
-    # ---- metric summary ----
-    lines.append("## Evaluation Metrics Summary")
-    lines.append("")
-    lines.append("| Metric | Score (1-5) |")
-    lines.append("|--------|-------------|")
+    # -- Metric summary --
+    md.h2(md.t("eval_metrics"))
+    metric_rows: list[list[str]] = []
     for name in ("accuracy", "completeness", "readability"):
         val = metrics.get(name, 0.0)
-        stars = "★" * round(val) + "☆" * (5 - round(val))
-        lines.append(f"| {name.capitalize()} | {val:.2f} {stars} |")
+        label = md.t(name, name.capitalize())
+        metric_rows.append([label, f"{val:.2f} {_star_rating(val)}"])
     hr = metrics.get("hallucination_rate", 0.0)
-    lines.append(
-        f"| Hallucination Rate | {hr:.2f} ({hallu_count}/{total_checked} items) |"
-    )
-    lines.append("")
+    metric_rows.append([
+        md.t("hallucination_rate"),
+        f"{hr:.2f} ({hallu_count}/{total_checked} {md.t('items')})",
+    ])
+    md.table([md.t("metric"), md.t("score")], metric_rows)
 
-    # ---- mermaid charts ----
-    lines.append("## Visual Summary")
-    lines.append("")
+    # -- Visual summary --
+    md.h2(md.t("visual_summary"))
 
     # 1) Overall rubric scores bar chart
-    lines.append(_mermaid_bar(
-        "Rubric Scores (1-5)",
-        ["Accuracy", "Completeness", "Readability"],
-        [metrics.get("accuracy", 0),
-         metrics.get("completeness", 0),
-         metrics.get("readability", 0)],
-    ))
-    lines.append("")
-    lines.append("*Figure 1: Overall rubric scores across all fields.*")
-    lines.append("")
+    md.mermaid_bar(
+        md.t("rubric_scores_chart"),
+        [
+            md.t("accuracy", "Accuracy"),
+            md.t("completeness", "Completeness"),
+            md.t("readability", "Readability"),
+        ],
+        [
+            metrics.get("accuracy", 0),
+            metrics.get("completeness", 0),
+            metrics.get("readability", 0),
+        ],
+    )
+    md.figure_caption(1, "Overall rubric scores across all fields", lang=lang)
 
-    # 2) Per-field bar charts (one per dimension)
+    # 2) Per-field bar charts
     if field_scores:
-        fig_counter = 2
+        fig_num = 2
         for dim in ("accuracy", "completeness", "readability"):
             labels: list[str] = []
             vals: list[float] = []
@@ -298,69 +259,63 @@ def generate_report(
                 fs = field_scores.get(fn, {})
                 labels.append(RubricBasedEvaluator.DISPLAY_NAMES.get(fn, fn))
                 vals.append(fs.get(dim, 0.0))
-            lines.append(_mermaid_bar(f"Per-Field {dim.capitalize()}", labels, vals))
-            lines.append("")
-            lines.append(
-                f"*Figure {fig_counter}: {dim.capitalize()} per field.*"
+            md.mermaid_bar(
+                f"{md.t('per_field')} {dim.capitalize()}",
+                labels, vals,
             )
-            lines.append("")
-            fig_counter += 1
+            md.figure_caption(
+                fig_num, f"{dim.capitalize()} per field", lang=lang
+            )
+            fig_num += 1
 
     # 3) Hallucination pie
-    lines.append(_mermaid_pie(
-        "Hallucination Breakdown",
-        {"Hallucinated": hallu_count, "Valid": total_checked - hallu_count},
-    ))
-    lines.append("")
-    lines.append("*Figure 5: Hallucinated vs valid items.*")
-    lines.append("")
+    md.mermaid_pie(
+        md.t("hallucination_chart"),
+        {
+            md.t("hallucinated"): hallu_count,
+            md.t("valid"): total_checked - hallu_count,
+        },
+    )
+    md.figure_caption(5, md.t("hallucinated_vs_valid"), lang=lang)
 
-    # ---- per-field detail ----
-    lines.append("## Per-Field Detail")
-    lines.append("")
+    # -- Per-field detail --
+    md.h2(md.t("per_field_detail"))
     for fn in RubricBasedEvaluator.FIELDS:
         display = RubricBasedEvaluator.DISPLAY_NAMES.get(fn, fn)
         fs = field_scores.get(fn, {})
         fj = field_justifications.get(fn, {})
-        lines.append(f"### {display} (`{fn}`)")
-        lines.append("")
-        lines.append("| Dimension | Score | Justification |")
-        lines.append("|-----------|-------|---------------|")
+
+        md.h3(f"{display} (``{fn}``)")
+        rows: list[list[str]] = []
         for dim in ("accuracy", "completeness", "readability"):
-            lines.append(
-                f"| {dim.capitalize()} | {fs.get(dim, 0.0):.2f} | "
-                f"{fj.get(dim, '')} |"
-            )
-        lines.append("")
+            rows.append([
+                md.t(dim, dim.capitalize()),
+                f"{fs.get(dim, 0.0):.2f}",
+                fj.get(dim, ""),
+            ])
+        md.table(
+            [md.t("dimension"), md.t("score"), md.t("justification")],
+            rows,
+        )
 
-    # ---- hallucination detail ----
+    # -- Hallucination detail --
     if hallu_items:
-        lines.append("### Hallucinated Items")
-        lines.append("")
-        lines.append("| Field | Content |")
-        lines.append("|-------|--------|")
-        for item in hallu_items:
-            lines.append(f"| {item.get('field', '?')} | `{item.get('item', '?')}` |")
-        lines.append("")
+        md.h3(md.t("hallucinated_items"))
+        hallu_rows = [
+            [item.get("field", "?"), md.code(item.get("item", "?"))]
+            for item in hallu_items
+        ]
+        md.table([md.t("field"), md.t("content")], hallu_rows)
 
-    # ---- raw metrics ----
-    lines.append("## Raw Metrics")
-    lines.append("")
-    lines.append("```json")
-    lines.append(json.dumps(metrics, indent=2, ensure_ascii=False))
-    lines.append("```")
-    lines.append("")
+    # -- Raw metrics --
+    md.h2(md.t("raw_metrics"))
+    md.code_block(json.dumps(metrics, indent=2, ensure_ascii=False), lang="json")
 
-    # ---- footer ----
-    lines.append("---")
-    lines.append("")
-    lines.append(
-        "*Report generated by [OptiS Benchmark]"
-        "(https://github.com/ywzhang909/OpticsBenchmark) "
-        "RubricBasedEvaluator*"
-    )
+    # -- Footer --
+    md.hr()
+    md.p(md.t("footer_generated_by"))
 
-    return "\n".join(lines)
+    return md.build()
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +341,7 @@ async def _run(args: argparse.Namespace) -> None:
     src_path = Path(args.input)
     if not src_path.exists():
         import glob as glob_mod
+
         matches = glob_mod.glob(str(src_path))
         if not matches:
             logger.error("No file matches: {}", args.input)
@@ -423,6 +379,7 @@ async def _run(args: argparse.Namespace) -> None:
     report_md = generate_report(
         parsed=parsed, result=result, commit_id=commit_id,
         source_file=str(src_path), duration_sec=duration,
+        lang=args.lang,
     )
     out_path.write_text(report_md, encoding="utf-8")
 
@@ -451,6 +408,10 @@ def main() -> None:
         help="Enable online LLM judge (vLLM endpoint) — required for non-zero scores",
     )
     parser.add_argument(
+        "--lang", default="en", choices=["en", "zh_CN"],
+        help="Report language (default: en)",
+    )
+    parser.add_argument(
         "--verbose", "-v", action="store_true",
         help="Enable DEBUG-level logging",
     )
@@ -458,7 +419,6 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Enable debug logging if --verbose
     if args.verbose:
         from loguru import logger as loguru_logger
         loguru_logger.remove()
