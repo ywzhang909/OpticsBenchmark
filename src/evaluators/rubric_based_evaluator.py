@@ -43,6 +43,7 @@ from typing import Any
 
 from src.module import AggregatedResults, EvaluationResult
 from src.utils import logger
+from src.utils.prompt_manager import PromptManager
 
 from .base import BaseEvaluator
 
@@ -463,92 +464,48 @@ class RubricBasedEvaluator(BaseEvaluator):
 
     # ---- prompt building ------------------------------------------------
 
+    PROMPT_TEMPLATE = "evaluators/rubric_judge/field_prompt.jinja2"
+    """Path to the Jinja2 prompt template, relative to ``prompts/``."""
+
     def _build_field_prompt(
         self,
         field_name: str,
         predicted_value: str,
         expected_value: str | None,
     ) -> str:
-        """Build the XML-tagged judge prompt for a single field.
+        """Build the XML-tagged judge prompt using the Jinja2 template.
 
-        Prompt structure::
+        Template: ``prompts/evaluators/rubric_judge/field_prompt.jinja2``
 
-            You are an expert evaluator for optical research paper
-            information extraction. Evaluate the following field: {display}.
-
-            <answer>
-            {predicted_value}
-            </answer>
-
-            <rule>
-            ## Accuracy (1-5)
-            5: ...  4: ...  ...
-            ## Completeness (1-5)
-            5: ...  4: ...  ...
-            ## Readability (1-5)
-            5: ...  4: ...  ...
-            </rule>
-
-            <response>
-            {expected_value}
-            </response>
-
-            Score each dimension 1-5 according to the rules above.
-            Return ONLY valid JSON: ...
+        The three rubric dictionaries (``ACCURACY_RUBRIC``,
+        ``COMPLETENESS_RUBRIC``, ``READABILITY_RUBRIC``) are passed as
+        template variables so the rubric text is rendered server-side.
         """
         display = self.DISPLAY_NAMES.get(field_name, field_name)
-
-        rubric_text = self._rubric_block()
-
-        sections = [
-            "You are an expert evaluator for optical research paper "
-            "information extraction.",
-            f"Evaluate the following field: {display}.",
-            "",
-            "<answer>",
-            predicted_value,
-            "</answer>",
-            "",
-            "<rule>",
-            rubric_text,
-            "</rule>",
-        ]
-
-        if expected_value:
-            sections.extend(["", "<response>", expected_value, "</response>"])
-
-        sections.extend([
-            "",
-            "Score each dimension 1-5 according to the rules above.",
-            "Return ONLY valid JSON with this exact structure:",
-            "  {",
-            '    "accuracy": <1-5>,',
-            '    "completeness": <1-5>,',
-            '    "readability": <1-5>,',
-            '    "accuracy_justification": "...",',
-            '    "completeness_justification": "...",',
-            '    "readability_justification": "..."',
-            "  }",
-            "Do NOT include markdown fences, code blocks, or any text "
-            "outside the JSON.",
-        ])
-
-        return "\n".join(sections)
+        pm = PromptManager.get_instance()
+        return pm.render(
+            self.PROMPT_TEMPLATE,
+            display=display,
+            predicted_value=predicted_value,
+            expected_value=expected_value,
+            accuracy_rubric=ACCURACY_RUBRIC,
+            completeness_rubric=COMPLETENESS_RUBRIC,
+            readability_rubric=READABILITY_RUBRIC,
+        )
 
     @staticmethod
     def _rubric_block() -> str:
-        """Build the ``<rule>`` block text from the three rubric dicts."""
-        lines: list[str] = []
-        for header, rubric in [
-            ("## Accuracy (1-5)", ACCURACY_RUBRIC),
-            ("## Completeness (1-5)", COMPLETENESS_RUBRIC),
-            ("## Readability (1-5)", READABILITY_RUBRIC),
-        ]:
-            lines.append(header)
-            for score in sorted(rubric):
-                lines.append(f"  {score}: {rubric[score]}")
-            lines.append("")
-        return "\n".join(lines)
+        """Build the ``<rule>`` block text (delegates to the Jinja2 template)."""
+        pm = PromptManager.get_instance()
+        return pm.render(
+            "evaluators/rubric_judge/field_prompt.jinja2",
+            display="",
+            predicted_value="",
+            expected_value=None,
+            accuracy_rubric=ACCURACY_RUBRIC,
+            completeness_rubric=COMPLETENESS_RUBRIC,
+            readability_rubric=READABILITY_RUBRIC,
+        )
 
     # ---- response parsing -----------------------------------------------
 

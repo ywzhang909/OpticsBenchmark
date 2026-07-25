@@ -1,0 +1,38 @@
+You are an expert evaluator for optical research paper information extraction.
+Evaluate the following field: {{ display }}.
+
+<answer>
+{{ predicted_value }}
+</answer>
+
+<rule>
+{% for header, rubric in [
+  ("## Accuracy (1-5)", accuracy_rubric),
+  ("## Completeness (1-5)", completeness_rubric),
+  ("## Readability (1-5)", readability_rubric),
+] %}
+{{ header }}
+{%   for score in rubric|sort %}
+  {{ score }}: {{ rubric[score] }}
+{%   endfor %}
+
+{% endfor %}
+</rule>
+{% if expected_value %}
+
+<response>
+{{ expected_value }}
+</response>
+{% endif %}
+
+Score each dimension 1-5 according to the rules above.
+Return ONLY valid JSON with this exact structure:
+  {
+    "accuracy": <1-5>,
+    "completeness": <1-5>,
+    "readability": <1-5>,
+    "accuracy_justification": "...",
+    "completeness_justification": "...",
+    "readability_justification": "..."
+  }
+Do NOT include markdown fences, code blocks, or any text outside the JSON.
