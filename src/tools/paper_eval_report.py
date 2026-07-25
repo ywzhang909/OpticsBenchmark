@@ -152,25 +152,27 @@ async def evaluate_paper(
 
 def _mermaid_bar(title: str, labels: list[str], values: list[float],
                  color: str = "#4a90d9") -> str:
-    """Generate a vertical bar chart via Mermaid ``xychart-beta``.
+    """Generate a vertical bar chart via Mermaid ``xychart``.
 
-    .. code-block:: mermaid
+    Per the official docs (https://mermaid.js.org/syntax/xyChart.html)::
 
-        xychart-beta
-          title "Title"
-          x-axis ["A", "B", "C"]
-          y-axis "Score (1-5)" 0 --> 5
-          bar [4.5, 3.0, 5.0]
+        xychart
+            title "Title"
+            x-axis ["A", "B", "C"]
+            y-axis "Score (1-5)" 0 --> 5
+            bar [4.5, 3.0, 5.0]
+
+    The diagram keyword is ``xychart`` (NOT ``xychart-beta``).
     """
     quoted = ", ".join(f'"{l}"' for l in labels)
     vals = ", ".join(f"{v:.2f}" for v in values)
     return (
         "```mermaid\n"
-        "xychart-beta\n"
-        f'  title "{title}"\n'
-        f"  x-axis [{quoted}]\n"
-        '  y-axis "Score (1-5)" 0 --> 5\n'
-        f"  bar [{vals}]\n"
+        "xychart\n"
+        f'    title "{title}"\n'
+        f"    x-axis [{quoted}]\n"
+        '    y-axis "Score (1-5)" 0 --> 5\n'
+        f"    bar [{vals}]\n"
         "```"
     )
 
