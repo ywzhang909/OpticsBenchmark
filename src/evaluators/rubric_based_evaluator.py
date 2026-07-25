@@ -306,16 +306,15 @@ class RubricBasedEvaluator(BaseEvaluator):
                 "operating in offline mode"
             )
             return None
-
-        # -- resolve helper -------------------------------------------------
-        def _expand_val(v: str) -> str:
-            if isinstance(v, str) and v.startswith("${") and v.endswith("}"):
-                return os.environ.get(v[2:-1], "")
-            return v
+        logger.debug("judge_config present: provider={}, model={}, raw_http={}",
+                     judge_cfg.get("provider"), judge_cfg.get("model"),
+                     judge_cfg.get("raw_http", False))
 
         # -- raw HTTP mode (bypasses the OpenAI client library) -------------
         if judge_cfg.get("raw_http", False):
-            return await self._create_raw_http_callable(judge_cfg, _expand_val)
+            return await self._create_raw_http_callable(
+                judge_cfg, self._expand_env_var,
+            )
 
         # -- agent mode (default) ------------------------------------------
         try:
@@ -335,8 +334,8 @@ class RubricBasedEvaluator(BaseEvaluator):
                 name="rubric-judge",
                 provider=AgentProvider(provider_str),
                 model_name=model,
-                api_base=_expand_val(judge_cfg.get("api_base", "")),
-                api_key=_expand_val(judge_cfg.get("api_key", "")),
+                api_base=self._expand_env_var(judge_cfg.get("api_base", "")),
+                api_key=self._expand_env_var(judge_cfg.get("api_key", "")),
                 setup_config={
                     "temperature": temperature,
                     "max_completion_tokens": 2048,
@@ -388,6 +387,9 @@ class RubricBasedEvaluator(BaseEvaluator):
         base = api_base.rstrip("/") + "/"
         endpoint = base + "chat/completions"
 
+        logger.debug("Raw HTTP callable — endpoint={}, model={}, max_tokens={}",
+                     endpoint, model, max_tokens)
+
         timeout = httpx.Timeout(120.0)
 
         async def llm_callable(prompt: str) -> str:
@@ -401,17 +403,15 @@ class RubricBasedEvaluator(BaseEvaluator):
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             }
+            prompt_preview = prompt[:120].replace("\n", " ")
+            logger.debug("LLM request — prompt preview: {}...", prompt_preview)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(endpoint, json=payload, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
-            choice = data["choices"][0]
-            msg = choice.get("message", {})
-            content = msg.get("content") or ""
-            # Some vLLM endpoints return ``content: null`` with the actual
-            # response in a ``reasoning`` field.
-            if not content and msg.get("reasoning"):
-                content = msg["reasoning"]
+            content = self._extract_content(data)
+            logger.debug("LLM response — length={}, preview: {}...",
+                         len(content), content[:120].replace("\n", " "))
             return content
 
         return llm_callable
@@ -571,11 +571,14 @@ class RubricBasedEvaluator(BaseEvaluator):
 
         try:
             data = json.loads(text)
+            logger.debug("_parse_review_response OK — keys: {}",
+                         list(data.keys()))
         except json.JSONDecodeError:
             logger.warning(
                 "Failed to parse judge response as JSON: {} ...",
                 text[:200],
             )
+            logger.debug("Raw text that failed JSON parse: {!r:.300}", text)
             return {
                 "accuracy": 0.0,
                 "completeness": 0.0,
@@ -745,3 +748,39 @@ class RubricBasedEvaluator(BaseEvaluator):
         if not values:
             return 0.0
         return sum(values) / len(values)
+
+    # ---- extractable helpers for testability -----------------------------
+
+    @staticmethod
+    def _expand_env_var(value: str) -> str:
+        """Expand ``${ENV_VAR}`` patterns using the process environment.
+
+        Returns the raw value unchanged if it is not an env-var reference
+        or if the variable is not set.
+        """
+        if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+            return os.environ.get(value[2:-1], "")
+        return value
+
+    @staticmethod
+    def _extract_content(data: dict) -> str:
+        """Extract the content string from an OpenAI-compatible response dict.
+
+        Handles standard ``choices[0].message.content`` as well as the vLLM
+        quirk where ``content`` is ``null`` and the actual response is placed
+        in ``choices[0].message.reasoning``.
+        """
+        try:
+            choice = data["choices"][0]
+            msg = choice.get("message", {})
+            content = msg.get("content") or ""
+            if not content and msg.get("reasoning"):
+                content = msg["reasoning"]
+                logger.debug("content is null, using reasoning fallback "
+                             "(len={})", len(content))
+            logger.debug("_extract_content: content_len={}, has_reasoning={}",
+                         len(content), bool(msg.get("reasoning")))
+            return content
+        except (KeyError, IndexError, TypeError) as exc:
+            logger.warning("Failed to extract content from response: %s", exc)
+            return ""

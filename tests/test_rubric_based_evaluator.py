@@ -365,6 +365,77 @@ class TestRubricBasedEvaluator_Offline:
         assert total_items == 0
         assert details["hallucinated_items"] == []
 
+    # ---- _expand_env_var unit tests --------------------------------------
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("${HOME}", ""),                     # unset var → empty
+            ("plain text", "plain text"),         # no pattern → unchanged
+            ("${MISSING_VAR_XYZ}", ""),           # missing var → empty
+            ("not${VAR}", "not${VAR}"),           # partial pattern → unchanged
+            ("", ""),                             # empty → empty
+        ],
+    )
+    def test_expand_env_var(self, value: str, expected: str):
+        """Env-var expansion handles missing vars, plain text, edge cases."""
+        result = RubricBasedEvaluator._expand_env_var(value)
+        assert result == expected, (
+            f"_expand_env_var({value!r}) = {result!r}, expected {expected!r}"
+        )
+
+    def test_expand_env_var_resolved(self, monkeypatch):
+        """A set env var is resolved correctly."""
+        monkeypatch.setenv("TEST_RUBRIC_KEY", "sk-test-123")
+        result = RubricBasedEvaluator._expand_env_var("${TEST_RUBRIC_KEY}")
+        assert result == "sk-test-123"
+
+    # ---- _extract_content unit tests -------------------------------------
+
+    def test_extract_content_normal(self):
+        """Standard OpenAI response returns message.content."""
+        data = {
+            "choices": [
+                {"message": {"content": "Hello world"}},
+            ],
+        }
+        assert RubricBasedEvaluator._extract_content(data) == "Hello world"
+
+    def test_extract_content_reasoning_fallback(self):
+        """vLLM content:null + reasoning fallback."""
+        data = {
+            "choices": [
+                {
+                    "message": {
+                        "content": None,
+                        "reasoning": "Fallback reasoning text",
+                    },
+                },
+            ],
+        }
+        result = RubricBasedEvaluator._extract_content(data)
+        assert result == "Fallback reasoning text", (
+            f"Expected reasoning fallback, got {result!r}"
+        )
+
+    def test_extract_content_empty_choices(self):
+        """Malformed response with missing choices returns empty string."""
+        assert RubricBasedEvaluator._extract_content({}) == ""
+
+    def test_extract_content_missing_message(self):
+        """Choice without message returns empty string."""
+        data = {"choices": [{"foo": "bar"}]}
+        assert RubricBasedEvaluator._extract_content(data) == ""
+
+    def test_extract_content_content_null_no_reasoning(self):
+        """content:null and no reasoning → empty string."""
+        data = {
+            "choices": [
+                {"message": {"content": None}},
+            ],
+        }
+        assert RubricBasedEvaluator._extract_content(data) == ""
+
 
 # ===========================================================================
 # Online (integration) test — against a real vLLM endpoint
