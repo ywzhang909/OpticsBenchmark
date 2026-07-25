@@ -1,0 +1,40 @@
+# =============================================================================
+# Rubric-Based Evaluation Configuration
+# OptiS Benchmark — Per-field LLM judge evaluation with hallucination detection
+#
+# Used by: src/eval.py --eval-config configs/evaluations/rubric_based.yaml
+#
+# Evaluates agent outputs across five semantic fields using three quality
+# rubrics (Accuracy, Completeness, Readability) rated 1–5, plus
+# hallucination detection.
+#
+# Config structure:
+#   eval_metrics:
+#     rubric_based:
+#       priority: <int>
+#       judge_config:
+#         provider: <str>
+#         model: <str>
+#         temperature: <float>
+#         api_key: "${ENV_VAR}"      # optional, defaults to provider's env var
+#         api_base: "<url>"          # optional
+#       field_map:                   # optional, defaults to paper_info_extract mapping
+#         <field>: "<json_key>"
+# =============================================================================
+
+eval_metrics:
+  # --- Rubric-Based Evaluator ---
+  # Per-field LLM judge evaluation with hallucination detection.
+  rubric_based:
+    priority: 5
+    judge_config:
+      provider: "openai"
+      model: "gpt-4"
+      temperature: 0.0
+    # Optional: override default field-to-JSON-key mapping.
+    # field_map:
+    #   keywords: "ten keywords"
+    #   research_objectives: "objective"
+    #   innovation_points: "novelty"
+    #   research_methods: "method"
+    #   performance_metrics: "performance metrics"

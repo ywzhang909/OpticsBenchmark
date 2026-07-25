@@ -8,19 +8,23 @@ from .base import BaseEvaluator
 from .bert_score_evaluator import BertScoreEvaluator
 from .citation_evaluator import CitationEvaluator
 from .exact_match_evaluator import ExactMatchEvaluator
+from .qualitative_evaluator import QualitativeEvaluator
 from .rouge_evaluator import RougeEvaluator
+from .rubric_based_evaluator import RubricBasedEvaluator
 
 EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
     "exact_match": ExactMatchEvaluator,
     "rouge": RougeEvaluator,
     "bert_score": BertScoreEvaluator,
     "citation": CitationEvaluator,
+    "qualitative": QualitativeEvaluator,
+    "rubric_based": RubricBasedEvaluator,
 }
 
 # 评估器按 GPU 开销分类
 GPU_INTENSIVE_EVALUATORS = {"citation", "bert_score"}
 GPU_LIGHT_EVALUATORS = {"rouge"}
-CPU_ONLY_EVALUATORS = {"exact_match"}
+CPU_ONLY_EVALUATORS = {"exact_match", "qualitative", "rubric_based"}
 ALL_GPU_EVALUATORS = GPU_INTENSIVE_EVALUATORS | GPU_LIGHT_EVALUATORS
 
 

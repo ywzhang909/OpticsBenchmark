@@ -10,14 +10,18 @@ from .helpers import (
     sentenceMatch,
     unload_sentence_embedder,
 )
+from .qualitative_evaluator import QualitativeEvaluator
 from .rouge_evaluator import RougeEvaluator
+from .rubric_based_evaluator import RubricBasedEvaluator
 
 __all__ = [
     "BaseEvaluator",
     "BertScoreEvaluator",
     "CitationEvaluator",
     "ExactMatchEvaluator",
+    "QualitativeEvaluator",
     "RougeEvaluator",
+    "RubricBasedEvaluator",
     "create_evaluator",
     "sort_evaluators_by_priority",
     "_get_sentence_embedder",
