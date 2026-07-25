@@ -237,6 +237,134 @@ class TestRubricBasedEvaluator_Offline:
         """Averaging correctly excludes skipped (0.0) fields."""
         assert RubricBasedEvaluator._avg_field_score(scores, dim) == expected
 
+    # ---- _parse_review_response unit tests -------------------------------
+
+    @pytest.mark.parametrize(
+        ("raw", "expected_acc", "expected_just"),
+        [
+            # Invalid JSON → fallback zeros + "Parse error"
+            ("not json", 0.0, "Parse error"),
+            ("{broken", 0.0, "Parse error"),
+            ("", 0.0, "Parse error"),
+            # Markdown fences stripped
+            (
+                '```json\n{"accuracy": 4.0, "completeness": 3.0, '
+                '"readability": 5.0}\n```',
+                4.0,
+                "",
+            ),
+            # Score >5 clamped to 5
+            (
+                '{"accuracy": 6.0, "completeness": 5.0, "readability": 5.0}',
+                5.0,
+                "",
+            ),
+            # Score <1 clamped to 1
+            (
+                '{"accuracy": 0.5, "completeness": 1.0, "readability": 1.0}',
+                1.0,
+                "",
+            ),
+            # Non-numeric score → 0.0 (_clamp catches TypeError)
+            (
+                '{"accuracy": "bad", "completeness": 3.0, "readability": 4.0}',
+                0.0,
+                "",
+            ),
+            # Missing field → default 0
+            (
+                '{"accuracy": 4.0}',
+                4.0,
+                "",
+            ),
+        ],
+    )
+    def test_parse_review_response(
+        self, raw: str, expected_acc: float, expected_just: str,
+    ):
+        """Response parsing handles invalid JSON, fences, clamping, defaults."""
+        result = RubricBasedEvaluator._parse_review_response(raw)
+        assert result["accuracy"] == expected_acc, (
+            f"accuracy: expected {expected_acc}, got {result['accuracy']}"
+        )
+        # Justification check: if Parse error expected, verify it
+        if expected_just:
+            assert expected_just in result.get("accuracy_justification", "")
+
+    # ---- _rubric_block unit test -----------------------------------------
+
+    def test_rubric_block_contains_all_dimensions(self):
+        """Static rubric block includes Accuracy, Completeness, Readability."""
+        block = RubricBasedEvaluator._rubric_block()
+        assert "## Accuracy (1-5)" in block
+        assert "## Completeness (1-5)" in block
+        assert "## Readability (1-5)" in block
+        # Each dimension has 5 anchor levels
+        for score in range(1, 6):
+            assert f"  {score}:" in block, (
+                f"Missing anchor level '{score}:' in rubric block"
+            )
+
+    # ---- _build_field_prompt unit tests ----------------------------------
+
+    def test_build_field_prompt_with_expected(self):
+        """Prompt includes <response> when expected_value is provided."""
+        ev = RubricBasedEvaluator({})
+        prompt = ev._build_field_prompt(
+            field_name="keywords",
+            predicted_value="lens, optics",
+            expected_value="lens, optics, MTF",
+        )
+        assert "<answer>" in prompt
+        assert "lens, optics" in prompt
+        assert "<response>" in prompt
+        assert "MTF" in prompt
+        assert '"accuracy": <1-5>' in prompt
+        assert "Return ONLY valid JSON" in prompt
+
+    def test_build_field_prompt_without_expected(self):
+        """Prompt omits <response> when expected_value is None."""
+        ev = RubricBasedEvaluator({})
+        prompt = ev._build_field_prompt(
+            field_name="keywords",
+            predicted_value="lens, optics",
+            expected_value=None,
+        )
+        assert "<answer>" in prompt
+        assert "<response>" not in prompt, (
+            "<response> should be absent in reference-free mode"
+        )
+
+    # ---- hallucination edge cases ----------------------------------------
+
+    def test_hallucination_empty_expected_dict(self):
+        """When expected={}, hallucination count is 0 (no items to match)."""
+        ev = RubricBasedEvaluator({})
+        hallu_count, total_items, details = ev._detect_hallucinations(
+            predicted={"ten keywords": "lens, optics, MTF"},
+            expected={},
+        )
+        assert hallu_count == 0, (
+            f"Expected 0 hallucinations with empty expected, got {hallu_count}"
+        )
+        assert total_items > 0, (
+            "Should still count items from predicted"
+        )
+        assert details["hallucinated_items"] == [], (
+            "No items should be marked hallucinated"
+        )
+
+    def test_hallucination_both_empty(self):
+        """No hallucination when both predicted and expected are empty."""
+        ev = RubricBasedEvaluator({})
+        hallu_count, total_items, details = ev._detect_hallucinations(
+            predicted={},
+            expected={},
+        )
+        assert hallu_count == 0
+        assert total_items == 0
+        assert details["hallucinated_items"] == []
+
 
 # ===========================================================================
 # Online (integration) test — against a real vLLM endpoint
