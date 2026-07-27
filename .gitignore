@@ -174,3 +174,6 @@ uv.lock
 
 # test files
 self_test
+
+# WeChat public account dataset - track metadata and reports, ignore PDFs
+dataset/自适应光学 Research/*.pdf
