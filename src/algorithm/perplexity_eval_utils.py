@@ -10,11 +10,10 @@ Uses GPT-2 by default (lightweight, fast). For domain-specific evaluation,
 swap to a causal LM fine-tuned on scientific/ optics text.
 """
 
-import argparse
-import json
-
 from __future__ import annotations
 
+import argparse
+import json
 import math
 from typing import Any
 

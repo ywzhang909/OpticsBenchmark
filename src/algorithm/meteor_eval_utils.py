@@ -12,11 +12,10 @@ judgment because it uses recall, stemming, and synonym matching.
 Uses NLTK's METEOR implementation which requires WordNet data.
 """
 
-import argparse
-import json
-
 from __future__ import annotations
 
+import argparse
+import json
 from typing import Any
 
 
