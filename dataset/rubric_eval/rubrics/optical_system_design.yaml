@@ -1,0 +1,121 @@
+rubric_s4_system_design:
+  meta:
+    task: "optical_system_design_evaluation"
+    version: "1.0"
+    criteria_count: 15
+
+  criteria:
+    # === 参数合理性 (原子) ===
+    - id: D01_wavelength_range
+      dimension: "参数合理性"
+      type: binary
+      question: "工作波长是否在所选光学元件的适用范围内？"
+      evidence_types: [DATA]
+      weight: 1.5
+
+    - id: D02_power_handling
+      dimension: "参数合理性"
+      type: binary
+      question: "激光功率是否在元件的损伤阈值（LIDT）以下？"
+      evidence_types: [DATA]
+      weight: 1.5
+      fail_hard: true
+
+    - id: D03_aperture_size
+      dimension: "参数合理性"
+      type: binary
+      question: "光束直径与光学元件孔径的比例是否合理（避免截断）？"
+      evidence_types: [DATA]
+      weight: 1.2
+
+    - id: D04_numerical_aperture
+      dimension: "参数合理性"
+      type: binary
+      question: "数值孔径（NA）是否与光学系统的分辨能力匹配？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.2
+
+    # === 约束满足 (原子) ===
+    - id: D05_diffraction_limit
+      dimension: "约束满足"
+      type: binary
+      question: "系统设计是否考虑了衍射极限（瑞利判据）？"
+      evidence_types: [FORMULA]
+      weight: 1.2
+
+    - id: D06_sampling_nyquist
+      dimension: "约束满足"
+      type: binary
+      question: "探测器采样是否满足 Nyquist 准则？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.2
+
+    - id: D07_aberration_control
+      dimension: "约束满足"
+      type: binary
+      question: "是否考虑了像差校正（球差、彗差、像散等）？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.0
+
+    - id: D08_coherence_length
+      dimension: "约束满足"
+      type: binary
+      question: "相干长度是否与干涉测量的光程差匹配？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.0
+
+    # === 性能预期 (分析) ===
+    - id: D09_strehl_ratio
+      dimension: "性能预期"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "预期 Strehl 比是否合理（1=不切实际, 5=保守合理）？"
+      evidence_types: [FORMULA, DATA]
+      weight: 1.2
+
+    - id: D10_efficiency_estimate
+      dimension: "性能预期"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "系统效率估计是否合理（考虑所有损耗）？"
+      evidence_types: [FORMULA, DATA]
+      weight: 1.0
+
+    - id: D11_resolution_claim
+      dimension: "性能预期"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "分辨率声明是否与系统参数一致？"
+      evidence_types: [FORMULA, DATA]
+      weight: 1.0
+
+    # === 误差分析 (原子) ===
+    - id: D12_alignment_tolerance
+      dimension: "误差分析"
+      type: binary
+      question: "是否提供了光学元件对准误差的容限分析？"
+      evidence_types: [DATA]
+      weight: 0.8
+
+    - id: D13_environmental_factors
+      dimension: "误差分析"
+      type: binary
+      question: "是否考虑了环境因素（温度、振动、气流）的影响？"
+      evidence_types: [DATA, LOGIC]
+      weight: 0.8
+
+    - id: D14_uncertainty_propagation
+      dimension: "误差分析"
+      type: binary
+      question: "是否提供了误差传播分析（参数不确定度对性能的影响）？"
+      evidence_types: [FORMULA, DATA]
+      weight: 0.8
+
+    # === 可扩展性 (分析) ===
+    - id: D15_scalability
+      dimension: "可扩展性"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "设计是否易于扩展到不同波长、功率或应用场景？"
+      evidence_types: [LOGIC]
+      weight: 0.6

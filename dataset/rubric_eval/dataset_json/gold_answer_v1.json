@@ -1,0 +1,439 @@
+[
+  {
+    "id": "S1_001",
+    "scenario": "S1",
+    "title": "自适应光学系统波前校正实验方案",
+    "expert_annotations": {
+      "C01_energy_conservation": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "实验方案明确列出能量预算：输入功率5mW，光学元件损耗约20%，探测器接收功率约4mW，能量守恒验证误差<5%",
+        "line_ref": "能量预算部分"
+      },
+      "C02_diffraction_limit": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "方案中提到波长632.8nm和光束直径2mm，但未明确计算衍射极限",
+        "line_ref": "光源参数部分"
+      },
+      "C03_sampling_nyquist": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "方案未明确说明探测器采样是否满足Nyquist准则",
+        "line_ref": "波前传感器部分"
+      },
+      "C04_approximation_validity": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "Kolmogorov湍流模型是标准模型，SPGD算法假设合理"
+      },
+      "C05_equipment_specification": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "提供了完整设备规格：He-Ne激光器、Shack-Hartmann传感器、37单元变形镜",
+        "line_ref": "光源参数、波前传感器、变形镜部分"
+      },
+      "C06_parameter_report": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "实验参数完整：波长、功率、采样频率、迭代次数等",
+        "line_ref": "整个方案"
+      },
+      "C07_measurement_conditions": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "描述了湍流模拟条件（r0=10cm，风速5m/s）",
+        "line_ref": "湍流模拟部分"
+      },
+      "C08_control_group": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "明确设置了基线组（无校正）、对比组（PID控制）、实验组（SPGD）",
+        "line_ref": "对照组设置部分"
+      },
+      "C09_confounding_factors": {
+        "score": 4,
+        "confidence": "MEDIUM",
+        "evidence": "考虑了系统误差和随机误差，但未详细讨论混杂变量控制"
+      },
+      "C10_uncertainty_quantification": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "提供了误差分析和不确定度：Strehl比测量不确定度±0.02",
+        "line_ref": "误差分析部分"
+      },
+      "C11_novelty": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "SPGD算法是已有方法，实验设计是标准验证"
+      },
+      "C12_contribution_clarity": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "贡献是验证已有算法在特定条件下的性能，创新性有限"
+      },
+      "C13_baseline_comparison": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "包含与PID控制算法的对比",
+        "line_ref": "对照组设置部分"
+      },
+      "C14_failure_analysis": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "未讨论潜在失败模式或局限性"
+      },
+      "C15_scalability": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "实验设计可扩展到其他湍流条件，但未讨论推广性"
+      },
+      "C16_safety_consideration": {
+        "verdict": "UNMET",
+        "confidence": "HIGH",
+        "evidence": "未考虑激光安全标准和防护措施",
+        "line_ref": "整个方案"
+      },
+      "C17_reasoning_chain": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "从实验目标到方案设计的推理链基本连贯"
+      },
+      "C18_parameter_derivation": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "关键参数有明确选择依据"
+      }
+    },
+    "overall_score": 82,
+    "pass_threshold": 80,
+    "passed": true,
+    "key_findings": [
+      "能量守恒验证完整",
+      "对照组设置合理",
+      "缺少Nyquist采样验证",
+      "未考虑激光安全防护"
+    ]
+  },
+  {
+    "id": "S2_001",
+    "scenario": "S2",
+    "title": "基于超表面的高效光束偏转器设计",
+    "expert_annotations": {
+      "P01_novelty_degree": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "超表面光束偏转器已有大量研究，本文改进了效率"
+      },
+      "P02_novelty_evidence": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "提供了与传统光栅的对比，效率提升约30%",
+        "line_ref": "摘要部分"
+      },
+      "P03_method_description": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "描述了逆向设计算法、FDTD仿真和加工方法",
+        "line_ref": "方法部分"
+      },
+      "P04_formula_correctness": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "未提供详细公式推导，但方法描述合理"
+      },
+      "P05_assumption_validity": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "假设合理，符合超表面设计的一般做法"
+      },
+      "P06_approximation_limits": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "讨论了加工复杂度和成本的局限性",
+        "line_ref": "讨论部分"
+      },
+      "P07_control_group": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "与传统光栅进行对比",
+        "line_ref": "摘要部分"
+      },
+      "P08_sample_size": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "未明确说明实验重复次数"
+      },
+      "P09_uncertainty_analysis": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "未提供误差分析和不确定度量化"
+      },
+      "P10_result_interpretation": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "结果解释充分，包括仿真和实验对比"
+      },
+      "P11_theoretical_foundation": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "理论基础描述较浅，主要是设计方法"
+      },
+      "P12_generalizability": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "提到可扩展到其他波长，但未详细讨论"
+      },
+      "P13_structure_clarity": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "论文结构清晰，逻辑连贯"
+      },
+      "P14_reference_quality": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "引用了领域内关键文献（Genevet, Arbabi）",
+        "line_ref": "参考文献部分"
+      },
+      "P15_impact_potential": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "对光束控制领域有一定贡献，但不是突破性"
+      },
+      "P16_open_science": {
+        "verdict": "UNMET",
+        "confidence": "HIGH",
+        "evidence": "未提供开源数据或代码"
+      }
+    },
+    "overall_score": 78,
+    "pass_threshold": 80,
+    "passed": false,
+    "key_findings": [
+      "效率对比实验充分",
+      "引用文献质量高",
+      "缺少误差分析",
+      "未提供开源数据"
+    ]
+  },
+  {
+    "id": "S3_001",
+    "scenario": "S3",
+    "title": "深度学习在波前传感中的应用综述",
+    "expert_annotations": {
+      "L01_factual_accuracy": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "引用的论文参数与原文一致"
+      },
+      "L02_parameter_accuracy": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "精度λ/50、推理时间<10ms等参数准确引用"
+      },
+      "L03_no_hallucination": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "未发现原文中未提及的内容"
+      },
+      "L04_technical_depth": {
+        "score": 4,
+        "confidence": "MEDIUM",
+        "evidence": "对技术细节理解较深，包括CNN和MLP方法"
+      },
+      "L05_limitation_understanding": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "识别了训练数据需求和噪声鲁棒性问题"
+      },
+      "L06_citation_accuracy": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "所有引用准确对应到原始文献"
+      },
+      "L07_quote_accuracy": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "关键发现引用准确"
+      },
+      "L08_cross_paper_synthesis": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "有效综合了两篇论文的信息，进行了对比分析"
+      },
+      "L09_comparison_quality": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "对比了CNN和MLP方法的性能差异"
+      },
+      "L10_conflict_identification": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "未识别文献间的矛盾或分歧"
+      },
+      "L11_critical_evaluation": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "有批判性评估但深度有限"
+      },
+      "L12_future_direction": {
+        "score": 3,
+        "confidence": "MEDIUM",
+        "evidence": "提出了未来方向但不够具体"
+      },
+      "L13_structure_clarity": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "回答结构清晰，逻辑连贯"
+      },
+      "L14_terminology_consistency": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "光学领域术语使用一致且准确"
+      }
+    },
+    "overall_score": 85,
+    "pass_threshold": 80,
+    "passed": true,
+    "key_findings": [
+      "事实准确性高",
+      "跨文献综合能力强",
+      "未识别文献间分歧",
+      "批判性思维深度有限"
+    ]
+  },
+  {
+    "id": "S4_001",
+    "scenario": "S4",
+    "title": "高功率激光系统光束质量评估",
+    "expert_annotations": {
+      "D01_wavelength_range": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "1064nm在Nd:YAG激光器的典型工作波长范围内"
+      },
+      "D02_power_handling": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "100W输出功率在高功率激光系统中是合理范围",
+        "fail_hard": true
+      },
+      "D03_aperture_size": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "10mm光束直径与系统孔径匹配"
+      },
+      "D04_numerical_aperture": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "NA与系统分辨能力匹配"
+      },
+      "D05_diffraction_limit": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "M²=1.2接近衍射极限"
+      },
+      "D06_sampling_nyquist": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "探测器采样满足Nyquist准则"
+      },
+      "D07_aberration_control": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "M²=1.2表明像差控制良好"
+      },
+      "D08_coherence_length": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "线宽100kHz对应较长相干长度"
+      },
+      "D09_strehl_ratio": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "基于M²=1.2可推算Strehl比约0.83"
+      },
+      "D10_efficiency_estimate": {
+        "score": 4,
+        "confidence": "MEDIUM",
+        "evidence": "系统效率估计合理"
+      },
+      "D11_resolution_claim": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "分辨率声明与系统参数一致"
+      },
+      "D12_alignment_tolerance": {
+        "verdict": "MET",
+        "confidence": "MEDIUM",
+        "evidence": "提供了指向稳定性参数（5μrad）"
+      },
+      "D13_environmental_factors": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "未详细考虑环境因素影响"
+      },
+      "D14_uncertainty_propagation": {
+        "verdict": "UNMET",
+        "confidence": "MEDIUM",
+        "evidence": "未提供误差传播分析"
+      },
+      "D15_scalability": {
+        "score": 4,
+        "confidence": "MEDIUM",
+        "evidence": "系统设计易于扩展到不同功率"
+      }
+    },
+    "overall_score": 82,
+    "pass_threshold": 80,
+    "passed": true,
+    "key_findings": [
+      "波长在合理范围内",
+      "功率处理满足要求",
+      "缺少环境因素分析",
+      "未提供误差传播分析"
+    ]
+  },
+  {
+    "id": "S5_001",
+    "scenario": "S5",
+    "title": "自适应光学系统仿真Agent交互评估",
+    "expert_annotations": {
+      "T01_tool_selection": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "选择了正确的工具：optical_simulator、deformable_mirror_config、control_algorithm",
+        "fail_hard": true
+      },
+      "T02_tool_params": {
+        "verdict": "MET",
+        "confidence": "HIGH",
+        "evidence": "工具参数正确：波长532nm、孔径25mm、r0=10cm、SPGD算法"
+      },
+      "T03_result_interpretation": {
+        "score": 4,
+        "confidence": "HIGH",
+        "evidence": "正确解读Strehl比0.45表示波前畸变严重"
+      },
+      "T04_tool_chain_coherence": {
+        "score": 5,
+        "confidence": "HIGH",
+        "evidence": "工具调用链连贯：仿真→配置变形镜→控制算法"
+      },
+      "T05_error_recovery": {
+        "score": 4,
+        "confidence": "MEDIUM",
+        "evidence": "虽然未遇到错误，但推理过程表明有错误处理能力"
+      }
+    },
+    "overall_score": 90,
+    "pass_threshold": 80,
+    "passed": true,
+    "key_findings": [
+      "工具选择正确",
+      "参数传递准确",
+      "工具链连贯",
+      "结果解读合理"
+    ]
+  }
+]

@@ -1,0 +1,132 @@
+rubric_s2_paper_review:
+  meta:
+    task: "optical_paper_review"
+    version: "1.0"
+    criteria_count: 16
+
+  criteria:
+    # === 技术新颖性 (分析) ===
+    - id: P01_novelty_degree
+      dimension: "技术新颖性"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "论文提出的方法/理论在光学领域的新颖性程度（1=完全已有, 5=高度创新）？"
+      evidence_types: [LOGIC, QUOTE]
+      weight: 1.5
+
+    - id: P02_novelty_evidence
+      dimension: "技术新颖性"
+      type: binary
+      question: "是否提供了与前人工作的明确对比，证明新方法/理论的超越？"
+      evidence_types: [DATA, QUOTE, LOGIC]
+      weight: 1.2
+
+    # === 方法严谨性 (原子 + 分析) ===
+    - id: P03_method_description
+      dimension: "方法严谨性"
+      type: binary
+      question: "实验方法或理论推导是否描述足够详细，以便他人复现？"
+      evidence_types: [QUOTE, DATA]
+      weight: 1.5
+      fail_hard: true
+
+    - id: P04_formula_correctness
+      dimension: "方法严谨性"
+      type: binary
+      question: "公式推导是否无逻辑错误，量纲是否一致？"
+      evidence_types: [FORMULA]
+      weight: 1.5
+      fail_hard: true
+
+    - id: P05_assumption_validity
+      dimension: "方法严谨性"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "理论假设的合理性程度（1=完全不合理, 5=完全合理）？"
+      evidence_types: [LOGIC, FORMULA]
+      weight: 1.0
+
+    - id: P06_approximation_limits
+      dimension: "方法严谨性"
+      type: binary
+      question: "是否讨论了近似假设的适用范围和局限性？"
+      evidence_types: [QUOTE, LOGIC]
+      weight: 0.8
+
+    # === 实验充分性 (原子 + 分析) ===
+    - id: P07_control_group
+      dimension: "实验充分性"
+      type: binary
+      question: "是否设置了合理的对照组或基线比较？"
+      evidence_types: [DATA, LOGIC]
+      weight: 1.2
+
+    - id: P08_sample_size
+      dimension: "实验充分性"
+      type: binary
+      question: "实验样本量或重复次数是否充分（至少 3 次独立重复）？"
+      evidence_types: [DATA]
+      weight: 1.0
+
+    - id: P09_uncertainty_analysis
+      dimension: "实验充分性"
+      type: binary
+      question: "是否提供了误差分析和不确定性量化？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.0
+
+    - id: P10_result_interpretation
+      dimension: "实验充分性"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "实验结果的解释是否充分且合理（1=不充分, 5=充分）？"
+      evidence_types: [LOGIC, DATA]
+      weight: 1.0
+
+    # === 理论深度 (分析) ===
+    - id: P11_theoretical_foundation
+      dimension: "理论深度"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "理论基础的深度（1=仅描述现象, 5=深入物理机制）？"
+      evidence_types: [LOGIC, FORMULA]
+      weight: 1.0
+
+    - id: P12_generalizability
+      dimension: "理论深度"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "方法/理论的适用范围和可扩展性（1=仅限特定条件, 5=广泛适用）？"
+      evidence_types: [LOGIC]
+      weight: 0.8
+
+    # === 写作质量 (原子) ===
+    - id: P13_structure_clarity
+      dimension: "写作质量"
+      type: binary
+      question: "论文结构是否清晰，逻辑是否连贯？"
+      evidence_types: [QUOTE]
+      weight: 0.6
+
+    - id: P14_reference_quality
+      dimension: "写作质量"
+      type: binary
+      question: "参考文献是否包含该领域的关键文献（近 5 年内的代表性工作）？"
+      evidence_types: [QUOTE]
+      weight: 0.6
+
+    # === 创新贡献 (分析) ===
+    - id: P15_impact_potential
+      dimension: "创新贡献"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "论文对光学领域的潜在影响力（1=影响有限, 5=具有突破性）？"
+      evidence_types: [LOGIC, QUOTE]
+      weight: 1.2
+
+    - id: P16_open_science
+      dimension: "创新贡献"
+      type: binary
+      question: "是否提供了开源数据/代码或详细参数以促进复现？"
+      evidence_types: [DATA, QUOTE]
+      weight: 0.4

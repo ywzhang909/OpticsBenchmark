@@ -1,0 +1,49 @@
+rubric_s5_tool_use:
+  meta:
+    task: "optical_agent_tool_use_evaluation"
+    version: "1.0"
+    criteria_count: 5
+
+  criteria:
+    # === 工具选择正确性 ===
+    - id: T01_tool_selection
+      dimension: "工具选择"
+      type: binary
+      question: "Agent 选择的工具是否适合当前光学任务（如：干涉计算用干涉仪仿真而非衍射仿真）？"
+      evidence_types: [LOGIC, TOOL_CALL]
+      weight: 1.5
+      fail_hard: true
+
+    - id: T02_tool_params
+      dimension: "工具参数"
+      type: binary
+      question: "工具调用时传递的参数是否正确（量纲、范围、格式）？"
+      evidence_types: [DATA, TOOL_CALL]
+      weight: 1.5
+
+    # === 工具结果解读 ===
+    - id: T03_result_interpretation
+      dimension: "结果解读"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "Agent 对工具输出结果的光学物理解读是否准确？"
+      evidence_types: [LOGIC, FORMULA]
+      weight: 1.2
+
+    # === 多步工具链 ===
+    - id: T04_tool_chain_coherence
+      dimension: "工具链"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "多步工具调用的逻辑链是否连贯（前一步输出→后一步输入）？"
+      evidence_types: [LOGIC, TOOL_CALL]
+      weight: 1.0
+
+    # === 错误恢复 ===
+    - id: T05_error_recovery
+      dimension: "错误恢复"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "工具调用失败时，Agent 是否尝试了合理的恢复策略？"
+      evidence_types: [LOGIC, TOOL_CALL]
+      weight: 0.8

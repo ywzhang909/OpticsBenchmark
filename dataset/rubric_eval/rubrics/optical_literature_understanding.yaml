@@ -1,0 +1,117 @@
+rubric_s3_literature_understanding:
+  meta:
+    task: "optical_literature_understanding"
+    version: "1.0"
+    criteria_count: 14
+
+  criteria:
+    # === 事实准确性 (原子) ===
+    - id: L01_factual_accuracy
+      dimension: "事实准确性"
+      type: binary
+      question: "回答中的光学物理事实（参数、公式、现象描述）是否与原始文献一致？"
+      evidence_types: [QUOTE, DATA, FORMULA]
+      weight: 1.5
+      fail_hard: true
+
+    - id: L02_parameter_accuracy
+      dimension: "事实准确性"
+      type: binary
+      question: "文献中的实验参数（波长、功率、效率等）是否准确引用？"
+      evidence_types: [DATA]
+      weight: 1.2
+
+    - id: L03_no_hallucination
+      dimension: "事实准确性"
+      type: binary
+      question: "是否存在原文中未提及的内容（幻觉）？"
+      evidence_types: [ABSENCE]
+      weight: 1.5
+      fail_hard: true
+
+    # === 技术深度 (分析) ===
+    - id: L04_technical_depth
+      dimension: "技术深度"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "对文献中技术细节的理解深度（1=表面描述, 5=深入物理机制）？"
+      evidence_types: [LOGIC, FORMULA]
+      weight: 1.2
+
+    - id: L05_limitation_understanding
+      dimension: "技术深度"
+      type: binary
+      question: "是否准确理解了文献中讨论的局限性和未解决问题？"
+      evidence_types: [QUOTE, LOGIC]
+      weight: 1.0
+
+    # === 引用可追溯性 (原子) ===
+    - id: L06_citation_accuracy
+      dimension: "引用可追溯性"
+      type: binary
+      question: "所有引用是否准确对应到原始文献（作者、年份、关键发现）？"
+      evidence_types: [QUOTE]
+      weight: 1.2
+
+    - id: L07_quote_accuracy
+      dimension: "引用可追溯性"
+      type: binary
+      question: "直接引用的段落是否与原文一致（非 paraphrased）？"
+      evidence_types: [QUOTE]
+      weight: 1.0
+
+    # === 跨文献综合 (分析) ===
+    - id: L08_cross_paper_synthesis
+      dimension: "跨文献综合"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "是否有效综合了多篇文献的信息，而非简单罗列？"
+      evidence_types: [LOGIC]
+      weight: 1.2
+
+    - id: L09_comparison_quality
+      dimension: "跨文献综合"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "对不同文献的对比分析质量（1=无对比, 5=深入对比）？"
+      evidence_types: [LOGIC, DATA]
+      weight: 1.0
+
+    - id: L10_conflict_identification
+      dimension: "跨文献综合"
+      type: binary
+      question: "是否识别并讨论了文献间的矛盾或分歧？"
+      evidence_types: [LOGIC, QUOTE]
+      weight: 0.8
+
+    # === 批判性思维 (分析) ===
+    - id: L11_critical_evaluation
+      dimension: "批判性思维"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "对文献的批判性评估质量（1=仅复述, 5=深入批判）？"
+      evidence_types: [LOGIC]
+      weight: 1.0
+
+    - id: L12_future_direction
+      dimension: "批判性思维"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "是否基于文献提出了有意义的研究方向或展望？"
+      evidence_types: [LOGIC]
+      weight: 0.8
+
+    # === 表达质量 (原子) ===
+    - id: L13_structure_clarity
+      dimension: "表达质量"
+      type: binary
+      question: "回答结构是否清晰，逻辑是否连贯？"
+      evidence_types: [QUOTE]
+      weight: 0.6
+
+    - id: L14_terminology_consistency
+      dimension: "表达质量"
+      type: binary
+      question: "光学领域术语使用是否一致且准确？"
+      evidence_types: [QUOTE]
+      weight: 0.6

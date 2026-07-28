@@ -159,6 +159,7 @@ dataset/info_extraction
 # opencode
 .opencode/
 opencode.json
+.omo/
 
 # Ruff
 .ruff_cache/
@@ -177,3 +178,5 @@ self_test
 
 # WeChat public account dataset - track metadata and reports, ignore PDFs
 dataset/自适应光学 Research/*.pdf
+
+.codegraph*

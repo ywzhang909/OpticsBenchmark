@@ -1,6 +1,6 @@
 # OptiS Benchmark — Dataset Directory
 
-本目录包含光学设计智能体评测所需的全部数据集。当前涵盖 4 类任务数据，包括就绪和待完善两个状态。
+本目录包含光学设计智能体评测所需的全部数据集。当前涵盖 5 类任务数据，包括就绪和待完善两个状态。
 
 ---
 
@@ -16,6 +16,12 @@ dataset/
 ├── info_extraction/              # [就绪] 信息抽取扩展数据
 │   └── AO/                      # 自适应光学（Adaptive Optics）领域
 │       └── *_analysis.txt       # 274 篇论文的 AI 生成分析（中文 + 英文混合）
+├── rubric_eval/                  # [就绪] LLM-as-Judge Rubric 评估测试数据
+│   ├── dataset_json/
+│   │   ├── dataset_v1.json      # 7 条测试用例（5 个场景）
+│   │   ├── gold_answer_v1.json  # 专家标注的金标准答案
+│   │   └── metadata.json        # 数据集元信息
+│   └── rubrics/                 # 5 个场景的 Rubric 标准文件
 ├── paper_review/                 # [待完善] 论文审稿任务
 │   ├── dataset_json/            # （空，待填充 JSON 标注）
 │   └── data_v1/                 # （空，待放置原始 PDF）
@@ -115,7 +121,36 @@ dataset/
 
 ---
 
-### 3. `paper_review` — 论文审稿（⏳ 待完善）
+### 3. `rubric_eval` — LLM-as-Judge Rubric 评估测试数据（✅ 就绪）
+
+基于 Rubric 的光学领域 LLM-as-Judge 评估系统测试数据，覆盖 5 个评估场景。
+
+| 项目 | 说明 |
+|------|------|
+| **样本量** | 7 条测试用例 |
+| **评估场景** | S1: 实验方案评审、S2: 论文评审、S3: 文献理解、S4: 系统设计评估、S5: Agent工具使用 |
+| **Rubric标准** | 68 条（18+16+14+15+5），覆盖原子级和分析级标准 |
+| **语言** | 中文 |
+| **格式** | JSON（测试用例 + 金标准答案）+ YAML（Rubric标准） |
+| **难度分布** | Easy 57%、Medium 29%、Hard 14% |
+| **领域覆盖** | 自适应光学、激光物理、光学测量、超表面、光纤光学 |
+
+**测试用例示例**：
+| 场景 | 标题 | 难度 |
+|------|------|------|
+| S1 | 自适应光学系统波前校正实验方案 | Easy |
+| S2 | 基于超表面的高效光束偏转器设计 | Easy |
+| S3 | 深度学习在波前传感中的应用综述 | Easy |
+| S4 | 高功率激光系统光束质量评估 | Easy |
+| S5 | 自适应光学系统仿真Agent交互评估 | Medium |
+
+**关联文档**：
+- `docs/llm-judge-rubric-experimental-plan-v20.md` — 实验方案设计文档
+- `dataset/rubric_eval/README.md` — 详细使用说明
+
+---
+
+### 4. `paper_review` — 论文审稿（⏳ 待完善）
 
 对光学论文进行学术审稿并给出评分与建议。
 
@@ -143,7 +178,8 @@ dataset/
 |------|--------|------|
 | Metasurface / Metamaterial | 15 | `paper_info_extract/data_v1/`（PDF） |
 | Adaptive Optics | 274 | `info_extraction/AO/`（分析文本） |
-| **合计** | **289** | |
+| Rubric Eval (多领域) | 7 | `rubric_eval/dataset_json/`（测试用例） |
+| **合计** | **296** | |
 
 AO 数据集覆盖的关键主题：
 - 波前传感（Shack-Hartmann、金字塔传感器、相位恢复、深度学习波前传感）

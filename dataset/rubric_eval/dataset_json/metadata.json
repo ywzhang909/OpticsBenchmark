@@ -1,0 +1,76 @@
+{
+  "dataset_name": "rubric_eval_v1",
+  "version": "1.0",
+  "description": "LLM-as-Judge Rubric评估系统测试数据集",
+  "created_date": "2026-07-27",
+  "author": "OptiS Benchmark Team",
+  "license": "CC BY-SA 4.0",
+  "scenarios": {
+    "S1": {
+      "name": "optical_experiment_design_review",
+      "description": "光学实验方案评审",
+      "criteria_count": 18,
+      "rubric_file": "rubrics/optical_experiment_review.yaml",
+      "test_cases": 3
+    },
+    "S2": {
+      "name": "optical_paper_review",
+      "description": "光学论文自动评审",
+      "criteria_count": 16,
+      "rubric_file": "rubrics/optical_paper_review.yaml",
+      "test_cases": 2
+    },
+    "S3": {
+      "name": "optical_literature_understanding",
+      "description": "光学文献综合理解评估",
+      "criteria_count": 14,
+      "rubric_file": "rubrics/optical_literature_understanding.yaml",
+      "test_cases": 1
+    },
+    "S4": {
+      "name": "optical_system_design_evaluation",
+      "description": "光学系统设计参数评估",
+      "criteria_count": 15,
+      "rubric_file": "rubrics/optical_system_design.yaml",
+      "test_cases": 1
+    },
+    "S5": {
+      "name": "optical_agent_tool_use",
+      "description": "光学领域Agent工具使用评估",
+      "criteria_count": 5,
+      "rubric_file": "rubrics/optical_agent_tool_use.yaml",
+      "test_cases": 1
+    }
+  },
+  "difficulty_distribution": {
+    "easy": "60%",
+    "medium": "30%",
+    "hard": "10%"
+  },
+  "domain_distribution": {
+    "adaptive_optics": "30%",
+    "laser_physics": "25%",
+    "optical_measurement": "25%",
+    "metamaterial": "10%",
+    "fiber_optics": "10%"
+  },
+  "evaluation_metrics": {
+    "binary_accuracy_threshold": ">85%",
+    "ordinal_accuracy_threshold": ">75%",
+    "cohens_kappa_threshold": ">0.67",
+    "ece_threshold": "<0.05",
+    "brier_score_threshold": "<0.10"
+  },
+  "usage_instructions": {
+    "evaluation_pipeline": "使用五阶段流水线（锁定→上下文→执行→校准→完整性检查）",
+    "deterministic_checks": "先运行确定性规则检查，再进行Rubric评分",
+    "judge_panel": "推荐使用3个评委（gpt-4o + claude-sonnet-4 + qwen-max）",
+    "calibration": "使用Platt Sigmoid（ordinal）和Wasserstein OT（binary）进行校准",
+    "stability_testing": "关键决策类用例执行pass^5，辅助分析类执行pass^10"
+  },
+  "file_structure": {
+    "dataset_v1.json": "测试用例数据集，包含论文内容和元信息",
+    "gold_answer_v1.json": "专家标注的金标准答案，包含每个Rubric标准的预期评分",
+    "metadata.json": "数据集元信息和使用说明"
+  }
+}

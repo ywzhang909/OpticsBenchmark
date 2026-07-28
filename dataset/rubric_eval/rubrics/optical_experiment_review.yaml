@@ -1,0 +1,145 @@
+rubric_v1:
+  meta:
+    task: "optical_experiment_design_review"
+    version: "1.0"
+    criteria_count: 18
+
+  criteria:
+    # === 物理一致性 (原子 + 分析混合) ===
+    - id: C01_energy_conservation
+      dimension: "物理一致性"
+      type: binary
+      question: "实验方案是否明确考虑了能量守恒（输入功率 = 输出 + 损耗）？"
+      evidence_types: [FORMULA, LOGIC, QUOTE]
+      weight: 1.5
+      fail_hard: true
+
+    - id: C02_diffraction_limit
+      dimension: "物理一致性"
+      type: binary
+      question: "衍射极限计算是否与所用波长和孔径一致？"
+      evidence_types: [FORMULA, DATA]
+      weight: 1.2
+
+    - id: C03_sampling_nyquist
+      dimension: "物理一致性"
+      type: binary
+      question: "探测器采样是否满足 Nyquist 准则（至少 2 像素/空间频率）？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.2
+
+    - id: C04_approximation_validity
+      dimension: "物理一致性"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "理论模型中的近似假设是否合理（1=完全不合理, 5=完全合理）？"
+      evidence_types: [LOGIC, QUOTE]
+      weight: 1.0
+
+    # === 实验可重复性 (原子) ===
+    - id: C05_equipment_specification
+      dimension: "实验可重复性"
+      type: binary
+      question: "所有关键设备是否提供了完整规格参数（型号、关键指标）？"
+      evidence_types: [DATA]
+      weight: 1.0
+
+    - id: C06_parameter_report
+      dimension: "实验可重复性"
+      type: binary
+      question: "实验参数是否完整报告（波长、功率、曝光时间、环境条件等）？"
+      evidence_types: [DATA]
+      weight: 1.0
+
+    - id: C07_measurement_conditions
+      dimension: "实验可重复性"
+      type: binary
+      question: "测量条件和校准方法是否描述清晰？"
+      evidence_types: [QUOTE, DATA]
+      weight: 0.8
+
+    # === 变量控制 (原子 + 分析) ===
+    - id: C08_control_group
+      dimension: "变量控制"
+      type: binary
+      question: "是否设置了合理的对照组或参考实验？"
+      evidence_types: [LOGIC]
+      weight: 1.0
+
+    - id: C09_confounding_factors
+      dimension: "变量控制"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "混杂变量的控制程度如何（1=几乎无控制, 5=全面控制）？"
+      evidence_types: [LOGIC, DATA]
+      weight: 1.0
+
+    - id: C10_uncertainty_quantification
+      dimension: "变量控制"
+      type: binary
+      question: "是否提供了误差分析和不确定性量化？"
+      evidence_types: [DATA, FORMULA]
+      weight: 1.0
+
+    # === 创新贡献 (分析) ===
+    - id: C11_novelty
+      dimension: "创新贡献"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "方法/设计的新颖性程度（1=完全已有, 5=高度创新）？"
+      evidence_types: [LOGIC, QUOTE]
+      weight: 1.0
+
+    - id: C12_contribution_clarity
+      dimension: "创新贡献"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "对已有工作的超越是否明确陈述且有证据支持？"
+      evidence_types: [QUOTE, LOGIC]
+      weight: 0.8
+
+    # === 实验设计完整性 (原子) ===
+    - id: C13_baseline_comparison
+      dimension: "实验设计完整性"
+      type: binary
+      question: "是否包含与基线方法/现有设计的对比？"
+      evidence_types: [DATA, LOGIC]
+      weight: 0.8
+
+    - id: C14_failure_analysis
+      dimension: "实验设计完整性"
+      type: binary
+      question: "是否讨论了潜在失败模式或局限性？"
+      evidence_types: [LOGIC, QUOTE]
+      weight: 0.6
+
+    - id: C15_scalability
+      dimension: "实验设计完整性"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "实验的可扩展性和推广性如何？"
+      evidence_types: [LOGIC]
+      weight: 0.6
+
+    - id: C16_safety_consideration
+      dimension: "实验设计完整性"
+      type: binary
+      question: "是否考虑了激光安全标准和防护措施？"
+      evidence_types: [QUOTE]
+      weight: 0.8
+
+    # === 过程级评估 (针对推理链) ===
+    - id: C17_reasoning_chain
+      dimension: "过程级-推理链"
+      type: ordinal
+      scale: [1, 2, 3, 4, 5]
+      question: "从实验目标到方案设计的推理链是否连贯、无逻辑跳跃？"
+      evidence_types: [LOGIC]
+      weight: 1.0
+
+    - id: C18_parameter_derivation
+      dimension: "过程级-参数推导"
+      type: binary
+      question: "关键参数的选择是否有推导过程或引用依据？"
+      evidence_types: [FORMULA, QUOTE, DATA]
+      weight: 1.0
