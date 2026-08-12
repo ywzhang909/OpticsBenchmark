@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Open-Source Optical Design Agent Evaluation Framework**
+**Open-Source Automated Benchmark for LLM Academic Capabilities in Optics**
 
 </div>
 
@@ -13,16 +13,16 @@
 
 ## Overview
 
-OptiS Benchmark is a modular, extensible evaluation framework for assessing LLM-based agents in **optical design** and **optical science paper understanding** tasks. It provides standardized benchmarks, pluggable agent backends (7 LLM providers), multi-dimensional evaluation metrics, and async parallel execution.
+OptiS Benchmark is a modular, extensible evaluation framework designed to assess the performance of Large Language Models (LLMs) in tasks related to optical science papers, such as **information extraction, academic Q&A, and paper review**. The framework provides standardized test benchmarks, configurable LLM backends with multi-vendor support, multi-dimensional evaluation metrics, and asynchronous parallel execution capabilities.
 
 ### Key Features
 
 - **Optics-focused environments** — Zemax OpticStudio ZOS-API integration for ray tracing, lens design, tolerance analysis
-- **Pluggable LLM backends** — 7 providers: OpenAI, Anthropic, Google Gemini, Groq, Ollama, AWS Bedrock, Together AI
+- **Multi-Provider Support** — Compatible with OpenAI, Anthropic, Google Gemini, Groq, Ollama, AWS Bedrock, and Together AI
 - **Structured output support** — JSON schema generation from gold-answer files for OpenAI Responses API
-- **Multi-dimensional evaluation** — 12 metric modules: Exact Match, ROUGE, BLEU, METEOR, CIDEr, BERTScore, Perplexity, Sentence Similarity, Hungarian Matching, Jaccard Similarity, Edit Distance, Citation F1
+- **Multi-dimensional evaluation** — 7 metric modules: Exact Match, ROUGE, BLEU, BERTScore, Sentence Similarity, Edit Distance, Citation F1
 - **Composite scoring** — PluginEval-inspired weighted scoring with LLM judge and anti-pattern penalties
-- **Configuration-driven** — YAML-based agent and task configs; no code changes to switch models or tasks (8 task types)
+- **Configuration-driven** — YAML-based configuration for LLMs and tasks; switching LLMs or tasks (across 8 task types) requires no code changes
 - **Parallel execution** — Async concurrency with semaphore-based task control
 - **Report generation** — Automatic HTML/Markdown reports with statistics and model comparison
 - **Quick LLM selector** — Interactive CLI tool for comparing providers without writing code
