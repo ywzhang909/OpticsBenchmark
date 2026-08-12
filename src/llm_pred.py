@@ -36,16 +36,16 @@ def parse_args() -> argparse.Namespace:
         epilog="""
 Examples:
   # Run inference with config file
-  python src/llm_pred.py -c configs/llm/qwen_openai.yaml
+  python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml
 
   # Override output path
-  python src/llm_pred.py -c configs/llm/qwen_openai.yaml -o results/my_outputs.jsonl
+  python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml -o results/my_outputs.jsonl
 
   # Limit sample count
-  python src/llm_pred.py -c configs/llm/qwen_openai.yaml -n 10
+  python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml -n 10
 
   # Dry run (show config only)
-  python src/llm_pred.py -c configs/llm/qwen_openai.yaml --dry-run
+  python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml --dry-run
         """,
     )
 
@@ -54,7 +54,7 @@ Examples:
         "--config",
         type=str,
         # required=True,
-        default="configs/llm/glm_openai.yaml",
+        default="configs/llm/GPT_OpenAI.yaml",
         help="LLM config file path (YAML)",
     )
     parser.add_argument(

@@ -1,0 +1,74 @@
+# =============================================================================
+# GPT-4 Turbo - OpenAI Provider Configuration
+# OptiS Benchmark - LLM Prediction
+# =============================================================================
+#
+# 支持两种 OpenAI 官方调用方式，通过 setup.api_method 选择：
+#   - chat_completions: Chat Completions API (client.chat.completions.create)
+#   - responses:        Responses API        (client.responses.create)
+#
+# 两种 API 的请求参数不一致，本配置统一以通用字段定义，
+# 由 GPTLLM 按 api_method 自动映射到各自参数。差异参考官方文档：
+#   - Chat Completions: https://platform.openai.com/docs/api-reference/chat/create
+#   - Responses:        https://platform.openai.com/docs/api-reference/responses/create
+#
+# 注意：legacy 模型（gpt-4-turbo、gpt-4、gpt-3.5* 等）不支持 Responses API，
+# 若 api_method=responses 且模型不兼容，程序会警告并终止执行。
+
+llm:
+  provider:
+    type: "openai"
+    api_key: "${GPT_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+
+  model:
+    type: "gpt"
+    name: "gpt-4-turbo"
+
+  setup:
+    # 调用方式选择: "chat_completions" | "responses"
+    api_method: "chat_completions"
+
+    # 统一采样参数（两种调用方式通用）
+    temperature: 0.0
+    top_p: 1.0
+
+    # 输出 token 上限。两种 API 参数名不同，代码按 api_method 自动映射：
+    #   chat_completions → max_completion_tokens
+    #   responses        → max_output_tokens
+    max_tokens: 4096
+
+    # 频率/存在惩罚项，仅 Chat Completions API 支持；
+    # 选择 responses 时这两个参数会被忽略。
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+
+    # 结构化输出开关。两种 API 名称不同，代码按 api_method 自动映射：
+    #   chat_completions → response_format: {"type": "json_object"}
+    #   responses        → text: {"format": {"type": "json_object"}}
+    response_format: true
+
+    # store 仅 Responses API 有效（默认 false）
+    # store: false
+
+    # tools:
+    #   web_search: false
+    #   file_search: []
+    #   tool_search: {}
+    #   mcp_server: {}
+    # tool_choice: "auto"
+
+task:
+  dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+  prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+  file_input: true
+  max_samples: 100
+  shuffle: false
+
+  structured_output: true
+  gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
+
+execution:
+  concurrency: 1
+  timeout: 300
+  output_path: "results/llm_outputs.jsonl"

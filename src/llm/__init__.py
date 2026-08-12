@@ -34,6 +34,7 @@ _LLM_MAP: dict[str, str] = {
     "groq": "src.llm.models.GroqLLM",
     "ollama": "src.llm.models.OllamaLLM",
     "glm": "src.llm.models.GlmLLM",
+    "gpt": "src.llm.models.GPTLLM",
 }
 
 

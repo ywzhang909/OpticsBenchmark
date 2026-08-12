@@ -19,6 +19,7 @@ _MODEL_CLASSES: dict[str, str] = {
     "GroqLLM": "src.llm.models.GroqLLM",
     "OllamaLLM": "src.llm.models.OllamaLLM",
     "GlmLLM": "src.llm.models.GlmLLM",
+    "GPTLLM": "src.llm.models.GPTLLM",
 }
 
 __all__ = list(_MODEL_CLASSES.keys())
