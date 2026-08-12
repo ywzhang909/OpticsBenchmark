@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OptiS Benchmark - LLM Prediction Entry Point
+Optis Benchmark - LLM Prediction Entry Point
 
 Inference entry point based on Provider + LLM architecture.
 Reads LLM config, loads dataset, calls LLM for inference, and saves results.
@@ -31,7 +31,7 @@ from src.utils import logger, setup_logger  # noqa: E402
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="OptiS Benchmark - LLM Prediction (Provider + LLM Architecture)",
+        description="Optis Benchmark - LLM Prediction (Provider + LLM Architecture)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

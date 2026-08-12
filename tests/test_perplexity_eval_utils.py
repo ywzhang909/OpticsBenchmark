@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Perplexity Evaluation Utils Tests
+Optis Benchmark - Perplexity Evaluation Utils Tests
 
 Tests for compute_perplexity from scripts/utils/perplexity_eval_utils.
 Requires torch and transformers.

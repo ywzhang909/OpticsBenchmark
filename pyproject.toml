@@ -9,7 +9,7 @@ description = "Open-source optical design agent evaluation framework"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "OptiS Benchmark Contributors"}
+    {name = "Optis Benchmark Contributors"}
 ]
 keywords = [
     "optical-design",

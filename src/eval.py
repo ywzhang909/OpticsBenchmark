@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OptiS Benchmark - Evaluation Entry Point (Phase 2)
+Optis Benchmark - Evaluation Entry Point (Phase 2)
 
 Load agent outputs and compute evaluation metrics.
 """
@@ -35,7 +35,7 @@ from src.utils.parser import ConfigParser  # noqa: E402
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="OptiS Benchmark - Evaluation Engine (Phase 2)",
+        description="Optis Benchmark - Evaluation Engine (Phase 2)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

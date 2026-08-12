@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Base Evaluator Tests
+Optis Benchmark - Base Evaluator Tests
 
 Tests for MetricBasedEvaluator, ExactMatchEvaluator, and PartialMatchEvaluator.
 """

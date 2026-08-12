@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - ROUGE Scorer Tests
+Optis Benchmark - ROUGE Scorer Tests
 
 Tests for ROGUEScorer and SummarizationEvaluator.
 """

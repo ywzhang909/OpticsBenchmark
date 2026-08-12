@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Integration Tests
+Optis Benchmark - Integration Tests
 
 End-to-end integration tests for the evaluation system.
 """

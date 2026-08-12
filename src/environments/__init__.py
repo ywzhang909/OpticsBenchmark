@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Environments Module
+Optis Benchmark - Environments Module
 
 This module exports environment classes for optical design tasks.
 """

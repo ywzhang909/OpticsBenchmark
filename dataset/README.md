@@ -1,4 +1,4 @@
-# OptiS Benchmark — Dataset Directory
+# Optis Benchmark — Dataset Directory
 
 本目录包含光学设计智能体评测所需的全部数据集。当前涵盖 4 类任务数据，包括就绪和待完善两个状态。
 

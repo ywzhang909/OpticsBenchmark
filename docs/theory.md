@@ -1,8 +1,8 @@
-# OptiS Benchmark - Evaluation Theory
+# Optis Benchmark - Evaluation Theory
 
 ## Overview
 
-This document outlines the theoretical foundations and methodology behind the OptiS Benchmark evaluation system.
+This document outlines the theoretical foundations and methodology behind the Optis Benchmark evaluation system.
 
 ## 1. Agent Evaluation Framework
 

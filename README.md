@@ -1,4 +1,4 @@
-# OptiS Benchmark
+# Optis Benchmark
 
 <div align="center">
 
@@ -13,7 +13,7 @@
 
 ## Overview
 
-OptiS Benchmark is a modular, extensible evaluation framework designed to assess the performance of Large Language Models (LLMs) in tasks related to optical science papers, such as **information extraction, academic Q&A, and paper review**. The framework provides standardized test benchmarks, configurable LLM backends with multi-vendor support, multi-dimensional evaluation metrics, and asynchronous parallel execution capabilities.
+Optis Benchmark is a modular, extensible evaluation framework designed to assess the performance of Large Language Models (LLMs) in tasks related to optical science papers, such as **information extraction, academic Q&A, and paper review**. The framework provides standardized test benchmarks, configurable LLM backends with multi-vendor support, multi-dimensional evaluation metrics, and asynchronous parallel execution capabilities.
 
 ### Key Features
 
@@ -280,7 +280,7 @@ These 12 independent evaluation utility modules are self-contained with consiste
 
 ## Evaluation Methodology
 
-OptiS Benchmark implements a **three-layer evaluation architecture** inspired by [Vercel Labs benchmark-agents / PluginEval](https://www.skills.sh/vercel-labs/vercel-plugin/benchmark-agents):
+Optis Benchmark implements a **three-layer evaluation architecture** inspired by [Vercel Labs benchmark-agents / PluginEval](https://www.skills.sh/vercel-labs/vercel-plugin/benchmark-agents):
 
 ### Composite Weighted Scoring
 

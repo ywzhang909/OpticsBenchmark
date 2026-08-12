@@ -1,6 +1,6 @@
 # Prompts
 
-**Path:** `prompts/` — LLM prompt templates for OptiS Benchmark.
+**Path:** `prompts/` — LLM prompt templates for Optis Benchmark.
 
 Two-tier prompt architecture: **system prompts** (agent role definition) and **task prompts** (per-task instruction templates + zero-shot prompts).
 

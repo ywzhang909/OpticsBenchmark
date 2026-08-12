@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - LLM Module
+Optis Benchmark - LLM Module
 
 Provider 和 LLM 模型的分层架构。
 - providers/: 各厂商 SDK 异步封装

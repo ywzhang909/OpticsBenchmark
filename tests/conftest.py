@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Test Configuration
+Optis Benchmark - Test Configuration
 
 Pytest fixtures and configuration for evaluation tests.
 """

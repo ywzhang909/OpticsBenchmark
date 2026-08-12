@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - METEOR Evaluation Utils Tests
+Optis Benchmark - METEOR Evaluation Utils Tests
 
 Tests for compute_meteor from scripts/utils/meteor_eval_utils.
 Requires nltk with WordNet data.

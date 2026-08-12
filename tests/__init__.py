@@ -1,5 +1,5 @@
 """
-OptiS Benchmark Test Suite
+Optis Benchmark Test Suite
 
 Tests for the evaluation framework.
 """

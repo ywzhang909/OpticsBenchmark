@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Runner Module
+Optis Benchmark - Runner Module
 
 This module defines the main runner that coordinates
 agents across task instances.

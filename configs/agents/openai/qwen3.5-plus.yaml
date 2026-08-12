@@ -1,6 +1,6 @@
 # =============================================================================
 # Qwen 3.5 Plus Configuration
-# OptiS Benchmark - Agent Settings
+# Optis Benchmark - Agent Settings
 # =============================================================================
 #
 # Uses OpenAI-compatible SDK to call DeepSeek API.

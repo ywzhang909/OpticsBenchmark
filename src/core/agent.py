@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Core Agent Module
+Optis Benchmark - Core Agent Module
 
 This module defines the base Agent class and agent implementations
 for different LLM providers (OpenAI, Anthropic, Google Gemini, Groq, Ollama, etc.).

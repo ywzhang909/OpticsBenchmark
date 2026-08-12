@@ -1,1 +1,16 @@
-# OptiS Benchmark - Paper info extract Prompt(zero-shot)
+# Optis Benchmark - Paper review Prompt(zero-shot)
+
+***TASK***
+The objective is to conduct a rigorous, critical peer review of an input academic manuscript in the field of optics. You must systematically identify and articulate the issues, weaknesses, logical gaps, methodological flaws, or errors present in the manuscript. The review should be comprehensive, specific, and constructive, covering the complete chain from research motivation to final conclusions.
+***INPUT***
+The full text of an academic manuscript to be reviewed, optionally accompanied by a list of references cited within the manuscript.
+***OUTPUT***
+A structured critical review report enclosed between [Review Start] and [Review End]. The report must include the following modules:
+Overall Assessment: Summarize the research topic, core contributions, and overall quality of the manuscript in 2–3 sentences, with clear justification.
+Issues: Enumerate the genuine problems in the manuscript item by item. These include but are not limited to: major issues affecting the validity, reliability, or credibility of the conclusions; non-fatal but quality-impairing issues such as unclear expression, formatting irregularities, improper citations, figure/table deficiencies, and inconsistent terminology; errors in formula derivation, data inconsistency, unit errors, misuse of statistical methods, contradictory experimental parameters, and the like.
+Review Verdict: Provide a final recommendation and summarize the reasoning in 2–3 sentences.
+***DOCUMENTATION***
+The review must not be superficial. Scrutinize the manuscript across multiple dimensions, including but not limited to: research motivation and novelty, sufficiency of the literature review, rigor of the theoretical framework, soundness of the experimental design, correctness of data collection and analysis methods, logical coherence of result interpretation, whether conclusions involve over-extrapolation, and reproducibility. Do not resort to vague evaluations such as "well written" or "needs improvement."
+Review comments must reference specific content in the manuscript (e.g., "In the second paragraph of Section 3, the authors claim that… however…"; "In the derivation of Equation (5)…"; "The error bars are missing in Figure 4…"). Avoid generic or vague remarks. All review comments must be grounded in the actual content of the manuscript text; fabricating criticisms without basis is strictly prohibited. If the manuscript provides insufficient information, explicitly state "The manuscript does not provide… and therefore it is not possible to determine…" rather than forcing a conclusion.
+When identifying issues, if the manuscript genuinely performs well in certain aspects, objectively acknowledge its valuable contributions or strengths. Do not fabricate non-existent problems merely to "appear comprehensive"; every criticism must be well-substantiated. The purpose of the review is to help improve the research quality of the manuscript, not to dismiss it outright.
+The review should demonstrate domain expertise in optics. Evaluations of experimental setups, measurement methods, and theoretical models must conform to the academic standards and conventions of the field. The review report itself should be written in clear, professional, polite yet direct academic language. Avoid emotionally charged wording, but do not shy away from sharp academic criticism where warranted.

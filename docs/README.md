@@ -1,6 +1,6 @@
 # 文档目录
 
-> OptiS Benchmark 技术文档
+> Optis Benchmark 技术文档
 
 ## 📚 文档结构
 

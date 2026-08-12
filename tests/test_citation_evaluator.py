@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Citation Evaluator Tests
+Optis Benchmark - Citation Evaluator Tests
 
 Tests for CitationEvaluator and retrieval-related functionality.
 """

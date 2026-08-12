@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Quick LLM Selector Tests
+Optis Benchmark - Quick LLM Selector Tests
 
 Tests for the QuickLLMSelector tool.
 """

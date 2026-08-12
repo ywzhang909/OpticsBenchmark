@@ -1,6 +1,6 @@
 # Evaluation Utility Modules
 
-This directory contains evaluation metric implementations used by the OptiS Benchmark evaluators (`src/evaluators/`) and the evaluation pipeline. Each module is self-contained with a consistent interface, making them suitable for both standalone use and integration into the larger evaluation pipeline.
+This directory contains evaluation metric implementations used by the Optis Benchmark evaluators (`src/evaluators/`) and the evaluation pipeline. Each module is self-contained with a consistent interface, making them suitable for both standalone use and integration into the larger evaluation pipeline.
 
 ---
 

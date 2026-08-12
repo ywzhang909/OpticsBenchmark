@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OptiS Benchmark - Main Entry Point
+Optis Benchmark - Main Entry Point
 
 Command-line interface for running optical design agent evaluations.
 """
@@ -28,7 +28,7 @@ from src.utils.parser import ConfigParser  # noqa: E402
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="OptiS Benchmark - Agent Output Generator (Phase 1)",
+        description="Optis Benchmark - Agent Output Generator (Phase 1)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -137,7 +137,7 @@ Examples:
     misc_group.add_argument(
         "--version",
         action="version",
-        version="OptiS Benchmark v1.0.0",
+        version="Optis Benchmark v1.0.0",
     )
 
     return parser.parse_args()

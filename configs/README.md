@@ -1,6 +1,6 @@
 # Configuration
 
-**Path:** `configs/` — YAML-driven configuration for OptiS Benchmark.
+**Path:** `configs/` — YAML-driven configuration for Optis Benchmark.
 
 A four-part config system: pluggable agent configs (4 LLM providers, 9 model configs), task configs (3 task types), evaluation configs, and a global system config template. All fields use `snake_case`; secrets use `${ENV_VAR}` syntax expanded at load time.
 

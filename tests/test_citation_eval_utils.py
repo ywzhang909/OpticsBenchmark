@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Citation Evaluation Utils Tests
+Optis Benchmark - Citation Evaluation Utils Tests
 
 Tests for citation text processing functions (remove_citations, extract_citations).
 GPU-dependent functions (get_max_memory, _run_nli_autoais, compute_citation_f1)

@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Base Environment Module
+Optis Benchmark - Base Environment Module
 
 This module defines the base environment interface for optical design tasks.
 """

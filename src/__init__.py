@@ -1,11 +1,11 @@
 """
-OptiS Benchmark - Package Root
+Optis Benchmark - Package Root
 
 This module makes the src directory a proper Python package.
 """
 
 __version__ = "1.0.0"
-__author__ = "OptiS Benchmark Contributors"
+__author__ = "Optis Benchmark Contributors"
 
 from .core import (
     AgentConfig,

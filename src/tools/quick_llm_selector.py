@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Quick LLM Selector
+Optis Benchmark - Quick LLM Selector
 
 A CLI tool for quickly testing and comparing different LLM providers.
 """
@@ -318,7 +318,7 @@ async def interactive_mode(selector: QuickLLMSelector) -> None:
         print("No providers found. Please add configs in configs/agents/", file=sys.stderr)
         return
 
-    print("\n🧪 OptiS Benchmark - Quick LLM Selector")
+    print("\n🧪 Optis Benchmark - Quick LLM Selector")
     print("=" * 50)
     print("\nAvailable providers:\n")
 

@@ -1,6 +1,6 @@
-# OptiS Benchmark - 代码规范与约定
+# Optis Benchmark - 代码规范与约定
 
-> 本文档定义了 OptiS Benchmark 项目的代码规范、命名约定和最佳实践。
+> 本文档定义了 Optis Benchmark 项目的代码规范、命名约定和最佳实践。
 
 ---
 

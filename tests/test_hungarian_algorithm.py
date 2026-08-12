@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Hungarian Algorithm Utils Tests
+Optis Benchmark - Hungarian Algorithm Utils Tests
 
 Tests for optimal assignment using the Hungarian algorithm.
 """

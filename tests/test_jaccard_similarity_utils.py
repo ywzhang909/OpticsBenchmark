@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Jaccard Similarity Evaluation Utils Tests
+Optis Benchmark - Jaccard Similarity Evaluation Utils Tests
 
 Tests for set-based similarity functions from scripts/utils/jaccard_similarity_utils.
 """

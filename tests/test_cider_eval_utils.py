@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - CIDEr Evaluation Utils Tests
+Optis Benchmark - CIDEr Evaluation Utils Tests
 
 Tests for compute_cider from scripts/utils/cider_eval_utils.
 Pure Python, no external ML dependencies.

@@ -1,0 +1,15 @@
+# Optis Benchmark - Optis question answers Prompt(zero-shot)
+
+***TASK***
+The objective is to address the input research question by consulting the specified paper(s) or literature, and providing a comprehensive and informative response. The answer should consist of multiple paragraphs, offering a thorough overview of the topic.
+***INPUT***
+An academic research question in the field of optics, along with one or more relevant reference documents.
+***OUTPUT***
+A multi-paragraph academic response enclosed between [Response Start] and [Response End].
+***DOCUMENTATION***
+Construct your response based on multiple pieces of evidence and references, rather than relying on a single document for a brief reply. Your answer should provide a comprehensive overview of the input academic question, enabling real-world scientists to gain a clear understanding of the topic.
+Strive to offer a holistic perspective on the academic subject. Ensure the response is well-structured, coherent, and highly informative. Do not simply copy content from the provided paper(s); instead, organize your response by analyzing the similarities and differences among them.
+You must use the provided references. Add citation markers to all statements that warrant citation by placing the corresponding reference number at the end of the respective sentence. For example, when a paragraph in Reference [1] provides sufficient support for a statement, write: "This work shows the effectiveness of problem X [1]."
+Citations do not need to include author names, titles, or publication years as in conventional academic writing; simply mention the reference number in the generated content.
+Not all specified references will be relevant; therefore, only cite documents that directly support your statements.
+You only need to indicate the reference numbers in your response; there is no need to generate a separate reference list. If multiple documents support the same statement, you may cite them together (e.g., [1][2]). However, for each statement that warrants a citation, adding at least one reference is sufficient; therefore, if multiple pieces of evidence support a statement, simply include the most relevant citation in the sentence.

@@ -1,6 +1,6 @@
 # 评测方法论
 
-> 本文档介绍 OptiS Benchmark 的评测设计原则、指标体系和最佳实践。
+> 本文档介绍 Optis Benchmark 的评测设计原则、指标体系和最佳实践。
 
 ---
 
@@ -60,7 +60,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      OptiS 评测架构                             │
+│                      Optis 评测架构                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────┐                                              │
@@ -534,7 +534,7 @@ class ReportGenerator:
         <html>
         <head><title>Evaluation Report: {model_name}</title></head>
         <body>
-            <h1>OptiS Benchmark Report</h1>
+            <h1>Optis Benchmark Report</h1>
             <h2>Model: {model_name}</h2>
             <h2>Task: {task_name}</h2>
             

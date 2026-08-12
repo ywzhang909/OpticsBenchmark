@@ -1,6 +1,6 @@
 # =============================================================================
 # DeepSeek V4 Pro Configuration
-# OptiS Benchmark - Agent Settings
+# Optis Benchmark - Agent Settings
 # =============================================================================
 #
 # Uses Anthropic SDK to call DeepSeek API.

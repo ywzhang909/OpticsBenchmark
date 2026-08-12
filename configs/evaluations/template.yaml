@@ -1,6 +1,6 @@
 # =============================================================================
 # Evaluation Configuration Template
-# OptiS Benchmark — Evaluation Engine Configuration
+# Optis Benchmark — Evaluation Engine Configuration
 #
 # Used by: src/eval.py --eval-config configs/evaluations/template.yaml
 #

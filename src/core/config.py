@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Shared Configuration Types
+Optis Benchmark - Shared Configuration Types
 
 Shared dataclasses used across agent, runner, and other modules.
 """

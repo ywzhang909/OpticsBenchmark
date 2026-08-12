@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Exact Match Evaluation Utils Tests
+Optis Benchmark - Exact Match Evaluation Utils Tests
 
 Tests for text normalization utilities in em_eval_utils.
 """

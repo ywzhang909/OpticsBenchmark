@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - BLEU Evaluation Utils Tests
+Optis Benchmark - BLEU Evaluation Utils Tests
 
 Tests for compute_bleu from scripts/utils/bleu_eval_utils.
 """

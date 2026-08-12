@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - ZOS-API Environment Module
+Optis Benchmark - ZOS-API Environment Module
 
 This module provides integration with Zemax OpticStudio via ZOS-API.
 """

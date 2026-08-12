@@ -1,6 +1,6 @@
-# Contributing to OptiS Benchmark
+# Contributing to Optis Benchmark
 
-Thank you for your interest in contributing to OptiS Benchmark! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Optis Benchmark! This document provides guidelines and instructions for contributing.
 
 ## 📋 Table of Contents
 

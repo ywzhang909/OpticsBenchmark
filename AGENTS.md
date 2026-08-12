@@ -5,7 +5,7 @@
 **Branch:** main
 
 ## OVERVIEW
-OptiS Benchmark — open-source evaluation framework for LLM-based agents in optical design tasks. Python 3.10+, uv-managed, async-parallel architecture.
+Optis Benchmark — open-source evaluation framework for LLM-based agents in optical design tasks. Python 3.10+, uv-managed, async-parallel architecture.
 
 ## STRUCTURE
 ```

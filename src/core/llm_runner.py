@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - LLM Prediction Runner Module
+Optis Benchmark - LLM Prediction Runner Module
 
 与 AgentRunner 对齐的 LLM 推理 Runner。
 使用 Provider + LLM 架构执行推理任务。

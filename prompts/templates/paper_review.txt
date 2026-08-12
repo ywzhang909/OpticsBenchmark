@@ -1,4 +1,4 @@
-# OptiS Benchmark - Paper Review Prompt Template
+# Optis Benchmark - Paper Review Prompt Template
 
 ## 任务描述
 

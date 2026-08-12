@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Model Registry Tests
+Optis Benchmark - Model Registry Tests
 
 Tests for ModelRegistry GPU model lifecycle management.
 """

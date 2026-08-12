@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Parser Module
+Optis Benchmark - Parser Module
 
 This module provides parsing utilities for various file formats
 used in optical design.
@@ -103,7 +103,7 @@ class YAMLParser:
 
 
 class ConfigParser:
-    """Parser for OptiS configuration files."""
+    """Parser for Optis configuration files."""
 
     # Pattern to match environment variable references
     ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}")

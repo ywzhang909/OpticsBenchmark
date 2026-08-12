@@ -1,6 +1,6 @@
 # Source Code
 
-**Path:** `src/` — Core Python package for OptiS Benchmark.
+**Path:** `src/` — Core Python package for Optis Benchmark.
 
 Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. Agent implementations (7 LLM providers), metric evaluators (4 types), pure-math algorithms (12 modules), LLM abstraction layer (10 models, 7 providers), execution sandboxes, and CLI utilities are organized into 8 subpackages.
 

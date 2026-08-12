@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Logger Module
+Optis Benchmark - Logger Module
 
 This module provides a globally unique logger instance for the benchmark.
 Auto-initialized on import with sensible defaults.

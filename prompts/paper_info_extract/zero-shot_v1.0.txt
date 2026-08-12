@@ -1,4 +1,4 @@
-# OptiS Benchmark - Paper info extract Prompt(zero-shot)
+# Optis Benchmark - Paper info extract Prompt(zero-shot)
 
 ***TASK***
 The objective is to extract information for 13 specific fields from optical science paper: Title, Publication Year, DOI, Journal, Ten Keywords, Authors, Corresponding Authors, Affiliations, Abstract, Objectives, Novelty, Methods, and Performance Metrics. The extracted information must be returned in JSON format.

@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - BERTScore Evaluation Utils Tests
+Optis Benchmark - BERTScore Evaluation Utils Tests
 
 Tests for compute_bert_score from scripts/utils.
 Requires bert_score, torch, and transformers packages (installed via uv sync).

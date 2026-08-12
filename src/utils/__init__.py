@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Utils Module
+Optis Benchmark - Utils Module
 
 This module exports utility functions and classes.
 """

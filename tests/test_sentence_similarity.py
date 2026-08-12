@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Sentence Similarity Utils Tests
+Optis Benchmark - Sentence Similarity Utils Tests
 
 Tests for _mean_pooling, SentenceEmbedder, and compute_similarity_matrix.
 Heavy model-dependent tests are skipped when torch/transformers are missing.

@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Tools Module
+Optis Benchmark - Tools Module
 
 Utility tools for LLM testing and evaluation.
 """

@@ -1,5 +1,5 @@
 """
-OptiS Benchmark — LLM Judge Evaluator
+Optis Benchmark — LLM Judge Evaluator
 
 Inspired by Vercel Labs PluginEval's "Layer 2 — LLM Judge" which uses
 a language model to score output quality against anchored rubrics.

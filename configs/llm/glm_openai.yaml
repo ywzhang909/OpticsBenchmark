@@ -1,6 +1,6 @@
 # =============================================================================
 # GLM (智谱AI) - OpenAI Provider Configuration
-# OptiS Benchmark - LLM Prediction
+# Optis Benchmark - LLM Prediction
 # =============================================================================
 #
 # Uses OpenAI SDK to call Zhipu GLM API.

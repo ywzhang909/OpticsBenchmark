@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Edit Distance Evaluation Utils Tests
+Optis Benchmark - Edit Distance Evaluation Utils Tests
 
 Tests for edit distance functions from scripts/utils/edit_distance_utils.
 """

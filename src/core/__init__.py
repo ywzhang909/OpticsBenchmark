@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - Core Module
+Optis Benchmark - Core Module
 
 This module exports the main classes and functions for the benchmark.
 """

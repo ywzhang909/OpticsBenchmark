@@ -1,5 +1,5 @@
 """
-OptiS Benchmark - ROUGE Evaluation Utils Tests
+Optis Benchmark - ROUGE Evaluation Utils Tests
 
 Tests for compute_rouge and ensure_nltk_resources from scripts/utils.
 """

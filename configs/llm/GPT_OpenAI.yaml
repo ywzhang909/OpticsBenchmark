@@ -1,6 +1,6 @@
 # =============================================================================
 # GPT-4 Turbo - OpenAI Provider Configuration
-# OptiS Benchmark - LLM Prediction
+# Optis Benchmark - LLM Prediction
 # =============================================================================
 #
 # 支持两种 OpenAI 官方调用方式，通过 setup.api_method 选择：

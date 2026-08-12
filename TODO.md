@@ -1,4 +1,4 @@
-# OptiS Benchmark - TODO & Roadmap
+# Optis Benchmark - TODO & Roadmap
 
 > 项目待办事项和开发路线图
 
@@ -175,9 +175,9 @@
 
 ### 生态系统
 
-- [ ] OptiS Hub - 插件市场
-- [ ] OptiS Studio - Web 界面
-- [ ] OptiS Leaderboard - 公开排行榜
+- [ ] Optis Hub - 插件市场
+- [ ] Optis Studio - Web 界面
+- [ ] Optis Leaderboard - 公开排行榜
 
 ### 研究方向
 
@@ -213,7 +213,7 @@
 
 ### P3 - 未来
 
-13. [ ] OptiS Studio
+13. [ ] Optis Studio
 14. [ ] 主动学习
 15. [ ] 多模态支持
 
