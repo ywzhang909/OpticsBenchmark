@@ -36,9 +36,12 @@ configs/
 ├── evaluations/               # Evaluation configs
 │   ├── paper_info_extract.yaml
 │   └── template.yaml
-├── llm/                       # LLM provider configs (4 YAML files)
+├── llm/                       # LLM provider configs (7 YAML files)
 │   ├── claude_anthropic.yaml
+│   ├── deepseek_openai.yaml
 │   ├── gemini_google.yaml
+│   ├── glm_openai.yaml
+│   ├── GPT_OpenAI.yaml
 │   ├── ollama_local.yaml
 │   └── qwen_openai.yaml
 ├── system/

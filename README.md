@@ -131,7 +131,7 @@ OpticsBenchmark/
 │   │   ├── ollama/                # Local Ollama models
 │   │   └── openai/                # 5 OpenAI-compatible models (GPT-4, DeepSeek, Llama, Mistral, Qwen)
 │   ├── evaluations/               # Evaluation configs
-│   ├── llm/                       # LLM provider configs (4 YAML files)
+│   ├── llm/                       # LLM provider configs (7 YAML files)
 │   └── tasks/                     # Task configs (3 task types + template)
 ├── src/                           # Core source package
 │   ├── __init__.py
@@ -166,7 +166,7 @@ OpticsBenchmark/
 │   │   ├── hungarian_algorithm_utils.py
 │   │   ├── sentence_similarity_utils.py
 │   │   └── citation_eval_utils.py
-│   ├── llm/                      # LLM abstraction layer (9 model classes, 7 providers)
+│   ├── llm/                      # LLM abstraction layer (10 model classes, 7 providers)
 │   │   ├── base.py               # BaseLLM ABC
 │   │   ├── models/               # Model-specific LLM implementations
 │   │   └── providers/            # Provider-specific API clients

@@ -2,7 +2,7 @@
 
 **Path:** `src/` — Core Python package for OptiS Benchmark.
 
-Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. Agent implementations (7 LLM providers), metric evaluators (4 types), pure-math algorithms (12 modules), LLM abstraction layer (8 models, 7 providers), execution sandboxes, and CLI utilities are organized into 8 subpackages.
+Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. Agent implementations (7 LLM providers), metric evaluators (4 types), pure-math algorithms (12 modules), LLM abstraction layer (10 models, 7 providers), execution sandboxes, and CLI utilities are organized into 8 subpackages.
 
 ---
 
@@ -56,7 +56,7 @@ src/
 │   ├── sentence_similarity_utils.py  # Transformer embedder (BAAI/bge-m3)
 │   └── model_registry.py            # Model registry for evaluation
 │
-├── llm/                      # LLM abstraction layer (9 models, 7 providers)
+├── llm/                      # LLM abstraction layer (10 models, 7 providers)
 │   ├── __init__.py
 │   ├── base.py               # BaseLLM ABC (38 lines)
 │   ├── models/               # Model-specific LLM implementations
@@ -64,6 +64,7 @@ src/
 │   │   ├── DeepSeekLLM.py
 │   │   ├── GeminiLLM.py
 │   │   ├── GlmLLM.py
+│   │   ├── GPTLLM.py
 │   │   ├── GroqLLM.py
 │   │   ├── LlamaLLM.py
 │   │   ├── MistralLLM.py
@@ -231,7 +232,7 @@ Separate abstraction layer from `core/agent.py`, providing model-specific and pr
 | Module | Key Symbols | Description |
 |--------|-------------|-------------|
 | `base.py` | `BaseLLM` (ABC) | Base LLM interface (38 lines) |
-| `models/` | `ClaudeLLM`, `DeepSeekLLM`, `GeminiLLM`, `GlmLLM`, `GroqLLM`, `LlamaLLM`, `MistralLLM`, `OllamaLLM`, `QwenLLM` | Model-specific LLM implementations |
+| `models/` | `ClaudeLLM`, `DeepSeekLLM`, `GeminiLLM`, `GlmLLM`, `GPTLLM`, `GroqLLM`, `LlamaLLM`, `MistralLLM`, `OllamaLLM`, `QwenLLM` | Model-specific LLM implementations; `GPTLLM` supports both OpenAI Chat Completions and Responses APIs (selectable via `api_method`) |
 | `providers/` | `AnthropicProvider`, `BedrockProvider`, `GoogleProvider`, `GroqProvider`, `OllamaProvider`, `OpenAIProvider`, `TogetherAIProvider` | Provider-specific API clients |
 
 ---
