@@ -19,12 +19,14 @@ input/output_tokens。
 from __future__ import annotations
 
 import time
+import json
 from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
 from src.llm.providers.OpenAIProvider import OpenAIProvider
 from src.utils import logger
+from src.utils.general import _dict_to_response_format
 
 # 不支持 Responses API 的 legacy 模型
 _RESPONSES_UNSUPPORTED_MODELS: set[str] = {
@@ -67,6 +69,12 @@ class GPTLLM(BaseLLM):
             )
 
         setup = kwargs.get("setup", {})
+        gold_answer_path = kwargs.get("gold_answer_path", None)
+        if gold_answer_path:
+            response_format = self._build_structured_output(gold_answer_path)
+            if response_format:
+                setup["text_format"] = response_format
+                
         api_method = setup.get("api_method", "chat_completions")
 
         if api_method not in _VALID_API_METHODS:
@@ -104,14 +112,14 @@ class GPTLLM(BaseLLM):
                     if self.prompt_cache_key:
                         content["prompt_cache_breakpoint"] = {"mode":"explicit"}
                     user_content.insert(0, content)
-                # elif key == "location":
-                #     file_object = await provider.client.files.create(
-                #         file=open(value, "rb"),
-                #         purpose="user_data"
-                #     )
-                #     user_content.append(
-                #         {"type": "file", "file_id": file_object.id}
-                #     )
+                elif key == "location":
+                    file_object = await provider.client.files.create(
+                        file=open(value, "rb"),
+                        purpose="user_data"
+                    )
+                    user_content.append(
+                        {"type": "file", "file_id": file_object.id}
+                    )
         processed_messages.append({"role": "user", "content": user_content})
 
         request_kwargs: dict[str, Any] = {
@@ -183,40 +191,58 @@ class GPTLLM(BaseLLM):
 
         processed_messages: list[dict[str, str]] = []
         user_content: list[dict[str, str]] = []
+        instructions = ""
         for message in messages:
             for key, value in message.items():
                 if key == "prompt":
-                    content = {"type": "text", "text": value}
+                    content = {"type": "input_text", "text": value}
                     if self.prompt_cache_key:
                         content["prompt_cache_breakpoint"] = {"mode":"explicit"}
                     user_content.insert(0, content)
-                # elif key == "location":
-                #     file_object = await provider.client.files.create(
-                #         file=open(value, "rb"),
-                #         purpose="user_data"
-                #     )
-                #     user_content.append(
-                #         {"type": "file", "file_id": file_object.id}
-                #     )
+                elif key == "location":
+                    file_object = await provider.client.files.create(
+                        file=open(value, "rb"),
+                        purpose="user_data"
+                    )
+                    user_content.append(
+                        {
+                            "type": "input_file",
+                            "file_id": file_object.id,
+                            "detail": "auto",
+                        }
+                    )
+                elif key == "system":
+                    instructions = value
         processed_messages.append({"role": "user", "content": user_content})
-
-        # system 消息提取为 instructions
-        instructions = ""
-        input_messages: list[dict[str, str]] = []
-        for message in processed_messages:
-            if message["role"] == "system" and not instructions:
-                instructions = message["content"]
-            else:
-                input_messages.append(message)
 
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
-            "input": input_messages,
-            "temperature": setup.get("temperature", 0.0),
-            "max_output_tokens": self._max_tokens(setup, "max_output_tokens"),
-            "top_p": setup.get("top_p", 1.0),
+            "input": processed_messages,
+            "instructions": instructions if instructions != "" else None,
+            "background": setup.get("background", False),
+            "context_management": setup.get("context_management", None),
+            "include": setup.get("include", None),
+            "max_tool_calls": setup.get("max_tool_calls", None),
+            "metadata": setup.get("metadata", None),
+            "moderation": setup.get("moderation", None),
+            "parallel_tool_calls": setup.get("parallel_tool_calls", True),
+            "prompt_cache_key": setup.get("prompt_cache_key", None),
+            "prompt_cache_options": setup.get("prompt_cache_options", None),
+            "reasoning": setup.get("reasoning_effort", "none"),
+            "service_tier": setup.get("service_tier", "auto"),
             "store": setup.get("store", False),
+            "stream": setup.get("stream", False),
+            "stream_options": setup.get("stream_options", None),
+            "temperature": setup.get("temperature", 0.0),
+            "max_output_tokens": setup.get("max_output_tokens", 4096),
+            "top_logprobs": setup.get("top_logprobs", 0),
+            "top_p": setup.get("top_p", 1.0),
         }
+
+        if setup.get("text_format", False):
+            request_kwargs["text"] = {
+                setup.get("text_format", None)
+            }
 
         if instructions:
             request_kwargs["instructions"] = instructions
@@ -255,6 +281,34 @@ class GPTLLM(BaseLLM):
                 "latency": time.time() - start_time,
                 "error": str(e),
             }
+
+    def _build_structured_output(self, gold_answer_path: str) -> dict[str, Any] | None:
+        """Build response_format from gold_answer_path."""
+        if not gold_answer_path:
+            return None
+        gold_path_obj = Path(gold_answer_path)
+        if not gold_path_obj.exists():
+            return None
+        with open(gold_path_obj, encoding="utf-8") as f:
+            gold_data = json.load(f)
+        if not isinstance(gold_data, list) or not gold_data:
+            return None
+        first = gold_data[0]
+        payload = first.get("data", first)
+        if not isinstance(payload, dict):
+            return None
+
+        schema = _dict_to_response_format(
+            payload, strict=True
+        )
+
+        return {
+            "format": {
+                "type": "json_schema",
+                "strict": True,
+                "schema": schema,
+            }
+        }
 
     def _build_tools(
         self,

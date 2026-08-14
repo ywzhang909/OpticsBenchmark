@@ -1,37 +1,32 @@
 # =============================================================================
-# Claude 3.5 Sonnet - Anthropic Provider Configuration
+# Llama 4 Scout - Together AI Configuration
 # Optis Benchmark - LLM Prediction
 # =============================================================================
 
 llm:
   provider:
-    type: "anthropic"
-    api_key: "${CLAUDE_API_KEY}"
+    type: "together"
+    api_key: "${TOGETHER_API_KEY}"
 
   model:
-    type: "claude"
-    name: "claude-3-5-sonnet-20241022"
+    type: "llama"
+    name: "meta-llama/Llama-4-Scout-17B-16E-Instruct"
 
   setup:
     temperature: 0.0
-    max_completion_tokens: 8192
+    max_completion_tokens: 4096
     top_p: 1.0
-
-    thinking:
-      enabled: false
-      budget_tokens: 10000
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
   file_input: true
-  max_samples: 100
+  max_samples: 10
   shuffle: false
-
-  structured_output: true
-  gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
 execution:
   concurrency: 1
   timeout: 300
-  output_path: "results/llm_outputs_claude.jsonl"
+  output_path: "results/llm_outputs_together.jsonl"

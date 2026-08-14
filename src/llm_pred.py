@@ -54,7 +54,7 @@ Examples:
         "--config",
         type=str,
         # required=True,
-        default="configs/llm/GPT_OpenAI.yaml",
+        default="configs/llm/claude_anthropic.yaml",
         help="LLM config file path (YAML)",
     )
     parser.add_argument(

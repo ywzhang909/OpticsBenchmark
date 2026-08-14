@@ -1,20 +1,23 @@
 # =============================================================================
-# Ollama Local Model Configuration
+# Mistral Mixtral 8x7B - Together AI Configuration
 # Optis Benchmark - LLM Prediction
 # =============================================================================
 
 llm:
   provider:
-    type: "ollama"
-    host: "http://localhost:11434"
+    type: "together"
+    api_key: "${TOGETHER_API_KEY}"
 
   model:
-    type: "ollama"
-    name: "llama3.1"
+    type: "mistral"
+    name: "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
   setup:
     temperature: 0.0
     max_completion_tokens: 4096
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
@@ -26,4 +29,4 @@ task:
 execution:
   concurrency: 1
   timeout: 300
-  output_path: "results/llm_outputs_ollama.jsonl"
+  output_path: "results/llm_outputs_mistral_together.jsonl"

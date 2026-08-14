@@ -25,32 +25,66 @@ llm:
     type: "gpt"
     name: "gpt-4-turbo"
 
+    # Responses API samlpe
+    # api_method: "responses"
+    # background: false | true
+    # context_management:
+    #   type: "compation"
+    #   compact_threshold: 10000
+    # include:
+    #   - "file_search_call.results"
+    #   - "web_search_call.results"
+    #   - "web_search_call.action.sources"
+    #   - "message.input_image.image_url"
+    #   - "computer_call_output.output.image_url"
+    #   - "code_interpreter_call.outputs"
+    #   - "reasoning.encrypted_content"
+    #   - "message.output_text.logprobs"
+    # max_output_tokens: 4096
+    # max_tool_calls:20
+    # metadata:
+    #   "key1": "value1"
+    #   "key2": "value2"
+    # moderation:
+    #   model: "omni-moderation-latest"
+    #   policy: 
+    #     input: "score" | "block"
+    #     output: "score" | "block"
+    # parallel_tool_calls: true
+    # prompt_cache_key: "my_prompt_cache_key"
+    # prompt_cache_options:
+    #   mode: "implicit" | "explicit"
+    #   ttl: 30m
+    # reasoning:
+    #   effort: "none" | "light" | "medium" | "heavy"
+    #   context: "auto" | "current_turn" | "all_turns"
+    #   mode: "standard" | "pro"
+    #   summary: "auto" | "concise" | "detailed"
+    # service_tier: "auto" | "default" | "flex" | "scale" | "priority" | "fast"
+    # store: false | true
+    # stream: false
+    # stream_options:
+    #   include_obfuscation: false | true
+    # temperature: 0.0
+    # top_logprobs: 0
+    # top_p: 1.0
+    # tools:
+    #   web_search: false
+    #   file_search: []
+    #   tool_search: {}
+    #   mcp_server: {}
+    # tool_choice: "auto"
+
   setup:
     # 调用方式选择: "chat_completions" | "responses"
     api_method: "chat_completions"
-
-    # 统一采样参数（两种调用方式通用）
     temperature: 0.0
     top_p: 1.0
-
-    # 输出 token 上限。两种 API 参数名不同，代码按 api_method 自动映射：
-    #   chat_completions → max_completion_tokens
-    #   responses        → max_output_tokens
     max_tokens: 4096
-
-    # 频率/存在惩罚项，仅 Chat Completions API 支持；
-    # 选择 responses 时这两个参数会被忽略。
     frequency_penalty: 0.0
     presence_penalty: 0.0
-
-    # 结构化输出开关。两种 API 名称不同，代码按 api_method 自动映射：
-    #   chat_completions → response_format: {"type": "json_object"}
-    #   responses        → text: {"format": {"type": "json_object"}}
     response_format: true
-
-    # store 仅 Responses API 有效（默认 false）
     # store: false
-
     # tools:
     #   web_search: false
     #   file_search: []

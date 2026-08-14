@@ -36,13 +36,15 @@ configs/
 ├── evaluations/               # Evaluation configs
 │   ├── paper_info_extract.yaml
 │   └── template.yaml
-├── llm/                       # LLM provider configs (7 YAML files)
+├── llm/                       # LLM provider configs (9 YAML files)
 │   ├── claude_anthropic.yaml
 │   ├── deepseek_openai.yaml
 │   ├── gemini_google.yaml
 │   ├── glm_openai.yaml
 │   ├── GPT_OpenAI.yaml
-│   ├── ollama_local.yaml
+│   ├── llama_together.yaml
+│   ├── mistral_openai.yaml
+│   ├── mistral_together.yaml
 │   └── qwen_openai.yaml
 ├── system/
 │   └── template.yaml          # Global settings template: logging, parallel, sandbox, rate-limit

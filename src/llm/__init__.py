@@ -42,8 +42,8 @@ def _lazy_import(dotted_path: str) -> Any:
     """按需导入：'src.llm.providers.OpenAIProvider' -> OpenAIProvider 类。"""
     import importlib
 
-    module_path, _, class_name = dotted_path.rpartition(".")
-    mod = importlib.import_module(module_path)
+    _, _, class_name = dotted_path.rpartition(".")
+    mod = importlib.import_module(dotted_path)
     return getattr(mod, class_name)
 
 

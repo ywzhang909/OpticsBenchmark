@@ -6,8 +6,9 @@ Google Provider - 封装 Google GenAI Client
 
 from __future__ import annotations
 
-from google import genai
 from typing import Any
+
+from google import genai
 
 
 class GoogleProvider:
