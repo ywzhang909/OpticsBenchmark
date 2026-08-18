@@ -1,8 +1,12 @@
 """
 LlamaLLM - Llama 模型调用类（基于 Together AI）
 
-支持通过 TogetherAIProvider 调用 Together AI 的 OpenAI 兼容 API
-（POST /v1/chat/completions，参考官方 Chat Completions 文档）。
+支持两种调用方式：
+  - _chat_together: 通过 TogetherAIProvider（httpx raw HTTP）
+  - _chat_openai:    通过 OpenAIProvider（OpenAI SDK）
+
+Together AI 兼容 OpenAI SDK 的 chat.completions.create。
+Endpoint: https://api.together.ai/v1
 
 setup 采用统一扁平参数（与 GPTLLM 一致）：
   - max_tokens / max_completion_tokens → max_tokens
@@ -12,9 +16,18 @@ setup 采用统一扁平参数（与 GPTLLM 一致）：
   - tools.function_declarations / custom  → function tools
   - tools.tool_choice                     → tool_choice
   - api_params                            → 覆盖或扩展请求体
-消息处理：与 GPTLLM 相同，支持扁平消息字典，其中 prompt/record 为文本，
-location 为本地文件路径（读取文本内联，Together AI 无文件上传 API），
-system 为系统消息。
+
+Together AI 参数兼容性（来自官方文档）：
+  - temperature, top_p, max_tokens: ✅ 完全支持
+  - frequency_penalty, presence_penalty: ✅ 支持
+  - stop, seed, n: ✅ 支持（n 部分模型）
+  - response_format (json_object/json_schema): ✅ 支持
+  - tools, tool_choice: ✅ 支持
+  - logprobs, top_logprobs: ✅ 支持（格式略有不同）
+  - reasoning_effort: ⚠️ 仅 GPT-OSS 模型
+  - logit_bias: ❌ 大部分模型不支持
+  - service_tier, store, metadata: ⚠️ 接受但忽略
+若输入不支持的参数，API 将返回错误并记录日志。
 """
 
 from __future__ import annotations
@@ -25,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
+from src.llm.providers.OpenAIProvider import OpenAIProvider
 from src.llm.providers.TogetherAIProvider import TogetherAIProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
@@ -38,7 +52,7 @@ _DEFAULT_PRICE: tuple[float, float] = (0.18, 0.59)
 
 
 class LlamaLLM(BaseLLM):
-    """Llama 模型，支持 TogetherAIProvider。"""
+    """Llama 模型，支持 TogetherAIProvider 和 OpenAIProvider。"""
 
     def __init__(self, model_name: str = "meta-llama/Llama-4-Scout-17B-16E-Instruct"):
         super().__init__(model_name)
@@ -49,12 +63,92 @@ class LlamaLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        if isinstance(provider, OpenAIProvider):
+            return await self._chat_openai(messages, provider, **kwargs)
         if isinstance(provider, TogetherAIProvider):
             return await self._chat_together(messages, provider, **kwargs)
         raise ValueError(
             f"LlamaLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 TogetherAIProvider"
+            f"仅支持 OpenAIProvider 或 TogetherAIProvider"
         )
+
+    async def _chat_openai(
+        self,
+        messages: list[dict[str, str]],
+        provider: OpenAIProvider,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        start_time = time.time()
+        setup = kwargs.get("setup", {})
+        gold_answer_path = kwargs.get("gold_answer_path", None)
+
+        processed_messages = await self._process_messages(messages)
+
+        request_kwargs: dict[str, Any] = {
+            "model": self.model_name,
+            "messages": processed_messages,
+            "temperature": setup.get("temperature", 0.0),
+            "top_p": setup.get("top_p", 1.0),
+            "max_tokens": setup.get("max_tokens")
+            or setup.get("max_completion_tokens", 4096),
+            "frequency_penalty": setup.get("frequency_penalty", 0.0),
+            "presence_penalty": setup.get("presence_penalty", 0.0),
+            "logit_bias": setup.get("logit_bias", None),
+            "metadata": setup.get("metadata", None),
+            "n": setup.get("n", 1),
+            "parallel_tool_calls": setup.get("parallel_tool_calls", True),
+            "reasoning_effort": setup.get("reasoning_effort", None),
+            "service_tier": setup.get("service_tier", "auto"),
+            "stop": setup.get("stop", None),
+            "store": setup.get("store", False),
+            "web_search_options": setup.get("web_search_options", None),
+            "logprobs": setup.get("logprobs", False),
+            "top_logprobs": setup.get("top_logprobs", 0),
+            "seed": setup.get("seed", None),
+        }
+
+        # response_format 处理
+        if gold_answer_path:
+            rf = self._build_structured_output(gold_answer_path)
+            if rf:
+                request_kwargs["response_format"] = rf
+        if setup.get("response_format", False) and "response_format" not in request_kwargs:
+            request_kwargs["response_format"] = {"type": "json_object"}
+
+        # tools 处理
+        tools_config = setup.get("tools", {})
+        if tools_config:
+            request_kwargs.update(self._build_tools(tools_config, setup))
+
+        # api_params 覆盖
+        request_kwargs.update(setup.get("api_params", {}))
+
+        try:
+            response = await provider.client.chat.completions.create(**request_kwargs)
+            latency = time.time() - start_time
+
+            choice = response.choices[0]
+            content = choice.message.content or ""
+
+            usage = response.usage.model_dump() if response.usage else {}
+            cost = self._calculate_cost(usage)
+            self._log_usage(usage, cost, latency)
+
+            return {
+                "content": content,
+                "usage": usage,
+                "cost": cost,
+                "latency": latency,
+            }
+        except Exception as e:
+            logger.error(f"OpenAI API error for model {self.model_name}: {e}")
+            return {
+                "content": "",
+                "usage": {},
+                "cost": 0.0,
+                "latency": time.time() - start_time,
+                "error": str(e),
+            }
 
     async def _chat_together(
         self,
@@ -109,8 +203,8 @@ class LlamaLLM(BaseLLM):
             request_kwargs["response_format"] = response_format
         elif setup.get("response_format", False):
             logger.warning(
-                "response_format 已启用但无法从 gold_answer_path 生成 JSON Schema，"
-                "退回 json_object"
+                "response_format enabled but cannot generate JSON Schema "
+                "from gold_answer_path, falling back to json_object"
             )
             request_kwargs["response_format"] = {"type": "json_object"}
 
@@ -140,6 +234,7 @@ class LlamaLLM(BaseLLM):
                 "latency": latency,
             }
         except Exception as e:
+            logger.error(f"Together API error for model {self.model_name}: {e}")
             return {
                 "content": "",
                 "usage": {},
@@ -149,33 +244,39 @@ class LlamaLLM(BaseLLM):
             }
 
     async def _process_messages(
-        self, messages: list[dict[str, str]]
-    ) -> list[dict[str, str]]:
-        """将扁平消息列表转换为 OpenAI 兼容的 messages 列表。"""
-        processed: list[dict[str, str]] = []
+        self, messages: list[dict[str, str]], provider: OpenAIProvider
+    ) -> list[dict[str, Any]]:
+        """将扁平消息列表转换为 OpenAI messages 格式。"""
+        processed_messages: list[dict[str, str]] = []
+        user_content: list[dict[str, str]] = []
+        system_content: list[dict[str, str]] = []
 
         for message in messages:
-            role = message.get("role", "")
             for key, value in message.items():
-                if key in ("role", "input"):
-                    continue
-                if key in ("system", "developer") or (
-                    key == "content" and role in ("system", "developer")
-                ):
-                    processed.append({"role": "system", "content": value})
-                elif key in ("prompt", "user", "record"):
-                    processed.append({"role": "user", "content": value})
-                elif key == "assistant":
-                    processed.append({"role": "assistant", "content": value})
+                if key == "system":
+                    system_content.append({"type": "text", "text": value})
+                elif key == "prompt":
+                    user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    processed.append({"role": "user", "content": self._read_file(value)})
-                elif key == "content":
-                    target_role = "assistant" if role == "assistant" else "user"
-                    processed.append({"role": target_role, "content": value})
-                elif isinstance(value, str):
-                    processed.append({"role": "user", "content": value})
+                    file_object = await provider.client.files.create(
+                        file=open(value, "rb"), purpose="user_data"
+                    )
+                    user_content.append(
+                        {"type": "file", "file_id": file_object.id}
+                    )
+                elif key == "content" and "role" in message:
+                    role = message["role"]
+                    if role == "system":
+                        system_content.append({"type": "text", "text": value})
+                    else:
+                        user_content.append({"type": "text", "text": value})
 
-        return processed
+        if system_content:
+            processed_messages.append({"role": "system", "content": system_content})
+        if user_content:
+            processed_messages.append({"role": "user", "content": user_content})
+
+        return processed_messages
 
     @staticmethod
     def _read_file(path: str) -> str:
@@ -189,7 +290,7 @@ class LlamaLLM(BaseLLM):
     def _build_structured_output(
         self, gold_answer_path: str | None
     ) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 Together response_format（json_schema）。"""
+        """从 gold_answer_path 构建 response_format（json_schema）。"""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -217,7 +318,7 @@ class LlamaLLM(BaseLLM):
 
     @staticmethod
     def _build_tools(tools_config: dict[str, Any]) -> dict[str, Any]:
-        """根据 tools 配置构建 function tools（Together 仅支持函数工具）。"""
+        """根据 tools 配置构建 function tools。"""
         tools: list[dict[str, Any]] = []
         declarations = tools_config.get("function_declarations", []) or []
         declarations += tools_config.get("custom", [])
@@ -256,5 +357,7 @@ class LlamaLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
-        if isinstance(provider, TogetherAIProvider):
+        if isinstance(provider, OpenAIProvider):
+            await provider.close()
+        elif isinstance(provider, TogetherAIProvider):
             await provider.close()

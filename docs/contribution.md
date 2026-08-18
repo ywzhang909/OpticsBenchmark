@@ -120,7 +120,7 @@ Branch naming conventions:
 pytest
 
 # Run specific test file
-pytest tests/test_agent.py
+pytest tests/test_llm_judge.py
 
 # Run with coverage
 pytest --cov=src tests/
@@ -262,10 +262,10 @@ pytest
 pytest --cov=src --cov-report=html
 
 # Specific file
-pytest tests/test_agent.py -v
+pytest tests/test_llm_judge.py -v
 
 # Specific test
-pytest tests/test_agent.py::test_chat -v
+pytest tests/test_llm_judge.py::test_chat -v
 ```
 
 ## 📤 Submitting Changes

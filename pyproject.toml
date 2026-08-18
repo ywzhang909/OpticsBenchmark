@@ -52,6 +52,7 @@ dependencies = [
     "accelerate>=1.14.0",
     "protobuf>=7.35.1",
     "google-genai>=1.0.0",
+    "mistralai>=2.9.3",
 ]
 
 [project.optional-dependencies]

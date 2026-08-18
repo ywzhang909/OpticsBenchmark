@@ -39,7 +39,6 @@ Async-first test suite. All evaluator tests are async, using centralized fixture
 - **No mocking**: Tests use `MockTask` dataclass, `tmp_path` for filesystem, `pytest.approx()` for floats.
 
 ## GAPS
-- Zero tests for `src/core/agent.py` (1306 lines, 7 providers — untested).
 - Zero tests for `src/core/runner.py` (259 lines — untested).
 - Zero tests for `src/environments/` (environments module untested).
 - Zero tests for `src/utils/parser.py` (untested).

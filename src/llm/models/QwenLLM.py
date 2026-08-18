@@ -7,6 +7,7 @@ QwenLLM - 通义千问模型调用类
 from __future__ import annotations
 
 import time
+import base64
 from pathlib import Path
 from typing import Any
 
@@ -48,17 +49,25 @@ class QwenLLM(BaseLLM):
 
         # 处理 messages
         processed_messages: list[dict[str, str]] = []
+        user_content: list[dict[str, str]] = []
         for message in messages:
             for key, value in message.items():
                 if key == "prompt":
-                    processed_messages.append({"role": "user", "content": value})
+                    user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    file_object = await provider.client.files.create(
-                        file=Path(value),
-                        purpose="file-extract"
-                    )
-                    processed_messages.append({"role": "system", "content": f'fileid://{file_object.id}'})
-
+                    # file_object = await provider.client.files.create(
+                    #     file=Path(value),
+                    #     purpose="file-extract"
+                    # )
+                    with open(value, "rb") as f:
+                        pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
+                    user_content.append({
+                        "type": "file", 
+                        "file": {
+                            "file_data": f"data:application/pdf;base64,{pdf_base64}",
+                            "file_name": Path(value).name,
+                    }})
+        processed_messages.append({"role": "user", "content": user_content})
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
             "messages": processed_messages,

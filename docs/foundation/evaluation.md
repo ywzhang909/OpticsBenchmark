@@ -324,7 +324,7 @@ class CompositeScore:
 
 ```python
 async def parallel_evaluation(
-    agent_config: AgentConfig,
+    agent_config: dict,
     task_config: TaskConfig,
     max_concurrency: int = 4,
 ) -> list[TaskResult]:

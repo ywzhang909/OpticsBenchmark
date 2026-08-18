@@ -24,7 +24,6 @@ OpticsBenchmark/
 | Task | Location | Notes |
 |------|----------|-------|
 | CLI entry point | `src/main.py` | argparse → `optis` command |
-| Agent implementations | `src/core/agent.py` | 1306 lines, 7 LLM providers |
 | Evaluators & scorers | `src/evaluators/` | 4 evaluator types + 5 scorers |
 | LLM abstraction | `src/llm/` | 8 model classes, 7 provider classes |
 | Algorithm modules | `src/algorithm/` | 12 pure-math evaluation modules |
@@ -53,7 +52,7 @@ OpticsBenchmark/
 - Dependencies in 3 sources (pyproject.toml, requirements.txt, environment.yml) with drift.
 - ZOS-API integration is stub-only (ZOSAPIEnvironment methods return placeholder data).
 - `configs/system/template.yaml` is a minimal template with most settings commented out.
-- `llm/` abstraction layer exists separately from `core/agent.py` — potential duplication.
+- `src/core/runner.py` and `src/tools/quick_llm_selector.py` have TODO markers for migration to `src.llm` abstraction.
 
 ## COMMANDS
 ```bash

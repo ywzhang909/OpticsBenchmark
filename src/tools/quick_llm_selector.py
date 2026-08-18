@@ -18,7 +18,8 @@ from typing import Any
 
 import yaml
 
-from src.core.agent import AgentConfig, Message, create_agent
+# TODO: 重构为使用 src.llm 抽象层替代已删除的 agent.py
+# from src.core.agent import AgentConfig, Message, create_agent
 
 
 class OutputFormat(Enum):
@@ -132,44 +133,16 @@ class QuickLLMSelector:
         prompt: str,
         system_prompt: str = "",
     ) -> dict:
-        """Test a single provider with a prompt."""
-        # Load config
-        config = AgentConfig.from_yaml(provider.config_path)
+        """Test a single provider with a prompt.
 
-        # Override system prompt if provided
-        if system_prompt:
-            config.system_prompt = system_prompt
-
-        # Create agent
-        agent = create_agent(config)
-
-        try:
-            # Build messages
-            messages = [Message(role="user", content=prompt)]
-
-            # Send request
-            start_time = time.time()
-            response = await agent.chat(messages)
-            latency = time.time() - start_time
-
-            return {
-                "success": True,
-                "provider": provider.display_name,
-                "model": provider.model_name,
-                "response": response.content,
-                "latency": latency,
-                "cost": response.cost,
-                "tokens": response.usage.get("total_tokens", 0) if response.usage else 0,
-                "finish_reason": response.finish_reason,
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "provider": provider.display_name,
-                "error": str(e),
-            }
-        finally:
-            await agent.close()
+        TODO: 重构为使用 src.llm 抽象层替代已删除的 agent.py。
+        当前方法因 agent.py 删除而无法运行。
+        """
+        return {
+            "success": False,
+            "provider": provider.display_name,
+            "error": "TODO: needs refactoring to use src.llm abstraction (agent.py deleted)",
+        }
 
     async def compare_providers(
         self,

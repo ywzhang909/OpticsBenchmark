@@ -15,7 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from src.core.agent import AgentConfig, AgentOutput, BaseAgent, create_agent
+# TODO: 重构为使用 src.llm 抽象层替代已删除的 agent.py
+# from src.core.agent import AgentConfig, AgentOutput, BaseAgent, create_agent
 from src.core.config import TaskConfig
 from src.utils import logger
 

@@ -1,39 +1,52 @@
 # =============================================================================
-# GLM (智谱AI) - OpenAI Provider Configuration
+# Llama 4 Scout - Together AI Configuration (OpenAI SDK)
 # Optis Benchmark - LLM Prediction
 # =============================================================================
 #
-# Uses OpenAI SDK to call Zhipu GLM API (OpenAI-compatible).
-# Endpoint: https://open.bigmodel.cn/api/paas/v4
-# Chat Completions: https://platform.openai.com/docs/api-reference/chat/create
+# Uses OpenAI SDK to call Together AI API (OpenAI-compatible).
+# Endpoint: https://api.together.ai/v1
+# Reference: https://docs.together.ai/docs/inference/openai-compatibility
+#
+# Together AI 参数兼容性（来自官方文档）：
+#   - temperature, top_p, max_tokens: ✅ 完全支持
+#   - frequency_penalty, presence_penalty: ✅ 支持
+#   - stop, seed, n: ✅ 支持（n 部分模型）
+#   - response_format (json_object/json_schema): ✅ 支持
+#   - tools, tool_choice: ✅ 支持
+#   - logprobs, top_logprobs: ✅ 支持（格式略有不同）
+#   - reasoning_effort: ⚠️ 仅 GPT-OSS 模型
+#   - logit_bias: ❌ 大部分模型不支持
+#   - service_tier, store, metadata: ⚠️ 接受但忽略
+# 若输入不支持的参数，API 将返回错误并记录日志。
 
 llm:
   provider:
     type: "openai"
-    api_key: "${GLM_API_KEY}"
-    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key: "${TOGETHER_API_KEY}"
+    base_url: "https://api.together.ai/v1"
 
   model:
-    type: "glm"
-    name: "glm-4.5-air"
+    type: "llama"
+    name: "meta-llama/Llama-4-Scout-17B-16E-Instruct"
 
-    # Chat Completions API sample
+    # Chat Completions API sample (Together AI OpenAI-compatible)
     # temperature: 0.0                                # sampling temperature (0.0-2.0)
     # top_p: 1.0                                     # nucleus sampling threshold
     # max_tokens: 4096                               # max tokens in response
     # frequency_penalty: 0.0                         # penalize new tokens based on frequency
     # presence_penalty: 0.0                          # penalize new tokens based on presence
-    # logit_bias: {}                                 # bias for specific tokens
-    # metadata: {}                                   # metadata for the request
-    # n: 1                                           # number of completions to generate
-    # parallel_tool_calls: true                      # enable parallel tool calls
-    # reasoning_effort: "none" | "low" | "medium" | "high"
-    # service_tier: "auto" | "default" | "flex" | "scale" | "priority" | "fast"
+    # logit_bias: {}                                 # ❌ not supported on most models
+    # metadata: {}                                   # ⚠️ accepted but ignored
+    # n: 1                                           # ⚠️ supported on most models
+    # parallel_tool_calls: true                      # parallel tool calls
+    # reasoning_effort: "low" | "medium" | "high"    # ⚠️ GPT-OSS models only
+    # service_tier: "auto"                           # ⚠️ accepted but ignored
     # stop: []                                       # stop sequences
-    # store: false                                   # store the completion
+    # store: false                                   # ⚠️ accepted but ignored
     # web_search_options: {}                         # web search options
     # logprobs: false                                # return log probabilities
     # top_logprobs: 0                                # number of top log probabilities
+    # seed: 42                                       # ⚠️ best-effort, not guaranteed
     # response_format:
     #   type: "json_object"                          # structured output (json_object)
     #   type: "json_schema"                          # structured output (json_schema)
@@ -47,14 +60,6 @@ llm:
     #         required: ["answer"]
     #         additionalProperties: false
     # tools:
-    #   web_search: false                            # web search tool
-    #   file_search: []                              # file search tool
-    #   tool_search: {}                              # tool search tool
-    #   mcp_server:                                  # MCP server tool
-    #     server_label: "my_server"
-    #     server_description: "My MCP server"
-    #     server_url: "https://my-server.com/mcp"
-    #     require_approval: "never" | "always"
     #   function_declarations:                       # custom function declarations
     #     - name: "get_weather"
     #       description: "Get current weather for a location"
@@ -67,11 +72,10 @@ llm:
 
   setup:
     temperature: 0.0
-    max_tokens: 4096
+    max_completion_tokens: 4096
     top_p: 1.0
     frequency_penalty: 0.0
     presence_penalty: 0.0
-
     response_format: true
 
     # Structured output: auto-generate JSON Schema from gold_answer_path
@@ -79,17 +83,22 @@ llm:
 
     # Tools configuration
     # tools:
-    #   web_search: false
-    #   file_search: []
-    #   tool_search: {}
-    #   mcp_server: {}
+    #   function_declarations:
+    #     - name: "get_optical_property"
+    #       description: "Get optical property of a material"
+    #       parameters:
+    #         type: "object"
+    #         properties:
+    #           material: {type: "string", description: "Material name"}
+    #           wavelength: {type: "number", description: "Wavelength in nm"}
+    #         required: ["material", "wavelength"]
     # tool_choice: "auto"
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
   file_input: true
-  max_samples: 100
+  max_samples: 10
   shuffle: false
 
   structured_output: true
@@ -98,4 +107,4 @@ task:
 execution:
   concurrency: 1
   timeout: 300
-  output_path: "results/llm_outputs_glm.jsonl"
+  output_path: "results/llm_outputs_together.jsonl"

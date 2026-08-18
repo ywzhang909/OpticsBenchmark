@@ -15,8 +15,7 @@ from src.utils import logger
 def build_response_format(gold_answer_path: str | None) -> dict[str, Any] | None:
     """从 gold_answer_path 构建 response_format schema。
 
-    参照 BaseAgent._build_structured_output() 的逻辑，读取 gold answer JSON 文件，
-    推断第一条数据的类型并生成 JSON schema。
+    读取 gold answer JSON 文件，推断第一条数据的类型并生成 JSON schema。
 
     Args:
         gold_answer_path: gold answer JSON 文件路径。

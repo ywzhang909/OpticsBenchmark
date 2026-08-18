@@ -18,7 +18,6 @@ setup 采用统一扁平参数：
 
 from __future__ import annotations
 
-import base64
 import json
 import mimetypes
 import time
@@ -80,16 +79,20 @@ class ClaudeLLM(BaseLLM):
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
             "messages": processed_messages,
-            "max_tokens": setup.get("max_tokens")
-            or setup.get("max_completion_tokens", 4096),
-            "temperature": setup.get("temperature", None),
-            "top_k": setup.get("top_k", None),
-            "top_p": setup.get("top_p", None),
+            "max_tokens": setup.get("max_tokens", 4096),
+            "cache_control": setup.get("cache_control", None),
+            "context_management": setup.get("context_management", None),
+            "inference_geo": setup.get("inference_geo", None),
+            "mcp_servers": setup.get("mcp_servers", None),
+            "metadata": setup.get("metadata", None),
+            "service_tier": setup.get("service_tier", "auto"),
+            "speed": setup.get("speed", "fast"),
             "stop_sequences": setup.get("stop_sequences", None),
             "stream": setup.get("stream", False),
-            "metadata": setup.get("metadata", None),
-            "service_tier": setup.get("service_tier", None),
-            "speed": setup.get("speed", None),
+            "betas": setup.get("betas", None),
+            "temperature": setup.get("temperature", 1.0),
+            "top_k": setup.get("top_k", None),
+            "top_p": setup.get("top_p", 1.0),
         }
 
         if system_content:
@@ -104,33 +107,23 @@ class ClaudeLLM(BaseLLM):
             else:
                 request_kwargs["system"] = system_content
 
+        if setup.get("output_config"):
+            request_kwargs["output_config"] = self._build_output_config(setup, gold_answer_path)
+
         # Anthropic extended thinking
         thinking_config = setup.get("thinking")
-        if thinking_config and thinking_config.get("enabled", True):
-            thinking: dict[str, Any] = {
-                "type": thinking_config.get("type", "enabled"),
-                "budget_tokens": thinking_config.get("budget_tokens", 512),
-            }
-            if thinking_config.get("display"):
-                thinking["display"] = thinking_config["display"]
-            request_kwargs["thinking"] = thinking
+        if thinking_config:
+            request_kwargs["thinking"] = thinking_config
+        else:
+            request_kwargs["thinking"] = {"type": "disabled"}
 
-        tools_config = setup.get("tools", {}) or kwargs.get("tools_config", {})
+        tools_config = setup.get("tools", {})
         if tools_config:
             built = self._build_tools(tools_config)
-            if built.get("mcp_servers"):
-                request_kwargs["mcp_servers"] = built["mcp_servers"]
             if built.get("tools"):
                 request_kwargs["tools"] = built["tools"]
-            if setup.get("tool_choice") is not None:
-                request_kwargs["tool_choice"] = setup["tool_choice"]
+            request_kwargs["tool_choice"] = setup.get("tool_choice","auto")
 
-        output_config = self._build_output_config(setup, gold_answer_path)
-        if output_config:
-            request_kwargs["output_config"] = output_config
-
-        # api_params 覆盖
-        request_kwargs.update(setup.get("api_params", {}))
 
         try:
             response = await provider.client.beta.messages.create(**request_kwargs)
@@ -185,12 +178,10 @@ class ClaudeLLM(BaseLLM):
                 elif key == "assistant":
                     buckets["assistant"].append({"type": "text", "text": value})
                 elif key == "location":
-                    buckets["user"].append(await self._build_document(value))
+                    buckets["user"].append(await self._build_document(value, provider))
                 elif key == "content" and "role" in message:
                     role = "assistant" if message["role"] == "assistant" else "user"
                     buckets[role].append({"type": "text", "text": value})
-                elif isinstance(value, str) and key not in ("role", "input"):
-                    buckets["user"].append({"type": "text", "text": value})
 
         processed: list[dict[str, Any]] = []
         for role in ("user", "assistant"):
@@ -204,18 +195,45 @@ class ClaudeLLM(BaseLLM):
 
         return processed, "\n\n".join(system_parts)
 
-    @staticmethod
-    async def _build_document(path: str) -> dict[str, Any]:
-        """读取本地文件并转为 Claude document 内容块（base64）。"""
+    async def _build_document(self, path: str, provider: AnthropicProvider) -> dict[str, Any]:
+        """Upload a local file via the Anthropic Files API and return a document block.
+
+        Reads the file, uploads it using provider.client.beta.files.upload(),
+        and returns a Claude document content block referencing the uploaded file_id.
+        The document title is derived from the full filename (including extension).
+
+        Args:
+            path: Path to the local file to upload.
+            provider: AnthropicProvider instance with an initialized client.
+
+        Returns:
+            A dict with type="document", title, and source (file_id) fields.
+
+        Raises:
+            FileNotFoundError: If the file does not exist at the given path.
+        """
         file_path = Path(path)
-        media_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
-        encoded = base64.b64encode(file_path.read_bytes()).decode("utf-8")
+        if not file_path.exists():
+            raise FileNotFoundError(f"Document file not found: {path}")
+
+        # Use the full filename (including extension) as the document title
+        title = file_path.name
+
+        # Determine MIME type; default to application/pdf for Claude document blocks
+        media_type = mimetypes.guess_type(file_path.name)[0] or "application/pdf"
+
+        # Upload the file via the Anthropic Files API
+        with open(file_path, "rb") as f:
+            file_upload = await provider.client.beta.files.upload(
+                file=(file_path.name, f, media_type)
+            )
+
+        # Return a document block referencing the uploaded file by ID
         return {
             "type": "document",
             "source": {
-                "type": "base64",
-                "media_type": media_type,
-                "data": encoded,
+                "type": "file",
+                "file_id": file_upload.id,
             },
         }
 
@@ -227,24 +245,21 @@ class ClaudeLLM(BaseLLM):
         """根据 setup 构建 output_config（format/effort/task_budget）。"""
         output_config: dict[str, Any] = {}
 
-        if setup.get("effort"):
-            output_config["effort"] = setup["effort"]
-        if setup.get("task_budget"):
-            output_config["task_budget"] = setup["task_budget"]
+        if setup.get("output_config"):
+            output_config = setup["output_config"]
 
-        if setup.get("response_format", False) or gold_answer_path:
+        schema = output_config.get("format", None)
+        if not schema:
             schema = self._build_structured_output(gold_answer_path)
-            if schema:
-                output_config["format"] = {
-                    "type": "json_schema",
-                    "schema": schema,
-                }
-            else:
-                logger.warning(
-                    "response_format 已启用但无法从 gold_answer_path 生成 JSON Schema，"
-                    "将忽略结构化输出"
-                )
-
+        else:
+            logger.warning(
+                "response_format 已启用但无法从 gold_answer_path 生成 JSON Schema，"
+                "将忽略结构化输出"
+            )
+        output_config["format"] = {
+            "type": "json_schema",
+            "schema": schema,
+        }
         return output_config or None
 
     def _build_structured_output(self, gold_answer_path: str | None) -> dict[str, Any] | None:
@@ -269,19 +284,6 @@ class ClaudeLLM(BaseLLM):
     def _build_tools(tools_config: dict[str, Any]) -> dict[str, Any]:
         """根据 tools 配置构建 mcp_servers 与 tools 请求参数。"""
         built: dict[str, Any] = {}
-
-        if tools_config.get("mcp_server", {}):
-            mcp = tools_config["mcp_server"]
-            built["mcp_servers"] = [
-                ClaudeLLM._clean(
-                    {
-                        "type": mcp.get("type", "url"),
-                        "name": mcp.get("name"),
-                        "url": mcp.get("url"),
-                        "authorization_token": mcp.get("authorization_token"),
-                    }
-                )
-            ]
 
         tools: list[dict[str, Any]] = []
         if tools_config.get("web_search", {}):

@@ -1,18 +1,16 @@
 """
 GeminiLLM - Google Gemini 模型调用类
 
-支持通过 GoogleProvider 调用 Google GenAI API（generate_content）。
+支持通过 GoogleProvider 调用 Google GenAI Interactions API。
 
-与 GPTLLM 一致，setup 采用统一扁平参数：
-  - max_tokens / max_completion_tokens → max_output_tokens
-  - response_format: true / gold_answer_path → response_mime_type +
-    response_schema（从 gold_answer_path 推断 JSON Schema，参照 GPTLLM）
-  - thinking                            → ThinkingConfig
-  - cached_content / prompt_cache_key   → cached_content（缓存内容）
-  - tools.web_search / code_execution / file_search / function_declarations
-                                        → types.Tool
-  - tools.tool_choice                   → types.ToolConfig
-  - api_params                          → 覆盖或扩展 GenerateContentConfig
+setup 参数说明：
+  - max_completion_tokens             → max_output_tokens
+  - response_format / gold_answer_path → response_format (JSON Schema)
+  - thinking.thinking_level / thinking.thinking_budget
+  - tools.web_search / code_execution / function_declarations
+  - tools.tool_choice                 → generation_config.tool_choice
+  - api_params                        → 覆盖或扩展 generation_config
+
 消息处理：与 GPTLLM 相同，支持扁平消息字典，其中 prompt/record 为文本，
 location 为本地文件路径（通过 files.upload 上传），system 为系统指令。
 """
@@ -20,11 +18,10 @@ location 为本地文件路径（通过 files.upload 上传），system 为系�
 from __future__ import annotations
 
 import json
+import mimetypes
 import time
 from pathlib import Path
 from typing import Any
-
-from google.genai import types
 
 from src.llm.base import BaseLLM
 from src.llm.providers.GoogleProvider import GoogleProvider
@@ -45,11 +42,10 @@ _DEFAULT_PRICE: tuple[float, float] = (1.25, 5.00)
 
 
 class GeminiLLM(BaseLLM):
-    """Google Gemini 模型，支持 GoogleProvider。"""
+    """Google Gemini 模型，支持 GoogleProvider（Interactions API）。"""
 
     def __init__(self, model_name: str = "gemini-1.5-pro"):
         super().__init__(model_name)
-        self._cache_names: dict[str, str] = {}
 
     async def chat(
         self,
@@ -78,52 +74,57 @@ class GeminiLLM(BaseLLM):
             messages, provider, setup
         )
 
-        schema = None
-        if setup.get("response_format", False) or gold_answer_path:
-            schema = self._build_structured_output(gold_answer_path)
-            if schema is None and setup.get("response_format", False):
+        request_kwargs: dict[str, Any] = {
+            "model": self.model_name,
+            "input": contents,
+            "system_instruction": system_instruction if system_instruction else None,
+            "tools": setup.get("tools", None),
+            "stream": setup.get("stream", False),
+            "store": setup.get("store", False),
+            "background": setup.get("background", False),
+            "generation_config": setup.get("generation_config", None),
+            "safety_settings": setup.get("safety_settings", None),
+            "service_tier": setup.get("service_tier", None),
+            "webhook_config": setup.get("webhook_config", None),
+        }
+
+        # 构建 structured output response_format
+        response_format = setup.get("response_format", None)
+        if response_format:
+            schema = response_format.get("schema", None)
+            if not schema:
+                schema = self._build_structured_output(gold_answer_path)
+
+            if schema is None:
                 logger.warning(
-                    "response_format 已启用但无法从 gold_answer_path 生成 JSON Schema，"
-                    "将忽略结构化输出"
+                    "response_format enabled but cannot generate JSON Schema "
+                    "from gold_answer_path, ignoring structured output"
                 )
-
-        cached_content = await self._get_cached_content(
-            provider, setup, contents, system_instruction
-        )
-
-        tools, tool_config = [], None
-        if setup.get("tools", {}):
-            tools, tool_config = self._build_tools(setup["tools"])
-
-        config = types.GenerateContentConfig(
-            **self._build_config(
-                setup,
-                system_instruction,
-                schema,
-                cached_content,
-                tools,
-                tool_config,
-            )
-        )
+                request_kwargs["response_format"] = None
+            else:
+                request_kwargs["response_format"] = {
+                    "type" : "text",
+                    "mime_type" : "application/json",
+                    "schema" : schema,
+                }
+                request_kwargs["response_mime_type"] = "application/json"
 
         try:
-            response = await provider.aio.models.generate_content(
-                model=self.model_name,
-                contents=contents,
-                config=config,
+            interaction = await provider.aio.interactions.create(
+                **request_kwargs
             )
             latency = time.time() - start_time
 
-            content = response.text or ""
+            content = interaction.output_text or ""
 
-            usage_meta = response.usage_metadata
+            usage_meta = interaction.usage
             usage = {
-                "prompt_tokens": getattr(usage_meta, "prompt_token_count", 0) or 0,
+                "prompt_tokens": getattr(usage_meta, "total_input_tokens", 0) or 0,
                 "completion_tokens": (
-                    getattr(usage_meta, "candidates_token_count", 0) or 0
+                    getattr(usage_meta, "total_output_tokens", 0) or 0
                 ),
-                "cached_content_token_count": (
-                    getattr(usage_meta, "cached_content_token_count", 0) or 0
+                "total_thought_tokens": (
+                    getattr(usage_meta, "total_thought_tokens", 0) or 0
                 ),
             }
             cost = self._calculate_cost(usage)
@@ -156,26 +157,15 @@ class GeminiLLM(BaseLLM):
         model_parts: list[Any] = []
 
         for message in messages:
-            role = message.get("role", "")
             for key, value in message.items():
-                if key in ("role", "input"):
-                    continue
-                if key in ("system", "developer") or (
-                    key == "content" and role in ("system", "developer")
-                ):
+                if key in ("system", "input"):
                     system_parts.append(value)
                 elif key in ("prompt", "user", "record"):
-                    user_parts.append({"text": value})
+                    user_parts.append({"type": "text", "text": value})
                 elif key == "assistant":
-                    model_parts.append({"text": value})
+                    model_parts.append({"type": "text", "text": value})
                 elif key == "location":
-                    file_obj = await provider.aio.files.upload(file=value)
-                    user_parts.append(file_obj)
-                elif key == "content":
-                    target = model_parts if role == "assistant" else user_parts
-                    target.append({"text": value})
-                elif isinstance(value, str):
-                    user_parts.append({"text": value})
+                    user_parts.append(await self._build_document(value, provider))
 
         contents: list[dict[str, Any]] = []
         if user_parts:
@@ -185,105 +175,45 @@ class GeminiLLM(BaseLLM):
 
         return contents, "\n\n".join(system_parts)
 
-    async def _get_cached_content(
-        self,
-        provider: GoogleProvider,
-        setup: dict[str, Any],
-        contents: list[dict[str, Any]],
-        system_instruction: str,
-    ) -> str | None:
-        """解析 cached_content 名称：直接指定或通过 prompt_cache_key 创建。"""
-        cached_name = setup.get("cached_content")
-        if cached_name:
-            return cached_name
+    async def _build_document(self, path: str, provider: GoogleProvider) -> dict[str, Any]:
+        """Upload a local file via the Google Files API and return a document block.
 
-        cache_key = setup.get("prompt_cache_key")
-        if not cache_key:
-            return None
-        if cache_key in self._cache_names:
-            return self._cache_names[cache_key]
+        Reads the file, uploads it using provider.client.beta.files.upload(),
+        and returns a Claude document content block referencing the uploaded file_id.
+        The document title is derived from the full filename (including extension).
 
-        if not contents:
-            logger.warning("prompt_cache_key 已配置但无可缓存内容，跳过缓存创建")
-            return None
+        Args:
+            path: Path to the local file to upload.
+            provider: GoogleProvider instance with an initialized client.
 
-        options = setup.get("prompt_cache_options", {}) or {}
-        ttl = options.get("ttl", "3600s")
-        if not isinstance(ttl, str):
-            ttl = f"{int(ttl)}s"
+        Returns:
+            A dict with type="document", title, and source (file_id) fields.
 
-        try:
-            cache = await provider.aio.caches.create(
-                model=self.model_name,
-                config=types.CreateCachedContentConfig(
-                    contents=contents,
-                    system_instruction=system_instruction or None,
-                    display_name=options.get(
-                        "display_name", f"prompt_cache_{cache_key}"
-                    ),
-                    ttl=ttl,
-                ),
-            )
-            self._cache_names[cache_key] = cache.name
-            return cache.name
-        except Exception as e:
-            logger.warning(f"创建 Gemini 缓存失败，跳过缓存: {e}")
-            return None
+        Raises:
+            FileNotFoundError: If the file does not exist at the given path.
+        """
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"Document file not found: {path}")
 
-    def _build_config(
-        self,
-        setup: dict[str, Any],
-        system_instruction: str,
-        schema: dict[str, Any] | None,
-        cached_content: str | None,
-        tools: list[Any],
-        tool_config: Any,
-    ) -> dict[str, Any]:
-        """构建 GenerateContentConfig 参数（扁平 setup + api_params 覆盖）。"""
-        params: dict[str, Any] = {
-            "system_instruction": system_instruction or None,
-            "temperature": setup.get("temperature"),
-            "top_p": setup.get("top_p"),
-            "top_k": setup.get("top_k"),
-            "candidate_count": setup.get("candidate_count"),
-            "max_output_tokens": setup.get("max_completion_tokens"),
-            "stop_sequences": setup.get("stop_sequences"),
-            "presence_penalty": setup.get("presence_penalty"),
-            "frequency_penalty": setup.get("frequency_penalty"),
-            "seed": setup.get("seed"),
-            "safety_settings": (
-                [types.SafetySetting(**s) for s in setup["safety_settings"]]
-                if setup.get("safety_settings")
-                else None
-            ),
-            "thinking_config": (
-                types.ThinkingConfig(
-                    include_thoughts=setup["thinking"].get("include_thoughts"),
-                    thinking_budget=(
-                        setup["thinking"].get("thinking_budget")
-                        or setup["thinking"].get("thinking_budgets")
-                    ),
-                    thinking_level=setup["thinking"].get("thinking_level"),
-                )
-                if setup.get("thinking")
-                else None
-            ),
-            "cached_content": cached_content,
-            "tools": tools or None,
-            "tool_config": tool_config or None,
+        # Determine MIME type; default to application/pdf for Claude document blocks
+        media_type = mimetypes.guess_type(file_path.name)[0] or "application/pdf"
+
+        # Upload the file via the Google Files API
+        file_upload = await provider.client.beta.files.upload(file=(file_path))
+
+        # Return a document block referencing the uploaded file by ID
+        return {
+            "type": "document",
+            "uri": file_upload.uri,
+            "mime_type": media_type,
         }
 
-        if schema:
-            params["response_mime_type"] = "application/json"
-            params["response_schema"] = schema
-
-        params.update(setup.get("api_params", {}))
-        return params
 
     def _build_structured_output(
         self, gold_answer_path: str | None
     ) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 JSON Schema（参照 GPTLLM）。"""
+        """从 gold_answer_path 构建 JSON Schema。"""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -299,64 +229,6 @@ class GeminiLLM(BaseLLM):
             return None
         return _dict_to_response_format(payload, strict=True)
 
-    @staticmethod
-    def _build_tools(tools_config: dict[str, Any]) -> tuple[list[Any], Any]:
-        """根据 tools 配置构建 Gemini Tool / ToolConfig。"""
-        tools: list[Any] = []
-
-        if tools_config.get("web_search", False):
-            tools.append(types.Tool(google_search=types.GoogleSearch()))
-        if tools_config.get("code_execution", False):
-            tools.append(types.Tool(code_execution=types.ToolCodeExecution()))
-        if tools_config.get("file_search"):
-            tools.append(
-                types.Tool(
-                    file_search=types.FileSearch(
-                        file_search_store_names=tools_config["file_search"]
-                    )
-                )
-            )
-        if tools_config.get("mcp_server", {}):
-            mcp = tools_config["mcp_server"]
-            tools.append(
-                types.Tool(
-                    mcp_servers=[
-                        types.McpServer(
-                            name=mcp.get("name"),
-                            streamable_http_transport=mcp.get(
-                                "streamable_http_transport", mcp.get("url")
-                            ),
-                        )
-                    ]
-                )
-            )
-        if tools_config.get("function_declarations", []):
-            tools.append(
-                types.Tool(function_declarations=tools_config["function_declarations"])
-            )
-        if tools_config.get("custom", []):
-            tools.extend(
-                types.Tool(function_declarations=[fn])
-                for fn in tools_config["custom"]
-            )
-
-        tool_config = None
-        choice = tools_config.get("tool_choice", {}) or {}
-        if choice:
-            mode = choice.get("mode", "AUTO")
-            if isinstance(mode, str):
-                mode = mode.upper()
-            function_calling_config = types.FunctionCallingConfig(mode=mode)
-            if choice.get("allowed_function_names"):
-                function_calling_config.allowed_function_names = choice[
-                    "allowed_function_names"
-                ]
-            tool_config = types.ToolConfig(
-                function_calling_config=function_calling_config
-            )
-
-        return tools, tool_config
-
     def _calculate_cost(self, usage: dict[str, Any]) -> float:
         input_cost_per_m, output_cost_per_m = _GEMINI_PRICES.get(
             self.model_name, _DEFAULT_PRICE
@@ -364,17 +236,15 @@ class GeminiLLM(BaseLLM):
 
         input_tokens = float(usage.get("prompt_tokens", 0) or 0)
         output_tokens = float(usage.get("completion_tokens", 0) or 0)
-        cached_tokens = float(usage.get("cached_content_token_count", 0) or 0)
+        thought_tokens = float(usage.get("total_thought_tokens", 0) or 0)
 
-        # 缓存命中的 token 已按更低费率计费，不再计入常规输入
-        input_tokens = max(input_tokens - cached_tokens, 0)
-
+        # Thinking tokens 按 output 价格计费
         return (
             input_tokens / 1_000_000 * input_cost_per_m
-            + output_tokens / 1_000_000 * output_cost_per_m
-            + cached_tokens / 1_000_000 * input_cost_per_m * 0.25
+            + (output_tokens + thought_tokens) / 1_000_000 * output_cost_per_m
         )
 
     async def close(self, provider: Any) -> None:
         if isinstance(provider, GoogleProvider):
             await provider.close()
+

@@ -253,8 +253,8 @@ class GPTLLM(BaseLLM):
             request_kwargs["text"] = {"format": {"type": "json_object"}}
 
         tools_config = setup.get("tools", {})
-        # if tools_config:
-            # request_kwargs.update(self._build_tools(tools_config, setup))
+        if tools_config:
+            request_kwargs.update(self._build_tools(tools_config, setup))
 
         try:
             response = await provider.client.responses.create(**request_kwargs)

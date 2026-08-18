@@ -1,7 +1,12 @@
 # =============================================================================
-# Gemini 1.5 Pro - Google Provider Configuration
+# Gemini - Google Provider Configuration (Interactions API)
 # Optis Benchmark - LLM Prediction
 # =============================================================================
+#
+# Google GenAI Interactions API via provider.aio.interactions.create.
+# Supports generation_config, response_format, tools, and thinking.
+# Reference: https://ai.google.dev/gemini-api/docs/interactions
+# SDK requirement: google-genai >= 2.3.0
 
 llm:
   provider:
@@ -13,15 +18,75 @@ llm:
 
   model:
     type: "gemini"
-    name: "gemini-1.5-pro"
+    name: "gemini-2.5-flash"
+
+    # Interactions API - interactions.create parameters:
+    # (passed directly as keyword arguments)
+    #
+    # model: "gemini-2.5-flash"                        # model name
+    # input: [...]                                      # message contents (auto-generated)
+    # system_instruction: "..."                         # system prompt (auto-generated)
+    #
+    # --- generation_config (dict) ---
+    # generation_config:
+    #   temperature: 1.0                                # sampling temperature (0.0-2.0)
+    #   top_p: 0.95                                     # nucleus sampling threshold
+    #   top_k: 40                                       # top-k sampling
+    #   candidate_count: 1                              # number of response candidates
+    #   max_output_tokens: 8192                         # max tokens in response
+    #   stop_sequences: []                              # sequences that stop generation
+    #   presence_penalty: 0.0                           # penalize new tokens based on presence
+    #   frequency_penalty: 0.0                          # penalize new tokens based on frequency
+    #   seed: 42                                        # random seed for reproducibility
+    #   thinking_level: "low" | "medium" | "high"      # thinking effort level
+    #   thinking_budget: 1024                           # thinking token budget (alternative to level)
+    #   thinking_summaries: "auto"                      # enable thought summaries
+    #   tool_choice:                                    # function calling mode
+    #     mode: "auto" | "any" | "none"                #   auto (default), any, none
+    #     allowed_tools:                                #   restrict to specific tools
+    #       mode: "any"
+    #       tools: ["get_weather"]
+    #
+    # --- response_format (dict or array) ---
+    # response_format:
+    #   type: "text"                                    # output modality: text, image, audio
+    #   mime_type: "application/json"                   # MIME type for structured output
+    #   schema:                                         # JSON Schema for structured output
+    #     type: "object"
+    #     properties:
+    #       answer: {type: "string"}
+    #     required: ["answer"]
+    #     additionalProperties: false
+    #
+    # --- tools (array of tool dicts) ---
+    # tools:
+    #   - type: "google_search"                         # Google Search tool
+    #   - type: "code_execution"                        # Code execution tool
+    #   - type: "function"                              # Custom function declaration
+    #     name: "get_weather"
+    #     description: "Get current weather for a location"
+    #     parameters:
+    #       type: "object"
+    #       properties:
+    #         location: {type: "string", description: "City name"}
+    #       required: ["location"]
+    #
+    # --- other top-level params ---
+    # stream: false                                     # enable streaming
+    # store: false                                      # store interaction server-side
+    # background: false                                 # background execution for long tasks
+    # previous_interaction_id: "..."                    # continue previous conversation
+    # safety_settings: null                             # NOT supported in Interactions API
+    # service_tier: null                                # service tier selection
+    # webhook_config: null                              # webhook for background tasks
 
   setup:
     temperature: 0.0
     max_completion_tokens: 8192
     top_p: 1.0
     thinking:
-      include_thoughts: false
-      thinking_budget: 512
+      thinking_level: "low"
+
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
@@ -29,6 +94,9 @@ task:
   file_input: true
   max_samples: 100
   shuffle: false
+
+  structured_output: true
+  gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
 execution:
   concurrency: 1

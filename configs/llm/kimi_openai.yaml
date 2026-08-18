@@ -1,0 +1,72 @@
+# =============================================================================
+# Kimi K3 - Moonshot AI Provider Configuration
+# Optis Benchmark - LLM Prediction
+# =============================================================================
+#
+# Kimi API (OpenAI-compatible) via provider.client.chat.completions.create.
+# Supports thinking mode (K2.x), reasoning_effort (K3), and full tool calling.
+# Reference: https://platform.kimi.ai/docs/api/chat
+
+llm:
+  provider:
+    type: "openai"
+    api_key: "${KIMI_API_KEY}"
+    base_url: "https://api.moonshot.ai/v1"
+
+  model:
+    type: "kimi"
+    name: "kimi-k3"
+
+    # Chat Completions API sample - Kimi
+    # chat.completions.create parameters:
+    # max_completion_tokens: 131072 (K3 default, up to 1048576)
+    # temperature: 1.0
+    # top_p: 1.0
+    # reasoning_effort: "low" | "high" | "max" (K3 only, default "max")
+    # thinking:
+    #   type: "enabled" | "disabled" (K2.x only)
+    #   keep: "all" | null (K2.x only, default null)
+    # response_format:
+    #   type: "text" | "json_object" | "json_schema"
+    #   json_schema:
+    #     name: "schema_name"
+    #     strict: true
+    #     schema: {}
+    # stop: []
+    # stream: false
+    # logprobs: false
+    # top_logprobs: 0
+    # tools:
+    #   web_search: false
+    #   file_search: []
+    #   tool_search: {}
+    #   mcp_server: {}
+    #   custom: []
+    # tool_choice: "auto" | "none" | "required"
+    # prompt_cache_key: "session_id"
+
+  setup:
+    temperature: 0.0
+    max_completion_tokens: 8192
+    top_p: 1.0
+    response_format:
+      type: "json_schema"
+      # json_schema:
+      #   name: "schema_name"
+      #   strict: true
+      #   schema: {}
+
+task:
+  dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+  prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+  file_input: true
+  max_samples: 100
+  shuffle: false
+
+  structured_output: true
+  gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
+
+execution:
+  concurrency: 1
+  timeout: 300
+  output_path: "results/llm_outputs.jsonl"

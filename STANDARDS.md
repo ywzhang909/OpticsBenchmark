@@ -39,7 +39,7 @@ import yaml
 from pydantic import BaseModel
 
 # 3. 本项目模块
-from src.core.agent import BaseAgent
+from src.llm.base import BaseLLM
 from src.utils.logger import get_logger
 
 # 4. 相对导入 (仅在同一包内使用)
@@ -122,7 +122,7 @@ defaultTimeout = 300
 
 | 类型 | 规范 | 示例 |
 |------|------|------|
-| 类名 | CapWords (PascalCase) | `BaseAgent`, `MetricEvaluator` |
+| 类名 | CapWords (PascalCase) | `BaseLLM`, `MetricEvaluator` |
 | 异常类 | 以 `Error` 结尾 | `TimeoutError`, `ConfigError` |
 | 基类 | 以 `Base` 开头 | `BaseEnvironment`, `BaseEvaluator` |
 
@@ -169,8 +169,9 @@ saveIntermediate: true
 ```
 src/core/
 ├── __init__.py          # 导出公共 API
-├── agent.py             # Agent 相关
-├── evaluator.py         # Evaluator 相关
+├── config.py            # TaskConfig 相关
+├── llm_judge.py         # LLM Judge 相关
+├── llm_runner.py        # LLM Runner 相关
 └── runner.py            # Runner 相关
 ```
 
@@ -180,30 +181,25 @@ src/core/
 """
 Core Module - 核心模块
 
-提供 Agent、Evaluator、Runner 等核心组件。
+提供 Runner、Config、LLM Judge 等核心组件。
 """
 
-from .agent import (
-    BaseAgent,
-    AgentConfig,
-    create_agent,
-)
+from .llm_judge import LLMJudge, JudgePromptBuilder, Rubric
 
-from .evaluator import (
-    BaseEvaluator,
-    EvaluationResult,
-    create_evaluator,
-)
+from .llm_runner import LLMPredRunner, LLMRunnerConfig
 
 from .runner import (
     AgentRunner,
-    run_evaluation,
+    RunnerConfig,
+    TaskConfig,
+    TaskInstance,
 )
 
 __all__ = [
-    "BaseAgent",
-    "AgentConfig",
-    "create_agent",
+    "AgentRunner",
+    "RunnerConfig",
+    "TaskConfig",
+    "TaskInstance",
     # ... 其他导出
 ]
 ```
@@ -466,8 +462,8 @@ mtf = contrast_in / contrast_out
 
 ```
 tests/
-├── test_agent.py           # 对应 src/core/agent.py
-├── test_evaluator.py       # 对应 src/core/evaluator.py
+├── test_runner.py          # 对应 src/core/runner.py
+├── test_evaluator.py       # 对应 src/evaluators/
 ├── test_runner.py          # 对应 src/core/runner.py
 └── integration/
     └── test_full_pipeline.py
@@ -494,18 +490,20 @@ def test_evaluator_metric_calculation():
 ```python
 import pytest
 
-class TestAgent:
-    """Agent 测试类"""
+class TestLLMModel:
+    """LLM 模型测试类"""
     
     @pytest.fixture
-    def agent(self):
+    def llm(self):
         """测试 fixture"""
-        return create_agent("configs/agents/openai/gpt-4.yaml")
+        from src.llm import create_llm
+        return create_llm("configs/llm/gpt_openai.yaml")
     
-    async def test_chat(self, agent):
+    async def test_chat(self, llm):
         """测试聊天功能"""
+        from src.llm.base import Message
         messages = [Message(role="user", content="Hello")]
-        response = await agent.chat(messages)
+        response = await llm.chat(messages)
         
         assert response.content is not None
         assert response.cost > 0

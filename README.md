@@ -139,7 +139,6 @@ OpticsBenchmark/
 │   ├── eval.py                    # Phase 2: Evaluation engine
 │   ├── llm_pred.py               # LLM prediction runner
 │   ├── core/
-│   │   ├── agent.py              # BaseAgent ABC + 7 LLM providers + factory (1306 lines)
 │   │   ├── config.py             # Shared TaskConfig dataclass
 │   │   ├── llm_judge.py          # LLM-as-judge with anchored rubrics
 │   │   ├── llm_runner.py         # LLMPredRunner for prediction
@@ -444,10 +443,9 @@ uv run pytest tests/ --ignore=tests/test_bert_score_eval.py
 
 ### Adding a New LLM Provider
 
-1. Create a provider class in `src/core/agent.py` extending `BaseAgent`
-2. Implement `chat(messages, tools)` → `AgentOutput` and `close()`
-3. Register it in the `create_agent()` factory
-4. Add a YAML config in `configs/agents/`
+1. Create a provider class in `src/llm/models/` extending `BaseLLM`
+2. Implement `chat(messages, tools)` → `LLMOutput` and `close()`
+3. Add a YAML config in `configs/llm/`
 
 ### Adding a New Evaluator
 

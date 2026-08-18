@@ -54,14 +54,14 @@ Examples:
         "--config",
         type=str,
         # required=True,
-        default="configs/llm/claude_anthropic.yaml",
+        default="/configs/llm/llama_together.yaml",
         help="LLM config file path (YAML)",
     )
     parser.add_argument(
         "-o",
         "--output",
         type=str,
-        default="results/llm_pred.jsonl",
+        default="results/qwen3.8-max_pred.jsonl",
         help="Output file path (overrides output_path in config)",
     )
     parser.add_argument(

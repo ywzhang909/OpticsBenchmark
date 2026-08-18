@@ -8,11 +8,10 @@ __version__ = "1.0.0"
 __author__ = "Optis Benchmark Contributors"
 
 from .core import (
-    AgentConfig,
-    AgentOutput,
     AgentRunner,
-    BaseAgent,
-    create_agent,
+    RunnerConfig,
+    TaskConfig,
+    TaskInstance,
 )
 from .environments import (
     BaseEnvironment,
@@ -33,14 +32,13 @@ __all__ = [
     # Version
     "__version__",
     # Core
-    "AgentConfig",
-    "AgentOutput",
-    "BaseAgent",
     "BaseEvaluator",
     "EvaluationResult",
     "AgentRunner",
-    "create_agent",
     "create_evaluator",
+    "RunnerConfig",
+    "TaskConfig",
+    "TaskInstance",
     # Environments
     "BaseEnvironment",
     "EnvironmentConfig",

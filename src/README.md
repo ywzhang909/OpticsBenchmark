@@ -109,7 +109,7 @@ src/
 │                   Phase 1: Generate                  │
 │                   src/main.py                        │
 │                                                     │
-│  Agent Config  ──► create_agent() ──► AgentRunner   │
+│  Agent Config  ──► AgentRunner   │
 │  Task Config   ──► TaskConfig       ──►  run_agent()│
 │  Dataset JSONL ──► load_tasks()     ──►  AgentOutput │
 │                                                     │
@@ -141,23 +141,12 @@ src/
 
 | File | Key Symbols | Description |
 |------|-------------|-------------|
-| `agent.py` | `BaseAgent` (ABC), `AgentConfig`, `AgentOutput`, `Message`, `ToolCall`, `create_agent()` | Agent interface + 7 LLM provider implementations (1306 lines) |
 | `config.py` | `TaskConfig` | YAML-loaded task configuration dataclass |
 | `runner.py` | `AgentRunner`, `RunnerConfig`, `TaskInstance` | Async orchestrator with semaphore-based concurrency (259 lines) |
 | `llm_judge.py` | `LLMJudge`, `JudgePromptBuilder`, `Rubric`, `DEFAULT_RUBRICS` | LLM-as-judge evaluator with structured rubrics |
 | `llm_runner.py` | `LLMPredRunner` | LLM prediction runner |
 
-**7 LLM Providers** (in `agent.py`):
-
-| Provider | Class | Client |
-|----------|-------|--------|
-| OpenAI | `OpenAIAgent` | `openai.AsyncOpenAI` |
-| Anthropic | `AnthropicAgent` | `anthropic.AsyncAnthropic` |
-| Google | `GoogleAgent` | `google.genai.aio` |
-| Groq | `GroqAgent` | `groq.AsyncGroq` |
-| Ollama | `OllamaAgent` | `httpx` → `/api/chat` |
-| AWS Bedrock | `BedrockAgent` | `boto3 bedrock-runtime` |
-| Together AI | `TogetherAIAgent` | `httpx` → `/v1/chat/completions` |
+**Note**: LLM providers have been moved to `src/llm/models/`.
 
 ---
 

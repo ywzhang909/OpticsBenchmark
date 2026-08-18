@@ -2,6 +2,10 @@
 # Claude 3.5 Sonnet - Anthropic Provider Configuration
 # Optis Benchmark - LLM Prediction
 # =============================================================================
+#
+# Anthropic Messages API (beta endpoint) via provider.client.beta.messages.create.
+# Supports mcp_servers, output_config, thinking, tools, and other beta features.
+# Reference: https://docs.anthropic.com/en/api/messages
 
 llm:
   provider:
@@ -12,14 +16,74 @@ llm:
     type: "claude"
     name: "claude-3-5-sonnet-20241022"
 
+    # Message API sample - Anthropic
+    # beta.messages.create parameters:
+    # max_tokens: 8192
+    # cache_control: null
+    # context_management: null
+    # inference_geo: null
+    # mcp_servers: null
+    # metadata:
+    #   user_id: "user-123"
+    # service_tier: "auto" | "standard" | "priority" | "fast"
+    # speed: "fast" | "balanced" | "quality"
+    # stop_sequences: []
+    # stream: false
+    # betas: []
+    # temperature: 0.0
+    # top_k: null
+    # top_p: 1.0
+    # thinking:
+    #   type: "enabled" | "disabled"
+    #   budget_tokens: 10000
+    #   display: "summarized" | "detailed" | "raw"
+    # output_config:
+    #   effort: "none" | "low" | "medium" | "high"
+    #   task_budget:
+    #     total: 1000000
+    #     type: "tokens"
+    #   format:
+    #     type: "json_schema"
+    #     schema: {}
+    # tools:
+    #   web_search:
+    #     type: "web_search_20250305"
+    #     name: "web_search"
+    #     max_uses: 5
+    #     allowed_domains: []
+    #     blocked_domains: []
+    #     user_location: {}
+    #   web_fetch:
+    #     type: "web_fetch_20250910"
+    #     name: "web_fetch"
+    #     max_uses: 5
+    #     allowed_domains: []
+    #     blocked_domains: []
+    #     citations: {}
+    #     max_content_tokens: 10000
+    #   tool_search:
+    #     type: "tool_search_tool_regex_20251119"
+    #     name: "tool_search"
+    #   custom: []
+    # tool_choice: "auto" | "any" | "tool"
+
   setup:
     temperature: 0.0
     max_completion_tokens: 8192
     top_p: 1.0
+    output_config: 
+      effort: "medium"
+      task_budget:
+        total: 1000000
+        type: "tokens"
 
+    service_tier: "auto"
+    speed: "fast"
     thinking:
-      enabled: false
+      type: "enabled"
       budget_tokens: 10000
+      display: "summarized"
+
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"

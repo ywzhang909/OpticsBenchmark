@@ -11,23 +11,23 @@ llm:
 
   model:
     type: "qwen"
-    name: "qwen-long"
+    name: "qwen3.7-max"
 
   setup:
     temperature: 0.0
-    max_completion_tokens: 4096
+    max_completion_tokens: 100000
     top_p: 1.0
     frequency_penalty: 0.0
     presence_penalty: 0.0
 
     response_format: true
 
-    # tools:
-    #   web_search: false
-    #   file_search: []
-    #   tool_search: {}
-    #   mcp_server: {}
-    # tool_choice: "auto"
+    tools:
+      web_search: false
+      file_search: []
+      tool_search: {}
+      mcp_server: {}
+    tool_choice: "auto"
 
 task:
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
@@ -42,4 +42,4 @@ task:
 execution:
   concurrency: 1
   timeout: 300
-  output_path: "results/llm_outputs.jsonl"
+  output_path: "results/qwen3.7-max_outputs.jsonl"
