@@ -25,7 +25,7 @@ load_dotenv()
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.runner import AgentRunner  # noqa: E402
+from src.core.llm_runner import LLMPredRunner  # noqa: E402
 from src.evaluators import create_evaluator, sort_evaluators_by_priority  # noqa: E402
 from src.module import AggregatedResults  # noqa: E402
 from src.utils import logger, setup_logger  # noqa: E402
@@ -167,8 +167,8 @@ async def run_evaluation(
             logger.error("No gold answers loaded")
             return 1
 
-        # Load agent outputs
-        agent_outputs = AgentRunner.load_agent_outputs(input_path)
+        # Load LLM prediction outputs
+        agent_outputs = LLMPredRunner.load_llm_outputs(input_path)
         logger.info(f"Loaded {len(agent_outputs)} agent outputs")
 
         if not agent_outputs:

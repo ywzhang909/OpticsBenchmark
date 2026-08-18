@@ -2,7 +2,7 @@
 
 **Path:** `src/` — Core Python package for Optis Benchmark.
 
-Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. Agent implementations (7 LLM providers), metric evaluators (4 types), pure-math algorithms (12 modules), LLM abstraction layer (10 models, 7 providers), execution sandboxes, and CLI utilities are organized into 8 subpackages.
+Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. LLM abstraction layer (10 model classes, 8 providers), metric evaluators (4 types), pure-math algorithms (12 modules), execution sandboxes, and CLI utilities are organized into 8 subpackages.
 
 ---
 
@@ -17,7 +17,6 @@ src/
 │
 ├── core/                     # Pipeline orchestration
 │   ├── __init__.py
-│   ├── agent.py              # 1306 lines — BaseAgent ABC + 7 LLM providers
 │   ├── config.py             # TaskConfig dataclass (YAML-loaded)
 │   ├── llm_judge.py          # LLM-as-judge evaluator (PluginEval Layer 2)
 │   ├── llm_runner.py         # LLMPredRunner for prediction
@@ -56,25 +55,25 @@ src/
 │   ├── sentence_similarity_utils.py  # Transformer embedder (BAAI/bge-m3)
 │   └── model_registry.py            # Model registry for evaluation
 │
-├── llm/                      # LLM abstraction layer (10 models, 7 providers)
+├── llm/                      # LLM abstraction layer (10 models, 8 providers)
 │   ├── __init__.py
-│   ├── base.py               # BaseLLM ABC (38 lines)
+│   ├── base.py               # BaseLLM ABC
 │   ├── models/               # Model-specific LLM implementations
-│   │   ├── ClaudeLLM.py
-│   │   ├── DeepSeekLLM.py
-│   │   ├── GeminiLLM.py
-│   │   ├── GlmLLM.py
-│   │   ├── GPTLLM.py
-│   │   ├── GroqLLM.py
-│   │   ├── LlamaLLM.py
-│   │   ├── MistralLLM.py
-│   │   ├── OllamaLLM.py
-│   │   └── QwenLLM.py
+│   │   ├── ClaudeLLM.py      # Anthropic Claude (official SDK)
+│   │   ├── DeepSeekLLM.py    # DeepSeek (OpenAI-compatible)
+│   │   ├── GeminiLLM.py      # Google Gemini (Interactions API)
+│   │   ├── GlmLLM.py         # Zhipu GLM (OpenAI SDK)
+│   │   ├── GPTLLM.py         # OpenAI GPT (Chat Completions + Responses)
+│   │   ├── KimiLLM.py        # Moonshot Kimi (OpenAI-compatible)
+│   │   ├── LlamaLLM.py       # Meta Llama (Together AI + OpenAI SDK)
+│   │   ├── MistralLLM.py     # Mistral (official mistralai SDK)
+│   │   ├── OllamaLLM.py      # Ollama (local)
+│   │   └── QwenLLM.py        # Alibaba Qwen (OpenAI-compatible)
 │   └── providers/            # Provider-specific API clients
 │       ├── AnthropicProvider.py
 │       ├── BedrockProvider.py
 │       ├── GoogleProvider.py
-│       ├── GroqProvider.py
+│       ├── MistralProvider.py
 │       ├── OllamaProvider.py
 │       ├── OpenAIProvider.py
 │       └── TogetherAIProvider.py
@@ -97,7 +96,7 @@ src/
     ├── logger.py              # loguru-based singleton logger
     ├── parser.py              # JSONL/YAML/Config/Optical-data parsers
     ├── generate_report.py     # HTML/Markdown report generator
-    └── general.py             # Placeholder (empty)
+    └── general.py             # Standalone utilities (_dict_to_response_format)
 ```
 
 ---
@@ -109,7 +108,7 @@ src/
 │                   Phase 1: Generate                  │
 │                   src/main.py                        │
 │                                                     │
-│  Agent Config  ──► AgentRunner   │
+│  LLM Config   ──► AgentRunner                       │
 │  Task Config   ──► TaskConfig       ──►  run_agent()│
 │  Dataset JSONL ──► load_tasks()     ──►  AgentOutput │
 │                                                     │
@@ -146,7 +145,7 @@ src/
 | `llm_judge.py` | `LLMJudge`, `JudgePromptBuilder`, `Rubric`, `DEFAULT_RUBRICS` | LLM-as-judge evaluator with structured rubrics |
 | `llm_runner.py` | `LLMPredRunner` | LLM prediction runner |
 
-**Note**: LLM providers have been moved to `src/llm/models/`.
+**Note**: `agent.py` has been removed. LLM providers are now in `src/llm/models/`.
 
 ---
 
@@ -173,7 +172,7 @@ src/
 **Architecture**:
 ```
 evaluator/*.py        scorer/*.py            algorithm/*.py
-───────────────       ───────────────        ───────────────────
+────────────────      ───────────────        ───────────────────
 ExactMatchEval  ──►   ExactMatchScorer  ──►  compute_exact_match()
 RougeEval       ──►   ROUGEScorer       ──►  compute_rouge()
 BertScoreEval   ──►   BERTScoreScorer   ──►  compute_bert_score()
@@ -216,13 +215,28 @@ gold_sentences     ───┘                                            │
 
 ### `llm/` — LLM Abstraction Layer
 
-Separate abstraction layer from `core/agent.py`, providing model-specific and provider-specific implementations.
+Model-specific implementations, each wrapping an official or compatible SDK.
 
 | Module | Key Symbols | Description |
 |--------|-------------|-------------|
-| `base.py` | `BaseLLM` (ABC) | Base LLM interface (38 lines) |
-| `models/` | `ClaudeLLM`, `DeepSeekLLM`, `GeminiLLM`, `GlmLLM`, `GPTLLM`, `GroqLLM`, `LlamaLLM`, `MistralLLM`, `OllamaLLM`, `QwenLLM` | Model-specific LLM implementations; `GPTLLM` supports both OpenAI Chat Completions and Responses APIs (selectable via `api_method`) |
-| `providers/` | `AnthropicProvider`, `BedrockProvider`, `GoogleProvider`, `GroqProvider`, `OllamaProvider`, `OpenAIProvider`, `TogetherAIProvider` | Provider-specific API clients |
+| `base.py` | `BaseLLM` (ABC), `Message`, `LLMOutput`, `LLMConfig` | Base LLM interface, data models |
+| `models/ClaudeLLM.py` | `ClaudeLLM` | Anthropic Claude via `anthropic` SDK |
+| `models/DeepSeekLLM.py` | `DeepSeekLLM` | DeepSeek via OpenAI-compatible API |
+| `models/GeminiLLM.py` | `GeminiLLM` | Google Gemini via Interactions API |
+| `models/GlmLLM.py` | `GlmLLM` | Zhipu GLM via OpenAI SDK |
+| `models/GPTLLM.py` | `GPTLLM` | OpenAI GPT (Chat Completions + Responses) |
+| `models/KimiLLM.py` | `KimiLLM` | Moonshot Kimi via OpenAI-compatible API |
+| `models/LlamaLLM.py` | `LlamaLLM` | Meta Llama via Together AI or OpenAI SDK |
+| `models/MistralLLM.py` | `MistralLLM` | Mistral via official `mistralai` SDK |
+| `models/OllamaLLM.py` | `OllamaLLM` | Ollama local inference via httpx |
+| `models/QwenLLM.py` | `QwenLLM` | Alibaba Qwen via OpenAI-compatible API |
+| `providers/AnthropicProvider.py` | `AnthropicProvider` | Wraps `anthropic.AsyncAnthropic` |
+| `providers/BedrockProvider.py` | `BedrockProvider` | Wraps `boto3` Bedrock Runtime |
+| `providers/GoogleProvider.py` | `GoogleProvider` | Wraps `google.genai.Client` |
+| `providers/MistralProvider.py` | `MistralProvider` | Wraps `mistralai.Mistral` |
+| `providers/OllamaProvider.py` | `OllamaProvider` | Wraps httpx for Ollama API |
+| `providers/OpenAIProvider.py` | `OpenAIProvider` | Wraps `openai.AsyncOpenAI` |
+| `providers/TogetherAIProvider.py` | `TogetherAIProvider` | Wraps httpx for Together AI API |
 
 ---
 
@@ -252,6 +266,7 @@ class AggregatedResults:
 | `logger.py` | `setup_logger()`, `get_logger()` — loguru singleton with console + file + rotation |
 | `parser.py` | `JSONLParser` (JSONL read/write), `YAMLParser` (YAML read/write), `ConfigParser` (`${ENV_VAR}` expansion), `ResultsParser` (load/format), `OpticalDataParser` (Zemax .zmx, MTF, spot data stub) |
 | `generate_report.py` | `load_results()`, `generate_html_report()`, `generate_markdown_report()` |
+| `general.py` | `_dict_to_response_format()` — JSON schema to OpenAI response_format conversion |
 
 ---
 
@@ -259,7 +274,7 @@ class AggregatedResults:
 
 | Module | Key Class | Description |
 |--------|-----------|-------------|
-| `quick_llm_selector.py` | `QuickLLMSelector` | Discover YAML configs from `configs/agents/`, test multi-provider prompts, compare side-by-side. Runnable: `python -m src.tools.quick_llm_selector` |
+| `quick_llm_selector.py` | `QuickLLMSelector` | Discover YAML configs from `configs/llm/`, test multi-provider prompts, compare side-by-side. Runnable: `python -m src.tools.quick_llm_selector` |
 
 ---
 
@@ -268,7 +283,7 @@ class AggregatedResults:
 ```bash
 # Phase 1: Run agent on tasks
 uv run python src/main.py \
-  -a configs/agents/openai/gpt-4.yaml \
+  -a configs/llm/GPT_OpenAI.yaml \
   -t paper_info_extract
 
 # Phase 2: Evaluate agent outputs
@@ -289,16 +304,16 @@ uv run python src/utils/generate_report.py results/eval_results.json --format ht
 ## Module Dependency Graph
 
 ```
-main.py ──► core/runner ──► core/agent ──► core/config
-                                  │
+main.py ──► core/runner ──► core/config
+                               │
 eval.py  ──► core/runner ──► evaluators/factory ──► evaluators/* ──► scorer/* ──► algorithm/*
               │                                              │
               └── utils/ ──► logger.py, parser.py            └── helpers ──► algorithm/
                                                                   (sentence embedding, hungarian)
 
-llm_pred.py ──► llm/* ──► core/agent
+llm_pred.py ──► llm/* ──► providers/*
 environments/base_env.py  ◄── environments/zos_env.py
-tools/quick_llm_selector  ──► core/agent (factory)
+tools/quick_llm_selector  ──► configs/llm/ (discovery)
 module/result.py          ◄── used by evaluators + eval.py
 ```
 
@@ -307,7 +322,5 @@ module/result.py          ◄── used by evaluators + eval.py
 ## Known Issues
 
 - `ZOSAPIEnvironment` high-level methods return placeholder data; real integration requires PythonNET + Zemax OpticStudio.
-- `utils/general.py` is an empty placeholder.
-- No `BaseAgent` implementation for `AgentProvider.LOCAL`.
-- Agent factory (`create_agent()`) is hardcoded — no plugin/discovery mechanism.
-- `llm/` abstraction layer exists separately from `core/agent.py` — potential duplication.
+- `utils/general.py` contains standalone utility functions.
+- `src/core/runner.py` and `src/tools/quick_llm_selector.py` have TODO markers for migration to `src.llm` abstraction.

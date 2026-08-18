@@ -2,7 +2,7 @@
 
 **Path:** `configs/` — YAML-driven configuration for Optis Benchmark.
 
-A four-part config system: pluggable agent configs (4 LLM providers, 9 model configs), task configs (3 task types), evaluation configs, and a global system config template. All fields use `snake_case`; secrets use `${ENV_VAR}` syntax expanded at load time.
+A four-part config system: LLM provider configs (9 YAML files), task configs (3 task types), evaluation configs, and a global system config template. All fields use `snake_case`; secrets use `${ENV_VAR}` syntax expanded at load time.
 
 ---
 
@@ -10,24 +10,16 @@ A four-part config system: pluggable agent configs (4 LLM providers, 9 model con
 
 ```
 configs/
-├── agents/                    # Agent model configurations (4 provider dirs)
-│   ├── anthropic/             # Claude 3.5 Sonnet
-│   │   ├── claude-3.yaml
-│   │   └── template.yaml
-│   ├── google/                # Gemini 1.5 Pro (Vertex AI)
-│   │   ├── gemini.yaml
-│   │   └── template.yaml
-│   ├── ollama/                # Local Ollama models
-│   │   ├── ollama.yaml
-│   │   └── template.yaml
-│   └── openai/                # 5 OpenAI-compatible models
-│       ├── deepseek-v4-pro.yaml
-│       ├── gpt-4.yaml
-│       ├── llama4-scout.yaml
-│       ├── mistral-medium-3.5.yaml
-│       ├── qwen3.5-plus.yaml
-│       ├── qwen3.7-max.yaml
-│       └── template.yaml
+├── llm/                       # LLM provider configs (9 YAML files)
+│   ├── GPT_OpenAI.yaml        # OpenAI GPT-4/4o
+│   ├── claude_anthropic.yaml  # Anthropic Claude 3.5 Sonnet
+│   ├── gemini_google.yaml     # Google Gemini 1.5 Pro
+│   ├── kimi_openai.yaml       # Moonshot Kimi (K3/K2.x)
+│   ├── glm_openai.yaml        # Zhipu GLM-4/GLM-Z1
+│   ├── deepseek_openai.yaml   # DeepSeek V4 Pro
+│   ├── qwen_openai.yaml       # Alibaba Qwen 3.5/3.7
+│   ├── llama_openai.yaml      # Meta Llama 4 via Together AI
+│   └── mistral_official.yaml  # Mistral via official SDK
 ├── tasks/                     # Task definitions (3 YAML files + template)
 │   ├── optics_question_answer.yaml  # QA over optics papers
 │   ├── paper_info_extract.yaml      # Structured info extraction from papers
@@ -36,81 +28,55 @@ configs/
 ├── evaluations/               # Evaluation configs
 │   ├── paper_info_extract.yaml
 │   └── template.yaml
-├── llm/                       # LLM provider configs (9 YAML files)
-│   ├── claude_anthropic.yaml
-│   ├── deepseek_openai.yaml
-│   ├── gemini_google.yaml
-│   ├── glm_openai.yaml
-│   ├── GPT_OpenAI.yaml
-│   ├── llama_together.yaml
-│   ├── mistral_openai.yaml
-│   ├── mistral_together.yaml
-│   └── qwen_openai.yaml
 ├── system/
 │   └── template.yaml          # Global settings template: logging, parallel, sandbox, rate-limit
-├── AGENTS.md                  # Detailed configuration reference & conventions
 └── README.md                  # This file
 ```
 
 ---
 
-## 1. Agent Configuration (`configs/agents/*/`)
+## 1. LLM Configuration (`configs/llm/`)
 
-Each agent directory contains one or more model YAML files plus a `template.yaml` for that provider.
+Each YAML file defines a complete LLM provider configuration with model, generation parameters, and optional tools.
 
 ### Common Fields
 
 | Field | Description |
 |-------|-------------|
-| `agent.name` | Unique identifier for the agent |
-| `agent.version` | Semantic version |
-| `agent.description` | Human-readable description |
-| `model.provider` | Provider name (`openai`, `anthropic`, `google`, `groq`, `bedrock`, `ollama`, `together`) |
-| `model.name` | Model identifier (e.g. `gpt-4-turbo`, `claude-3-5-sonnet-20241022`) |
+| `model.provider` | Provider type (`openai`, `anthropic`, `google`, `kimi`, `glm`, `mistral`, `groq`, `bedrock`, `ollama`, `together`) |
+| `model.name` | Model identifier (e.g. `gpt-4o`, `claude-3-5-sonnet-20241022`) |
 | `model.api_key` | `${ENV_VAR}` placeholder for API key |
-| `model.api_base` | API endpoint URL |
+| `model.base_url` | API endpoint URL (for compatible providers) |
 | `model.setup` | Generation parameters (temperature, max_tokens, top_p, etc.) |
-| `system_prompt_file` | Path to system prompt template |
-| `tools` | Enabled capabilities (file I/O, bash, python, Zemax, web search, MCP, etc.) |
-| `execution` | Retry, timeout, cache settings |
-| `cost_tracking` | API usage logging toggle |
+| `tools` | Enabled capabilities (web_search, file_search, etc.) |
 
 ### Provider-Specific Features
 
 | Provider | Special Features |
 |----------|-----------------|
+| `openai` | Chat Completions + Responses API (`api_method`), structured output (`response_format`) |
 | `anthropic` | Thinking budget, MCP server, web search/fetch, tool search (regex/BM25) |
-| `openai` | API params (`n`, `store`), file search, Zemax ZOS-API integration |
-| `google` | Vertex AI support, project/location config, thinking levels |
-| `groq` | Short timeout (120s) for fast inference |
+| `google` | Interactions API (`client.interactions.create()`), thinking levels, cached content |
+| `kimi` | K3 uses `reasoning_effort`, K2.x uses `thinking`, moonshot-v1-* skips both |
+| `glm` | OpenAI SDK compatible, web_search/file_search/tool_search support |
+| `mistral` | Official `mistralai` SDK, web search support |
+| `groq` | Fast inference, short timeout |
 | `bedrock` | AWS region & credentials |
 | `ollama` | Local endpoint, custom model names |
-| `together` | Together AI API parameters |
+| `together` | Together AI API (OpenAI-compatible) |
 
-### Example: OpenAI GPT-4
+### Example: OpenAI GPT-4o
 
 ```yaml
-# configs/agents/openai/gpt-4.yaml
-agent:
-  name: "optis-gpt4"
-  version: "1.0.0"
-  description: "GPT-4 Turbo Optical Design Agent"
+# configs/llm/GPT_OpenAI.yaml
 model:
   provider: "openai"
-  name: "gpt-4-turbo"
-  api_base: "https://api.openai.com/v1"
+  name: "gpt-4o"
   api_key: "${OPENAI_API_KEY}"
   setup:
     temperature: 0.0
-    max_completion_tokens: 4096
+    max_tokens: 4096
     top_p: 1.0
-    frequency_penalty: 0.0
-    presence_penalty: 0.0
-execution:
-  max_retries: 3
-  timeout: 300
-  cache_enabled: true
-  cache_ttl: 3600
 ```
 
 ---
@@ -239,9 +205,9 @@ Global runtime settings for the benchmark runner.
 ## Usage
 
 ```bash
-# Run evaluation with a specific agent + task
+# Run evaluation with a specific LLM + task
 uv run python src/main.py \
-  -a configs/agents/openai/gpt-4.yaml \
+  -a configs/llm/GPT_OpenAI.yaml \
   -t paper_info_extract
 ```
 
@@ -250,5 +216,3 @@ uv run python src/main.py \
 ## Known Issues
 
 - `system/template.yaml` is a minimal template with most settings commented out — not a full config.
-- Agent `provider` field is hardcoded in factory — no plugin/discovery mechanism.
-- Provider directories are incomplete: Groq, Bedrock, Together AI configs are in `configs/llm/` but agent configs only exist for Anthropic, Google, Ollama, and OpenAI.

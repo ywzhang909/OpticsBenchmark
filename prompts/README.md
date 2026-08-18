@@ -26,7 +26,7 @@ prompts/
 
 ## System Prompts (`system/`)
 
-Define the agent's role, expertise, work principles, and output format. They are referenced by `system_prompt_file` in agent configs (`configs/agents/*.yaml`) and task configs (`configs/tasks/*.yaml`).
+Define the agent's role, expertise, work principles, and output format. They are referenced by `system_prompt_file` in LLM configs (`configs/llm/*.yaml`) and task configs (`configs/tasks/*.yaml`).
 
 ### `optical_agent.txt` — Optical Design Agent
 

@@ -18,7 +18,7 @@ Optis Benchmark is a modular, extensible evaluation framework designed to assess
 ### Key Features
 
 - **Optics-focused environments** — Zemax OpticStudio ZOS-API integration for ray tracing, lens design, tolerance analysis
-- **Multi-Provider Support** — Compatible with OpenAI, Anthropic, Google Gemini, Groq, Ollama, AWS Bedrock, and Together AI
+- **Multi-Provider Support** — Compatible with OpenAI, Anthropic, Google Gemini, Moonshot (Kimi), Zhipu (GLM), Mistral, Groq, Ollama, AWS Bedrock, and Together AI
 - **Structured output support** — JSON schema generation from gold-answer files for OpenAI Responses API
 - **Multi-dimensional evaluation** — 7 metric modules: Exact Match, ROUGE, BLEU, BERTScore, Sentence Similarity, Edit Distance, Citation F1
 - **Composite scoring** — PluginEval-inspired weighted scoring with LLM judge and anti-pattern penalties
@@ -71,6 +71,9 @@ cat > .env << EOF
 OPENAI_API_KEY=sk-your-key
 ANTHROPIC_API_KEY=sk-ant-your-key
 GOOGLE_API_KEY=your-gemini-key
+MOONSHOT_API_KEY=your-moonshot-key
+ZHIPUAI_API_KEY=your-zhipuai-key
+MISTRAL_API_KEY=your-mistral-key
 GROQ_API_KEY=your-groq-key
 TOGETHER_API_KEY=your-together-key
 AWS_ACCESS_KEY_ID=your-aws-key
@@ -92,19 +95,19 @@ ls dataset/paper_info_extract/data_v1/  # Verify PDF papers are present
 
 ```bash
 # Using the installed CLI entry point
-optis -a configs/agents/openai/gpt-4.yaml -t paper_info_extract
+optis -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
 
 # Or run directly
-python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract
+python src/main.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
 
 # All tasks with 4 concurrent workers
-python src/main.py -a configs/agents/anthropic/claude-3.yaml --all-tasks -c 4
+python src/main.py -a configs/llm/claude_anthropic.yaml --all-tasks -c 4
 
 # Specify output path
-python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract -o results/agent_outputs.jsonl
+python src/main.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract -o results/agent_outputs.jsonl
 
 # Dry run to validate config without calling APIs
-python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract --dry-run
+python src/main.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract --dry-run
 ```
 
 **Phase 2** — Evaluate agent outputs with scoring metrics:
@@ -125,13 +128,17 @@ python src/eval.py -i results/agent_outputs.jsonl -g dataset/paper_info_extract/
 OpticsBenchmark/
 ├── configs/                        # Configuration center
 │   ├── system/template.yaml       # Global system config template
-│   ├── agents/                    # Agent configs (4 providers, 6 model configs + templates)
-│   │   ├── anthropic/             # Claude 3.5 Sonnet
-│   │   ├── google/                # Gemini 1.5 Pro
-│   │   ├── ollama/                # Local Ollama models
-│   │   └── openai/                # 5 OpenAI-compatible models (GPT-4, DeepSeek, Llama, Mistral, Qwen)
 │   ├── evaluations/               # Evaluation configs
-│   ├── llm/                       # LLM provider configs (7 YAML files)
+│   ├── llm/                       # LLM provider configs (9 YAML files)
+│   │   ├── GPT_OpenAI.yaml        # OpenAI GPT-4/4o
+│   │   ├── claude_anthropic.yaml  # Anthropic Claude 3.5 Sonnet
+│   │   ├── gemini_google.yaml     # Google Gemini 1.5 Pro
+│   │   ├── kimi_openai.yaml       # Moonshot Kimi (K3/K2.x)
+│   │   ├── glm_openai.yaml        # Zhipu GLM-4/GLM-Z1
+│   │   ├── deepseek_openai.yaml   # DeepSeek V4 Pro
+│   │   ├── qwen_openai.yaml       # Alibaba Qwen 3.5/3.7
+│   │   ├── llama_openai.yaml      # Meta Llama 4 via Together AI
+│   │   └── mistral_official.yaml  # Mistral via official SDK
 │   └── tasks/                     # Task configs (3 task types + template)
 ├── src/                           # Core source package
 │   ├── __init__.py
@@ -165,10 +172,27 @@ OpticsBenchmark/
 │   │   ├── hungarian_algorithm_utils.py
 │   │   ├── sentence_similarity_utils.py
 │   │   └── citation_eval_utils.py
-│   ├── llm/                      # LLM abstraction layer (10 model classes, 7 providers)
+│   ├── llm/                      # LLM abstraction layer (10 model classes, 8 providers)
 │   │   ├── base.py               # BaseLLM ABC
 │   │   ├── models/               # Model-specific LLM implementations
+│   │   │   ├── ClaudeLLM.py      # Anthropic Claude (official SDK)
+│   │   │   ├── DeepSeekLLM.py    # DeepSeek (OpenAI-compatible)
+│   │   │   ├── GeminiLLM.py      # Google Gemini (Interactions API)
+│   │   │   ├── GlmLLM.py         # Zhipu GLM (OpenAI SDK)
+│   │   │   ├── GPTLLM.py         # OpenAI GPT (Chat Completions + Responses)
+│   │   │   ├── KimiLLM.py        # Moonshot Kimi (OpenAI-compatible)
+│   │   │   ├── LlamaLLM.py       # Meta Llama (Together AI + OpenAI SDK)
+│   │   │   ├── MistralLLM.py     # Mistral (official mistralai SDK)
+│   │   │   ├── OllamaLLM.py      # Ollama (local)
+│   │   │   └── QwenLLM.py        # Alibaba Qwen (OpenAI-compatible)
 │   │   └── providers/            # Provider-specific API clients
+│   │       ├── AnthropicProvider.py
+│   │       ├── BedrockProvider.py
+│   │       ├── GoogleProvider.py
+│   │       ├── MistralProvider.py
+│   │       ├── OllamaProvider.py
+│   │       ├── OpenAIProvider.py
+│   │       └── TogetherAIProvider.py
 │   ├── environments/
 │   │   ├── base_env.py           # BaseEnvironment ABC + LocalEnvironment
 │   │   └── zos_env.py            # Zemax ZOS-API integration (stub)
@@ -210,18 +234,28 @@ OpticsBenchmark/
 
 | Provider | Config(s) | Client Library |
 |----------|-----------|----------------|
-| OpenAI | `configs/agents/openai/gpt-4.yaml` (+ 4 more: DeepSeek, Llama 4, Mistral, Qwen) | `openai` |
-| Anthropic (Claude 3.5 Sonnet) | `configs/agents/anthropic/claude-3.yaml` | `anthropic` |
-| Google Gemini (1.5 Pro) | `configs/agents/google/gemini.yaml` | `google-genai` |
-| Groq (free inference, Llama 3.1 70B) | via `src/llm/providers/GroqProvider.py` | `groq` |
-| Ollama (local models) | `configs/agents/ollama/ollama.yaml` | `httpx` |
-| AWS Bedrock (Claude 3.5 Sonnet) | via `src/llm/providers/BedrockProvider.py` | `boto3` |
-| Together AI (Llama 3.3 70B Instruct) | via `src/llm/providers/TogetherAIProvider.py` | `httpx` |
+| OpenAI (GPT-4/4o) | `configs/llm/GPT_OpenAI.yaml` | `openai` |
+| Anthropic (Claude 3.5 Sonnet) | `configs/llm/claude_anthropic.yaml` | `anthropic` |
+| Google Gemini (1.5 Pro) | `configs/llm/gemini_google.yaml` | `google-genai` |
+| Moonshot Kimi (K3/K2.x) | `configs/llm/kimi_openai.yaml` | `openai` (compatible) |
+| Zhipu GLM (GLM-4/GLM-Z1) | `configs/llm/glm_openai.yaml` | `openai` (compatible) |
+| DeepSeek (V4 Pro) | `configs/llm/deepseek_openai.yaml` | `openai` (compatible) |
+| Alibaba Qwen (3.5/3.7) | `configs/llm/qwen_openai.yaml` | `openai` (compatible) |
+| Meta Llama (4 Scout) | `configs/llm/llama_openai.yaml` | `openai` (Together AI) |
+| Mistral | `configs/llm/mistral_official.yaml` | `mistralai` |
+| Groq | `configs/llm/groq_openai.yaml` | `groq` |
+| Ollama (local) | via `src/llm/models/OllamaLLM.py` | `httpx` |
+| AWS Bedrock | via `src/llm/providers/BedrockProvider.py` | `boto3` |
+| Together AI | via `src/llm/providers/TogetherAIProvider.py` | `openai` (compatible) |
 
 Per-provider features:
+- **OpenAI**: Chat Completions API + Responses API (selectable via `api_method`); structured output via `response_format`
 - **Anthropic**: Configurable `thinking_budget` for extended thinking
-- **OpenAI**: `api_params` dict for arbitrary OpenAI Responses API parameters (e.g. `store`, `metadata`, `include`, `reasoning`); also supports third-party models via OpenAI-compatible endpoints (DeepSeek, Qwen, Llama 4, Mistral)
-- **Ollama**: Configurable `ollama_host` for remote Ollama instances
+- **Google Gemini**: Interactions API (`client.interactions.create()`), thinking levels, cached content
+- **Moonshot Kimi**: K3 uses `reasoning_effort`, K2.x uses `thinking`, moonshot-v1-* skips both
+- **Zhipu GLM**: OpenAI SDK compatible, web_search/file_search/tool_search support
+- **Mistral**: Official `mistralai` SDK, web search support
+- **Llama**: Dual provider support — TogetherAIProvider (httpx) + OpenAIProvider (OpenAI SDK)
 
 ---
 
@@ -346,7 +380,7 @@ The evaluation is split into **two independent phases**, allowing re-evaluation 
 Usage: python src/main.py -a <agent_config> -t <task_set> [options]
 
 Arguments:
-  -a, --agent-config PATH    Agent YAML config file (default: configs/agents/openai/qwen3.5-plus.yaml)
+  -a, --agent-config PATH    Agent YAML config file (default: configs/llm/GPT_OpenAI.yaml)
   -t, --task-set NAME        Task set name or path to task config (default: configs/tasks/paper_info_extract.yaml)
   --all-tasks                Run all available task sets
   -o, --output PATH          Output JSONL path (default: results/agent_outputs.jsonl)
@@ -464,7 +498,7 @@ uv run pytest tests/ --ignore=tests/test_bert_score_eval.py
 
 ## Dependencies
 
-**Core**: `openai`, `anthropic`, `pydantic`, `pyyaml`, `python-dotenv`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`, `accelerate`, `protobuf`
+**Core**: `openai`, `anthropic`, `google-genai`, `mistralai`, `pydantic`, `pyyaml`, `python-dotenv`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`, `accelerate`, `protobuf`
 
 **Dev**: `pytest`, `pytest-asyncio`, `pytest-cov`, `black`, `isort`, `ruff`, `mypy`, `pre-commit`
 
