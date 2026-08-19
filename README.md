@@ -91,23 +91,23 @@ ls dataset/paper_info_extract/data_v1/  # Verify PDF papers are present
 
 ### Run an Evaluation (Two-Phase Pipeline)
 
-**Phase 1** — Run agent to generate output dataset (via `optis` CLI or `src/main.py`):
+**Phase 1** — Run agent to generate output dataset (via `optis` CLI or `src/llm_pred.py`):
 
 ```bash
 # Using the installed CLI entry point
 optis -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
 
 # Or run directly
-python src/main.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
+python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
 
 # All tasks with 4 concurrent workers
-python src/main.py -a configs/llm/claude_anthropic.yaml --all-tasks -c 4
+python src/llm_pred.py -a configs/llm/claude_anthropic.yaml --all-tasks -c 4
 
 # Specify output path
-python src/main.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract -o results/agent_outputs.jsonl
+python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract -o results/agent_outputs.jsonl
 
 # Dry run to validate config without calling APIs
-python src/main.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract --dry-run
+python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract --dry-run
 ```
 
 **Phase 2** — Evaluate agent outputs with scoring metrics:
@@ -129,6 +129,8 @@ OpticsBenchmark/
 ├── configs/                        # Configuration center
 │   ├── system/template.yaml       # Global system config template
 │   ├── evaluations/               # Evaluation configs
+│   │   ├── paper_info_extract.yaml
+│   │   └── template.yaml
 │   ├── llm/                       # LLM provider configs (9 YAML files)
 │   │   ├── GPT_OpenAI.yaml        # OpenAI GPT-4/4o
 │   │   ├── claude_anthropic.yaml  # Anthropic Claude 3.5 Sonnet
@@ -139,7 +141,7 @@ OpticsBenchmark/
 │   │   ├── qwen_openai.yaml       # Alibaba Qwen 3.5/3.7
 │   │   ├── llama_openai.yaml      # Meta Llama 4 via Together AI
 │   │   └── mistral_official.yaml  # Mistral via official SDK
-│   └── tasks/                     # Task configs (3 task types + template)
+│   └── README.md
 ├── src/                           # Core source package
 │   ├── __init__.py
 │   ├── main.py                    # Phase 1: Agent output generator (CLI: optis)
@@ -159,19 +161,15 @@ OpticsBenchmark/
 │   │   ├── bert_score_evaluator.py
 │   │   ├── citation_evaluator.py
 │   │   └── scorer/               # Thin wrappers → algorithm/* functions
-│   ├── algorithm/                # Pure-math evaluation algorithms (12 modules)
+│   ├── algorithm/                # Pure-math evaluation algorithms (8 modules)
 │   │   ├── em_eval_utils.py
 │   │   ├── rouge_eval_utils.py
 │   │   ├── bleu_eval_utils.py
-│   │   ├── meteor_eval_utils.py
-│   │   ├── cider_eval_utils.py
 │   │   ├── bertScore_eval_utils.py
-│   │   ├── perplexity_eval_utils.py
-│   │   ├── edit_distance_utils.py
-│   │   ├── jaccard_similarity_utils.py
+ citation_eval_utils.py
 │   │   ├── hungarian_algorithm_utils.py
 │   │   ├── sentence_similarity_utils.py
-│   │   └── citation_eval_utils.py
+│   │   └── model_registry.py
 │   ├── llm/                      # LLM abstraction layer (10 model classes, 8 providers)
 │   │   ├── base.py               # BaseLLM ABC
 │   │   ├── models/               # Model-specific LLM implementations
@@ -201,7 +199,8 @@ OpticsBenchmark/
 │   ├── utils/
 │   │   ├── logger.py             # Loguru-based logging (console + file + rotation)
 │   │   ├── parser.py             # YAML/JSONL/config parser with env-var expansion
-│   │   └── generate_report.py    # HTML/Markdown report generator
+│   │   ├── generate_report.py    # HTML/Markdown report generator
+│   │   └── general.py            # Standalone utilities (_dict_to_response_format)
 │   └── tools/
 │       └── quick_llm_selector.py # Interactive CLI tool for testing/comparing providers
 ├── dataset/                       # Evaluation datasets
@@ -212,11 +211,13 @@ OpticsBenchmark/
 ├── prompts/                       # LLM prompt templates
 │   ├── system/                   # System prompts (optical_agent, research_agent)
 │   ├── templates/                # Task-specific templates
-│   └── paper_info_extract/       # Custom prompt for paper info extraction task
+│   ├── paper_info_extract/       # Paper info extraction prompt
+│   ├── paper_review/             # Paper review prompt
+│   └── optics_question_answers/  # Optics Q&A prompt
 ├── utils/                         # Standalone utility scripts
 │   ├── list_openai_support_models.py
 │   └── paper_data_to_dateset.py
-├── self_test/                     # Self-test datasets
+├── self_test/                     # Self-test datasets and scripts
 ├── tests/                         # Pytest test suite (20 test files)
 ├── docs/                          # Chinese technical documentation
 │   ├── foundation/               # Optical basics, agent theory, evaluation methodology
@@ -292,22 +293,18 @@ Additional components:
 
 ### Standalone Metric Modules (`src/algorithm/`)
 
-These 12 independent evaluation utility modules are self-contained with consistent interfaces:
+These 8 independent evaluation utility modules are self-contained with consistent interfaces:
 
 | Module | Metric | Description |
 |--------|--------|-------------|
 | `em_eval_utils.py` | Exact Match | Normalized text equality |
 | `rouge_eval_utils.py` | ROUGE-L F1 | Recall-oriented n-gram overlap |
 | `bleu_eval_utils.py` | BLEU | N-gram precision |
-| `meteor_eval_utils.py` | METEOR | Synonym-aware matching |
-| `cider_eval_utils.py` | CIDEr | TF-IDF weighted n-gram consensus |
 | `bertScore_eval_utils.py` | BERTScore | Semantic similarity via BERT embeddings |
-| `perplexity_eval_utils.py` | Perplexity | GPT-2 based fluency evaluation |
-| `edit_distance_utils.py` | Levenshtein / WER | Character-level edit distance |
-| `jaccard_similarity_utils.py` | Jaccard / Dice | Token set overlap coefficients |
-| `sentence_similarity_utils.py` | Sentence Embedding | Semantic similarity + Hungarian matching |
-| `hungarian_algorithm_utils.py` | Optimal Assignment | Minimum-cost matching |
 | `citation_eval_utils.py` | Citation F1 | Citation verification via NLI |
+| `hungarian_algorithm_utils.py` | Optimal Assignment | Minimum-cost matching |
+| `sentence_similarity_utils.py` | Sentence Embedding | Semantic similarity + Hungarian matching |
+| `model_registry.py` | Model Registry | Centralized model configurations |
 
 ---
 
@@ -355,7 +352,7 @@ When `structured_output: true` is set in a task config, the OpenAI agent generat
 
 The evaluation is split into **two independent phases**, allowing re-evaluation with different metrics without re-running the LLM:
 
-**Phase 1 — Agent Output** (`src/main.py`, CLI entry point: `optis`):
+**Phase 1 — Agent Output** (`src/llm_pred.py`, CLI entry point: `optis`):
 
 1. Load agent config and task config from YAML
 2. Load task instances from the dataset JSON
@@ -374,14 +371,14 @@ The evaluation is split into **two independent phases**, allowing re-evaluation 
 
 ## CLI Reference
 
-### `optis` / `python src/main.py` — Phase 1: Agent Output Generator
+### `optis` / `python src/llm_pred.py` — Phase 1: Agent Output Generator
 
 ```
-Usage: python src/main.py -a <agent_config> -t <task_set> [options]
+Usage: python src/llm_pred.py -a <agent_config> -t <task_set> [options]
 
 Arguments:
   -a, --agent-config PATH    Agent YAML config file (default: configs/llm/GPT_OpenAI.yaml)
-  -t, --task-set NAME        Task set name or path to task config (default: configs/tasks/paper_info_extract.yaml)
+  -t, --task-set NAME        Task set name (e.g., paper_info_extract)
   --all-tasks                Run all available task sets
   -o, --output PATH          Output JSONL path (default: results/agent_outputs.jsonl)
   -c, --concurrency N        Max concurrent agent sessions (default: 1)
@@ -490,8 +487,8 @@ uv run pytest tests/ --ignore=tests/test_bert_score_eval.py
 ### Adding a New Task
 
 1. Prepare a dataset JSON file (array of records)
-2. Create a YAML task config in `configs/tasks/`
-3. Create a prompt template in `prompts/templates/`
+2. Add task configuration to an existing LLM config file (`configs/llm/*.yaml`) under the `task` section
+3. Create a prompt template in `prompts/` task-specific subdirectory
 4. (Optional) Add a `structured_output` section and `gold_answer_path` for JSON-schema-constrained generation
 
 ---

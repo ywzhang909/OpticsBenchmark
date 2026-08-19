@@ -2,7 +2,7 @@
 
 **Path:** `src/` — Core Python package for Optis Benchmark.
 
-Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. LLM abstraction layer (10 model classes, 8 providers), metric evaluators (4 types), pure-math algorithms (12 modules), execution sandboxes, and CLI utilities are organized into 8 subpackages.
+Two-phase evaluation pipeline: **Phase 1** (`llm_pred.py`) generates agent outputs, **Phase 2** (`eval.py`) evaluates them. LLM abstraction layer (10 model classes, 8 providers), metric evaluators (4 types), pure-math algorithms (8 modules), execution sandboxes, and CLI utilities are organized into 8 subpackages.
 
 ---
 
@@ -11,9 +11,8 @@ Two-phase evaluation pipeline: **Phase 1** (`main.py`) generates agent outputs, 
 ```
 src/
 ├── __init__.py               # Package root; re-exports core symbols; __version__ = "1.0.0"
-├── main.py                   # Phase 1 CLI: run agents to generate outputs (307 lines)
-├── eval.py                   # Phase 2 CLI: evaluate agent outputs against gold answers (377 lines)
-├── llm_pred.py               # LLM prediction runner (169 lines)
+├── llm_pred.py               # Phase 1 CLI: run agents to generate outputs
+├── eval.py                   # Phase 2 CLI: evaluate agent outputs against gold answers
 │
 ├── core/                     # Pipeline orchestration
 │   ├── __init__.py
@@ -39,18 +38,13 @@ src/
 │       ├── bleu_scorer.py
 │       └── citation_scorer.py
 │
-├── algorithm/                # Pure-math evaluation algorithms (12 modules)
+├── algorithm/                # Pure-math evaluation algorithms (8 modules)
 │   ├── __init__.py
 │   ├── em_eval_utils.py          # Text normalization + exact match
 │   ├── rouge_eval_utils.py       # ROUGE-1/2/L via rouge_score library
 │   ├── bertScore_eval_utils.py   # BERTScore via bert-score library
 │   ├── bleu_eval_utils.py        # BLEU with smoothing (pure Python)
-│   ├── cider_eval_utils.py       # CIDEr with TF-IDF weighting (pure Python)
-│   ├── meteor_eval_utils.py      # METEOR via NLTK
-│   ├── perplexity_eval_utils.py  # Perplexity via HuggingFace LM (GPT-2)
 │   ├── citation_eval_utils.py    # AutoAIS-based citation F1
-│   ├── edit_distance_utils.py    # Levenshtein, WER, normalized edit similarity
-│   ├── jaccard_similarity_utils.py   # Jaccard, Dice, keyword F1
 │   ├── hungarian_algorithm_utils.py  # Optimal assignment via scipy
 │   ├── sentence_similarity_utils.py  # Transformer embedder (BAAI/bge-m3)
 │   └── model_registry.py            # Model registry for evaluation
@@ -106,7 +100,7 @@ src/
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   Phase 1: Generate                  │
-│                   src/main.py                        │
+│                   src/llm_pred.py                    │
 │                                                     │
 │  LLM Config   ──► AgentRunner                       │
 │  Task Config   ──► TaskConfig       ──►  run_agent()│
@@ -201,12 +195,7 @@ gold_sentences     ───┘                                            │
 | `rouge_eval_utils` | ROUGE-1/2/L | `rouge_score`, `nltk` |
 | `bertScore_eval_utils` | BERTScore P/R/F1 | `bert-score` |
 | `bleu_eval_utils` | BLEU with Chen & Cherry smoothing | none (pure Python) |
-| `cider_eval_utils` | CIDEr with TF-IDF n-gram weighting | none (pure Python) |
-| `meteor_eval_utils` | METEOR harmonic mean | `nltk` |
-| `perplexity_eval_utils` | Perplexity via causal LM | `transformers` (GPT-2) |
 | `citation_eval_utils` | AutoAIS-based citation F1 | none |
-| `edit_distance_utils` | Levenshtein distance, WER | none (pure Python) |
-| `jaccard_similarity_utils` | Jaccard, Dice, keyword F1 | none (pure Python) |
 | `hungarian_algorithm_utils` | `hungarian_match()` | `scipy` |
 | `sentence_similarity_utils` | `SentenceEmbedder`, `compute_similarity_matrix()` | `transformers`, `torch` |
 | `model_registry` | Model registry for evaluation | none |
@@ -282,7 +271,7 @@ class AggregatedResults:
 
 ```bash
 # Phase 1: Run agent on tasks
-uv run python src/main.py \
+uv run python src/llm_pred.py \
   -a configs/llm/GPT_OpenAI.yaml \
   -t paper_info_extract
 
@@ -304,12 +293,12 @@ uv run python src/utils/generate_report.py results/eval_results.json --format ht
 ## Module Dependency Graph
 
 ```
-main.py ──► core/runner ──► core/config
-                               │
+llm_pred.py ──► core/runner ──► core/config
+                                │
 eval.py  ──► core/runner ──► evaluators/factory ──► evaluators/* ──► scorer/* ──► algorithm/*
-              │                                              │
-              └── utils/ ──► logger.py, parser.py            └── helpers ──► algorithm/
-                                                                  (sentence embedding, hungarian)
+               │                                              │
+               └── utils/ ──► logger.py, parser.py            └── helpers ──► algorithm/
+                                                                   (sentence embedding, hungarian)
 
 llm_pred.py ──► llm/* ──► providers/*
 environments/base_env.py  ◄── environments/zos_env.py
@@ -324,3 +313,4 @@ module/result.py          ◄── used by evaluators + eval.py
 - `ZOSAPIEnvironment` high-level methods return placeholder data; real integration requires PythonNET + Zemax OpticStudio.
 - `utils/general.py` contains standalone utility functions.
 - `src/core/runner.py` and `src/tools/quick_llm_selector.py` have TODO markers for migration to `src.llm` abstraction.
+- `pyproject.toml` references `src.main:main` but the actual entry point is `src/llm_pred.py`.

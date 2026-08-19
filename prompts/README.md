@@ -18,7 +18,9 @@ prompts/
 ├── paper_info_extract/            # Paper info extraction task
 │   └── zero-shot_v1.0.txt       # Zero-shot extraction prompt
 ├── paper_review/                  # Paper review task
-│   └── zero-shot_v1.0.txt       # Zero-shot review prompt (placeholder)
+│   └── zero-shot_v1.0.txt       # Zero-shot review prompt
+├── optics_question_answers/       # Optics Q&A task
+│   └── zero-shot_v1.0.txt       # Zero-shot Q&A prompt
 └── README.md                      # This file
 ```
 

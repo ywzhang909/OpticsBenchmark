@@ -1,101 +1,170 @@
 # =============================================================================
-# GLM (智谱AI) - OpenAI Provider Configuration
+# GLM Model - OpenAI-Compatible Provider Full Configuration (Zhipu AI)
 # Optis Benchmark - LLM Prediction
 # =============================================================================
 #
-# Uses OpenAI SDK to call Zhipu GLM API (OpenAI-compatible).
+# OpenAI Chat Completions API via provider.client.chat.completions.create.
+# Uses OpenAI SDK with custom base_url for Zhipu GLM API.
 # Endpoint: https://open.bigmodel.cn/api/paas/v4
-# Chat Completions: https://platform.openai.com/docs/api-reference/chat/create
+# Reference: https://open.bigmodel.cn/dev/api/normal-model/glm-4
+# Note: Only supports OpenAIProvider with custom base_url.
 
+# =============================================================================
+# LLM Configuration (Provider + Model + Request Parameters)
+# =============================================================================
 llm:
+
+  # ── Provider Configuration ──────────────────────────────────────────────────
   provider:
+    # Provider type, corresponds to a key in _PROVIDER_MAP
+    # Options: "openai" | "anthropic" | "google" | "groq" | "ollama" | "bedrock" | "together"
     type: "openai"
+
+    # API key, read from environment variable using ${ENV_VAR} syntax
     api_key: "${GLM_API_KEY}"
+
+    # API endpoint URL for Zhipu GLM
     base_url: "https://open.bigmodel.cn/api/paas/v4"
 
+  # ── Model Configuration ──────────────────────────────────────────────────────
   model:
+    # Model type, corresponds to a key in _LLM_MAP, determines which LLM class to use
+    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "groq" | "ollama" | "glm" | "kimi"
     type: "glm"
+
+    # Model name, passed as the model parameter to the API
+    # Commonly used: glm-4.5-air, glm-4, glm-4-flash
     name: "glm-4.5-air"
 
-    # Chat Completions API sample
-    # temperature: 0.0                                # sampling temperature (0.0-2.0)
-    # top_p: 1.0                                     # nucleus sampling threshold
-    # max_tokens: 4096                               # max tokens in response
-    # frequency_penalty: 0.0                         # penalize new tokens based on frequency
-    # presence_penalty: 0.0                          # penalize new tokens based on presence
-    # logit_bias: {}                                 # bias for specific tokens
-    # metadata: {}                                   # metadata for the request
-    # n: 1                                           # number of completions to generate
-    # parallel_tool_calls: true                      # enable parallel tool calls
-    # reasoning_effort: "none" | "low" | "medium" | "high"
-    # service_tier: "auto" | "default" | "flex" | "scale" | "priority" | "fast"
-    # stop: []                                       # stop sequences
-    # store: false                                   # store the completion
-    # web_search_options: {}                         # web search options
-    # logprobs: false                                # return log probabilities
-    # top_logprobs: 0                                # number of top log probabilities
-    # response_format:
-    #   type: "json_object"                          # structured output (json_object)
-    #   type: "json_schema"                          # structured output (json_schema)
-    #     json_schema:
-    #       name: "response_schema"
-    #       strict: true
-    #       schema:
-    #         type: "object"
-    #         properties:
-    #           answer: {type: "string"}
-    #         required: ["answer"]
-    #         additionalProperties: false
-    # tools:
-    #   web_search: false                            # web search tool
-    #   file_search: []                              # file search tool
-    #   tool_search: {}                              # tool search tool
-    #   mcp_server:                                  # MCP server tool
-    #     server_label: "my_server"
-    #     server_description: "My MCP server"
-    #     server_url: "https://my-server.com/mcp"
-    #     require_approval: "never" | "always"
-    #   function_declarations:                       # custom function declarations
-    #     - name: "get_weather"
-    #       description: "Get current weather for a location"
-    #       parameters:
-    #         type: "object"
-    #         properties:
-    #           location: {type: "string", description: "City name"}
-    #         required: ["location"]
-    # tool_choice: "auto" | "any" | "none"           # function calling mode
-
+  # ── Request Parameters ──────────────────────────────────────────────────────
   setup:
+
+    # Sampling temperature, controls output randomness
+    # Range: [0, 2], higher values produce more random output, lower values are more deterministic
     temperature: 0.0
-    max_tokens: 4096
+
+    # Nucleus sampling probability, can be used alone or combined with temperature
+    # Range: [0, 1], set to 1.0 to disable nucleus sampling
     top_p: 1.0
+
+    # Maximum number of output tokens
+    # Note: Actual limit is constrained by the model's context window size
+    max_tokens: 4096
+
+    # Frequency penalty, reduces repetition of the same tokens
+    # Range: [-2.0, 2.0]
     frequency_penalty: 0.0
+
+    # Presence penalty, encourages the model to discuss new topics
+    # Range: [-2.0, 2.0]
     presence_penalty: 0.0
 
+    # Token bias mapping, restricts or encourages generation of specific tokens
+    # Format: {"token_id": bias_value}, bias_value range [-100, 100]
+    logit_bias: null
+
+    # Metadata configuration
+    # Format: {"user_id": "user-123"}
+    metadata: null
+
+    # Number of completion choices to generate per input message
+    # Range: 1-n, billed based on total generated tokens across all choices
+    n: 1
+
+    # Whether to enable parallel tool calls
+    # Set to true: Multiple tool calls can be made in parallel
+    parallel_tool_calls: true
+
+    # Reasoning effort level (only supported by reasoning models)
+    # Options: "none" | "low" | "medium" | "high"
+    reasoning_effort: null
+
+    # Service tier, controls the processing priority of requests
+    # Options: "auto" | "default" | "flex" | "scale" | "priority" | "fast"
+    service_tier: "auto"
+
+    # Stop sequences, generation stops when these strings are encountered
+    # Format: ["stop1", "stop2"]
+    stop: null
+
+    # Whether to store the completion server-side
+    # Set to true: Completion is stored for later retrieval
+    store: false
+
+    # Web search options configuration
+    # Format: {"search_context_size": "low" | "medium" | "high"}
+    web_search_options: null
+
+    # Whether to return log probabilities for each token
+    logprobs: false
+
+    # Number of most likely tokens to return per position
+    # Range: [0, 20], only effective when logprobs=true
+    top_logprobs: 0
+
+    # Response format control
+    # Set to true: Forces JSON output format
+    # Note: If gold_answer_path is configured, a JSON Schema will be auto-generated for structured output
     response_format: true
 
-    # Structured output: auto-generate JSON Schema from gold_answer_path
-    # or specify schema directly in setup
+    # Tool configuration
+    tools:
+      # Web search tool, allows the model to search the internet for real-time information
+      web_search: false
 
-    # Tools configuration
-    # tools:
-    #   web_search: false
-    #   file_search: []
-    #   tool_search: {}
-    #   mcp_server: {}
-    # tool_choice: "auto"
+      # File search tool, allows the model to search through uploaded files
+      # Format: ["vector_store_id_1", "vector_store_id_2"]
+      file_search: []
 
+      # Tool search tool, allows the model to dynamically discover available tools at runtime
+      # Format: {"name": "namespace_name", "description": "namespace desc"}
+      tool_search: {}
+
+      # MCP (Model Context Protocol) server configuration
+      # Format: {"server_label": "name", "server_url": "https://...", "require_approval": "always" | "never"}
+      mcp_server: {}
+
+    # Tool choice strategy, controls how the model selects which tool to use
+    # Options: "auto" | "none" | "required"
+    # Or specify a function: {"type": "function", "function": {"name": "func_name"}}
+    tool_choice: "auto"
+
+# =============================================================================
+# Task Configuration
+# =============================================================================
 task:
+  # Dataset file path (JSON format)
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+
+  # Prompt template file path (text file, first two lines are automatically skipped)
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+
+  # Whether file input is required (e.g., PDF file path)
   file_input: true
+
+  # Maximum number of samples, limits the amount of data processed (useful for testing)
+  # Set to null or comment out to process all data
   max_samples: 100
+
+  # Whether to shuffle the dataset order
   shuffle: false
 
+  # Whether to enable structured output (JSON Schema constraint)
+  # When set to true, JSON Schema will be automatically inferred from gold_answer_path
   structured_output: true
+
+  # Gold standard answer file path, used for structured output schema inference
   gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
+# =============================================================================
+# Execution Configuration
+# =============================================================================
 execution:
+  # Maximum concurrency, controls the number of parallel requests
   concurrency: 1
+
+  # Timeout per task (seconds)
   timeout: 300
+
+  # Output file path (JSONL format)
   output_path: "results/llm_outputs_glm.jsonl"

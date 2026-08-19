@@ -1,108 +1,221 @@
 # =============================================================================
-# GPT-4 Turbo - OpenAI Provider Configuration
+# GPT Model - OpenAI Provider Full Configuration
 # Optis Benchmark - LLM Prediction
 # =============================================================================
 #
-# 支持两种 OpenAI 官方调用方式，通过 setup.api_method 选择：
+# Supports two OpenAI API methods, selected via setup.api_method:
 #   - chat_completions: Chat Completions API (client.chat.completions.create)
 #   - responses:        Responses API        (client.responses.create)
 #
-# 两种 API 的请求参数不一致，本配置统一以通用字段定义，
-# 由 GPTLLM 按 api_method 自动映射到各自参数。差异参考官方文档：
+# Request parameters differ between the two APIs. This configuration uses
+# flat fields that GPTLLM maps to the appropriate parameters based on api_method.
+# See official documentation for differences:
 #   - Chat Completions: https://platform.openai.com/docs/api-reference/chat/create
 #   - Responses:        https://platform.openai.com/docs/api-reference/responses/create
 #
-# 注意：legacy 模型（gpt-4-turbo、gpt-4、gpt-3.5* 等）不支持 Responses API，
-# 若 api_method=responses 且模型不兼容，程序会警告并终止执行。
+# Note: Legacy models (gpt-4-turbo, gpt-4, gpt-3.5*, etc.) do not support the
+# Responses API. If api_method=responses and the model is incompatible, the
+# program will warn and terminate.
 
+# =============================================================================
+# LLM Configuration (Provider + Model + Request Parameters)
+# =============================================================================
 llm:
+
+  # ── Provider Configuration ──────────────────────────────────────────────────
   provider:
+    # Provider type, corresponds to a key in _PROVIDER_MAP
+    # Options: "openai" | "anthropic" | "google" | "groq" | "ollama" | "bedrock" | "together"
     type: "openai"
+
+    # API key, read from environment variable using ${ENV_VAR} syntax
     api_key: "${GPT_API_KEY}"
+
+    # API endpoint URL, default is https://api.openai.com/v1
+    # Modify this for OpenAI-compatible third-party services (e.g., Azure, DeepSeek)
     base_url: "https://api.openai.com/v1"
 
+  # ── Model Configuration ──────────────────────────────────────────────────────
   model:
+    # Model type, corresponds to a key in _LLM_MAP, determines which LLM class to use
+    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "groq" | "ollama" | "glm" | "kimi"
     type: "gpt"
-    name: "gpt-4-turbo"
 
-    # Responses API samlpe
-    # api_method: "responses"
-    # background: false | true
-    # context_management:
-    #   type: "compation"
-    #   compact_threshold: 10000
-    # include:
-    #   - "file_search_call.results"
-    #   - "web_search_call.results"
-    #   - "web_search_call.action.sources"
-    #   - "message.input_image.image_url"
-    #   - "computer_call_output.output.image_url"
-    #   - "code_interpreter_call.outputs"
-    #   - "reasoning.encrypted_content"
-    #   - "message.output_text.logprobs"
-    # max_output_tokens: 4096
-    # max_tool_calls:20
-    # metadata:
-    #   "key1": "value1"
-    #   "key2": "value2"
-    # moderation:
+    # Model name, passed as the model parameter to the API
+    # Chat Completions commonly used: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+    # Responses API commonly used: gpt-4o, gpt-4o-mini, gpt-5, gpt-5-mini
+    name: "gpt-4o"
+
+  # ── Request Parameters ──────────────────────────────────────────────────────
+  setup:
+
+    # API method: "responses" | "chat_completions"
+    api_method: "responses"
+
+    # Sampling temperature, controls output randomness
+    # Range: [0, 2], higher values produce more random output, lower values are more deterministic
+    temperature: 0.0
+
+    # Nucleus sampling probability, can be used alone or combined with temperature
+    # Range: [0, 1], set to 1.0 to disable nucleus sampling
+    top_p: 1.0
+
+    # Maximum number of output tokens
+    # Note: Actual limit is constrained by the model's context window size
+    max_tokens: 4096
+
+    # Frequency penalty, reduces repetition of the same tokens
+    # Range: [-2.0, 2.0]
+    frequency_penalty: 0.0
+
+    # Presence penalty, encourages the model to discuss new topics
+    # Range: [-2.0, 2.0]
+    presence_penalty: 0.0
+
+    # Token bias mapping, restricts or encourages generation of specific tokens
+    # Format: {"token_id": bias_value}, bias_value range [-100, 100]
+    logit_bias: null
+
+    # Number of completion choices to generate per input message
+    # Range: 1-n, billed based on total generated tokens across all choices
+    n: 1
+
+    # Stop sequences, generation stops when these strings are encountered
+    # Format: ["stop1", "stop2"], maximum 4 sequences
+    stop: null
+
+    # Whether to return log probabilities for each token
+    logprobs: false
+
+    # Number of most likely tokens to return per position
+    # Range: [0, 20], only effective when logprobs=true
+    top_logprobs: 0
+
+    # Response format control
+    # Set to true: Forces JSON output format
+    # Note: If gold_answer_path is configured, a JSON Schema will be auto-generated for structured output
+    response_format: true
+
+    # Output modality type
+    # Options: "text" | ["text", "audio"]
+    modalities: "text"
+
+    # Reasoning effort (only supported by reasoning models like o1, o3, gpt-5, etc.)
+    # Options: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+    reasoning_effort: "none"
+
+    # Verbosity level, controls the detail level of model responses
+    # Options: "low" | "medium" | "high"
+    verbosity: "medium"
+
+    # Service tier, controls the processing priority of requests
+    # Options: "auto" | "default" | "flex" | "scale" | "priority" | "fast"
+    service_tier: "auto"
+
+    # Whether to run response generation in the background
+    # Set to true: Request returns immediately, poll for results
+    background: false
+
+    # Context management configuration, used for context compression in long conversations
+    # Format: {"type": "compaction", "compact_threshold": 10000}
+    context_management:
+      type: "compaction"
+      compact_threshold: 10000
+
+    # Specify additional output data types to include in the response
+    # Options: "file_search_call.results" | "web_search_call.results" |
+    #          "web_search_call.action.sources" | "message.input_image.image_url" |
+    #          "computer_call_output.output.image_url" | "code_interpreter_call.outputs" |
+    #          "reasoning.encrypted_content" | "message.output_text.logprobs"
+    include:
+      - "reasoning.encrypted_content"
+      - "message.output_text.logprobs"
+
+    # Maximum number of tool calls
+    max_tool_calls: 20
+
+    # Whether to enable streaming output
+    # Set to true: Responses are returned via SSE streaming
+    stream: false
+
+    # Streaming output options (only effective when stream=true)
+    # Format: {"include_obfuscation": false}
+    stream_options:
+      include_obfuscation: false
+
+    # Input/output moderation policy configuration
+    # Format:
     #   model: "omni-moderation-latest"
-    #   policy: 
+    #   policy:
     #     input: "score" | "block"
     #     output: "score" | "block"
-    # parallel_tool_calls: true
-    # prompt_cache_key: "my_prompt_cache_key"
-    # prompt_cache_options:
-    #   mode: "implicit" | "explicit"
-    #   ttl: 30m
-    # reasoning:
-    #   effort: "none" | "light" | "medium" | "heavy"
-    #   context: "auto" | "current_turn" | "all_turns"
-    #   mode: "standard" | "pro"
-    #   summary: "auto" | "concise" | "detailed"
-    # service_tier: "auto" | "default" | "flex" | "scale" | "priority" | "fast"
-    # store: false | true
-    # stream: false
-    # stream_options:
-    #   include_obfuscation: false | true
-    # temperature: 0.0
-    # top_logprobs: 0
-    # top_p: 1.0
-    # tools:
-    #   web_search: false
-    #   file_search: []
-    #   tool_search: {}
-    #   mcp_server: {}
-    # tool_choice: "auto"
+    moderation: null
 
-  setup:
-    # 调用方式选择: "chat_completions" | "responses"
-    api_method: "chat_completions"
-    temperature: 0.0
-    top_p: 1.0
-    max_tokens: 4096
-    frequency_penalty: 0.0
-    presence_penalty: 0.0
-    response_format: true
-    # store: false
-    # tools:
-    #   web_search: false
-    #   file_search: []
-    #   tool_search: {}
-    #   mcp_server: {}
-    # tool_choice: "auto"
+    # Prompt cache key, used to reuse cache across requests
+    prompt_cache_key: null
 
+    # Prompt cache options (only supported by gpt-5.6 and later models)
+    # Format: {"mode": "implicit" | "explicit", "ttl": "30m"}
+    prompt_cache_options: null
+
+    # Tool configuration
+    tools:
+      # Web search tool, allows the model to search the internet for real-time information
+      web_search: false
+
+      # File search tool, allows the model to search through uploaded files
+      # Format: ["vector_store_id_1", "vector_store_id_2"]
+      file_search: []
+
+      # Tool search tool, allows the model to dynamically discover available tools at runtime
+      # Format: {"name": "namespace_name", "description": "namespace desc"}
+      tool_search: {}
+
+      # MCP (Model Context Protocol) server configuration
+      # Format: {"server_label": "name", "server_url": "https://...", "require_approval": "always" | "never"}
+      mcp_server: {}
+
+    # Tool choice strategy, controls how the model selects which tool to use
+    # Options: "auto" | "none" | "required"
+    # Or specify a function: {"type": "function", "function": {"name": "func_name"}}
+    tool_choice: "auto"
+
+# =============================================================================
+# Task Configuration
+# =============================================================================
 task:
+  # Dataset file path (JSON format)
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+
+  # Prompt template file path (text file, first two lines are automatically skipped)
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+
+  # Whether file input is required (e.g., PDF file path)
   file_input: true
+
+  # Maximum number of samples, limits the amount of data processed (useful for testing)
+  # Set to null or comment out to process all data
   max_samples: 100
+
+  # Whether to shuffle the dataset order
   shuffle: false
 
+  # Whether to enable structured output (JSON Schema constraint)
+  # When set to true, JSON Schema will be automatically inferred from gold_answer_path
   structured_output: true
+
+  # Gold standard answer file path, used for structured output schema inference
   gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
+# =============================================================================
+# Execution Configuration
+# =============================================================================
 execution:
+  # Maximum concurrency, controls the number of parallel requests
   concurrency: 1
+
+  # Timeout per task (seconds)
   timeout: 300
+
+  # Output file path (JSONL format)
   output_path: "results/llm_outputs.jsonl"

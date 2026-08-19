@@ -83,7 +83,7 @@ dataset/
 **关联配置文件**：
 | 文件 | 路径 |
 |------|------|
-| 任务配置 | `configs/tasks/paper_info_extract.yaml` |
+| 任务配置 | `configs/llm/GPT_OpenAI.yaml`（task 段） |
 | 评测配置 | `configs/evaluations/paper_info_extract.yaml` |
 | 评测维度 | Exact Match（title, DOI, authors 等 8 字段）、ROUGE（objective, method, metrics）、BERTScore（objective, novelty, method, metrics） |
 
@@ -238,7 +238,7 @@ print(f'Fields: {list(gold[0][\"data\"].keys())}')
 1. 在 `dataset/` 下创建任务命名的子目录
 2. 提供 JSON 标注文件 + 原始输入文件（如 PDF）
 3. 确保数据符合任务 config 中定义的格式规范
-4. 配置 `configs/tasks/<task_name>.yaml` 中的数据集路径
+4. 在 `configs/llm/*.yaml` 的 `task` 段中配置数据集路径
 5. 配置 `configs/evaluations/<task_name>.yaml` 中的评测方法
 6. 提交 Pull Request
 

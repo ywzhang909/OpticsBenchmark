@@ -2,7 +2,7 @@
 
 **Path:** `configs/` — YAML-driven configuration for Optis Benchmark.
 
-A four-part config system: LLM provider configs (9 YAML files), task configs (3 task types), evaluation configs, and a global system config template. All fields use `snake_case`; secrets use `${ENV_VAR}` syntax expanded at load time.
+A three-part config system: LLM provider configs (9 YAML files), evaluation configs, and a global system config template. All fields use `snake_case`; secrets use `${ENV_VAR}` syntax expanded at load time.
 
 ---
 
@@ -20,11 +20,6 @@ configs/
 │   ├── qwen_openai.yaml       # Alibaba Qwen 3.5/3.7
 │   ├── llama_openai.yaml      # Meta Llama 4 via Together AI
 │   └── mistral_official.yaml  # Mistral via official SDK
-├── tasks/                     # Task definitions (3 YAML files + template)
-│   ├── optics_question_answer.yaml  # QA over optics papers
-│   ├── paper_info_extract.yaml      # Structured info extraction from papers
-│   ├── paper_review.yaml           # Academic paper review
-│   └── template.yaml               # Template for new tasks
 ├── evaluations/               # Evaluation configs
 │   ├── paper_info_extract.yaml
 │   └── template.yaml
@@ -81,20 +76,9 @@ model:
 
 ---
 
-## 2. Task Configuration (`configs/tasks/*.yaml`)
+## 2. Task Configuration
 
-Each task YAML defines the full evaluation pipeline: dataset, environment, metrics, prompts, and cost.
-
-### Schema
-
-| Section | Sub-fields | Description |
-|---------|-----------|-------------|
-| `task` | `id`, `name`, `description`, `category`, `difficulty` (1-5), `estimated_time`, `tags` | Task metadata |
-| `dataset` | `path`, `num_samples`, `shuffle`, `format` (input/output/metadata fields) | Data source config |
-| `environment` | `type`, `software` (required/optional), `sandbox` (timeout/steps/memory) | Execution sandbox |
-| `evaluation` | `scoring_method`, `metrics`, `success_criteria` | How to score agent outputs |
-| `prompt` | `system_file`, `template_file`, `variables` | Prompt template paths |
-| `cost` | `max_cost_per_task`, `budget_per_task` | Budget constraints |
+Task configurations are defined within each LLM config file (`configs/llm/*.yaml`) under the `task` section. Each LLM config includes task-specific settings like dataset path, prompt file, and evaluation parameters.
 
 ### Available Tasks
 
@@ -106,38 +90,18 @@ Each task YAML defines the full evaluation pipeline: dataset, environment, metri
 
 Additional task configs are planned: `lens_design`, `system_analysis`, `paper_retrieval_eval`, `multi_doc_summary`, `research_overview`.
 
-### Example: Paper Info Extract
+### Example: Paper Info Extract (in LLM config)
 
 ```yaml
-# configs/tasks/paper_info_extract.yaml
+# configs/llm/GPT_OpenAI.yaml (task section)
 task:
-  id: "paper_info_extract"
-  name: "Paper Information Extraction"
-  category: "paper_info_extract"
-  difficulty: 2
-dataset:
-  path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
-  num_samples: 15
-environment:
-  type: "optical_sandbox"
-  sandbox:
-    timeout: 600
-    max_steps: 100
-    memory_limit: "8GB"
-evaluation:
-  scoring_method: "exact_match"
-  metrics:
-    - name: "exact_match"
-      type: "string"
-  success_criteria:
-    - metric: "exact_match"
-      operator: ">="
-      value: 0.7
-prompt:
-  system_file: "prompts/system/optical_agent.txt"
-  template_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
-cost:
-  max_cost_per_task: 10.0
+  dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+  prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+  file_input: true
+  max_samples: 100
+  shuffle: false
+  structured_output: true
+  gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 ```
 
 ---
@@ -206,7 +170,7 @@ Global runtime settings for the benchmark runner.
 
 ```bash
 # Run evaluation with a specific LLM + task
-uv run python src/main.py \
+uv run python src/llm_pred.py \
   -a configs/llm/GPT_OpenAI.yaml \
   -t paper_info_extract
 ```

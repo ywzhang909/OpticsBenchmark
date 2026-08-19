@@ -1,36 +1,141 @@
 # =============================================================================
-# DeepSeek V4 Pro - OpenAI Provider Configuration
+# DeepSeek Model - OpenAI-Compatible Provider Full Configuration
 # Optis Benchmark - LLM Prediction
 # =============================================================================
+#
+# OpenAI Chat Completions API via provider.client.chat.completions.create.
+# Uses OpenAI SDK with custom base_url for DeepSeek API.
+# Reference: https://platform.deepseek.com/api-docs
+# Note: Only supports OpenAIProvider with custom base_url.
 
+# =============================================================================
+# LLM Configuration (Provider + Model + Request Parameters)
+# =============================================================================
 llm:
+
+  # ── Provider Configuration ──────────────────────────────────────────────────
   provider:
+    # Provider type, corresponds to a key in _PROVIDER_MAP
+    # Options: "openai" | "anthropic" | "google" | "groq" | "ollama" | "bedrock" | "together"
     type: "openai"
+
+    # API key, read from environment variable using ${ENV_VAR} syntax
     api_key: "${DEEPSEEK_API_KEY}"
+
+    # API endpoint URL for DeepSeek
     base_url: "https://api.deepseek.com/v1"
 
+  # ── Model Configuration ──────────────────────────────────────────────────────
   model:
+    # Model type, corresponds to a key in _LLM_MAP, determines which LLM class to use
+    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "groq" | "ollama" | "glm" | "kimi"
     type: "deepseek"
+
+    # Model name, passed as the model parameter to the API
+    # Commonly used: deepseek-v4-pro, deepseek-v3, deepseek-coder
     name: "deepseek-v4-pro"
 
+  # ── Request Parameters ──────────────────────────────────────────────────────
   setup:
+
+    # Sampling temperature, controls output randomness
+    # Range: [0, 2], higher values produce more random output, lower values are more deterministic
     temperature: 0.0
-    max_completion_tokens: 4096
+
+    # Maximum number of output tokens
+    # Note: Actual limit is constrained by the model's context window size
+    max_tokens: 4096
+
+    # Nucleus sampling probability, can be used alone or combined with temperature
+    # Range: [0, 1], set to 1.0 to disable nucleus sampling
     top_p: 1.0
 
+    # Whether to enable streaming output
+    # Set to true: Responses are returned via SSE streaming
+    stream: false
+
+    # Thinking mode configuration
+    # Options: "disabled" | "enabled" (for models that support reasoning)
+    thinking: "disabled"
+
+    # Reasoning effort level (only supported by reasoning models)
+    # Options: "low" | "medium" | "high" | "max"
+    reasoning_effort: "max"
+
+    # Stop sequences, generation stops when these strings are encountered
+    # Format: ["stop1", "stop2"]
+    stop: null
+
+    # Response format control
+    # Set to true: Forces JSON output format
+    # Note: If gold_answer_path is configured, a JSON Schema will be auto-generated for structured output
     response_format: true
 
+    # Whether to return log probabilities for each token
+    logprobs: false
+
+    # Number of most likely tokens to return per position
+    # Range: [0, 20], only effective when logprobs=true
+    top_logprobs: 0
+
+    # Tool configuration
+    tools:
+      # Web search tool, allows the model to search the internet for real-time information
+      web_search: false
+
+      # File search tool, allows the model to search through uploaded files
+      # Format: ["vector_store_id_1", "vector_store_id_2"]
+      file_search: []
+
+      # Tool search tool, allows the model to dynamically discover available tools at runtime
+      # Format: {"name": "namespace_name", "description": "namespace desc"}
+      tool_search: {}
+
+      # MCP (Model Context Protocol) server configuration
+      # Format: {"server_label": "name", "server_url": "https://...", "require_approval": "always" | "never"}
+      mcp_server: {}
+
+    # Tool choice strategy, controls how the model selects which tool to use
+    # Options: "auto" | "none" | "required"
+    # Or specify a function: {"type": "function", "function": {"name": "func_name"}}
+    tool_choice: "auto"
+
+# =============================================================================
+# Task Configuration
+# =============================================================================
 task:
+  # Dataset file path (JSON format)
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+
+  # Prompt template file path (text file, first two lines are automatically skipped)
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+
+  # Whether file input is required (e.g., PDF file path)
   file_input: true
+
+  # Maximum number of samples, limits the amount of data processed (useful for testing)
+  # Set to null or comment out to process all data
   max_samples: 100
+
+  # Whether to shuffle the dataset order
   shuffle: false
 
+  # Whether to enable structured output (JSON Schema constraint)
+  # When set to true, JSON Schema will be automatically inferred from gold_answer_path
   structured_output: true
+
+  # Gold standard answer file path, used for structured output schema inference
   gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
+# =============================================================================
+# Execution Configuration
+# =============================================================================
 execution:
+  # Maximum concurrency, controls the number of parallel requests
   concurrency: 1
+
+  # Timeout per task (seconds)
   timeout: 300
+
+  # Output file path (JSONL format)
   output_path: "results/llm_outputs.jsonl"

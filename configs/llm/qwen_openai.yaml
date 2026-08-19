@@ -1,45 +1,169 @@
 # =============================================================================
-# Qwen 3.5 Plus - OpenAI Provider Configuration
+# Qwen Model - OpenAI-Compatible Provider Full Configuration (Alibaba Cloud)
 # Optis Benchmark - LLM Prediction
 # =============================================================================
+#
+# OpenAI Chat Completions API via provider.client.chat.completions.create.
+# Uses OpenAI SDK with custom base_url for Alibaba Cloud Qwen API.
+# Reference: https://help.aliyun.com/zh/model-studio/developer-reference/api-reference
+# Note: Only supports OpenAIProvider with custom base_url.
+# Supports extra_body parameters for Qwen-specific features.
 
+# =============================================================================
+# LLM Configuration (Provider + Model + Request Parameters)
+# =============================================================================
 llm:
+
+  # ── Provider Configuration ──────────────────────────────────────────────────
   provider:
+    # Provider type, corresponds to a key in _PROVIDER_MAP
+    # Options: "openai" | "anthropic" | "google" | "groq" | "ollama" | "bedrock" | "together"
     type: "openai"
+
+    # API key, read from environment variable using ${ENV_VAR} syntax
     api_key: "${QWEN_API_KEY}"
+
+    # API endpoint URL for Alibaba Cloud Qwen
     base_url: "https://ws-aj78yn2iu5pmdg27.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 
+  # ── Model Configuration ──────────────────────────────────────────────────────
   model:
+    # Model type, corresponds to a key in _LLM_MAP, determines which LLM class to use
+    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "groq" | "ollama" | "glm" | "kimi"
     type: "qwen"
+
+    # Model name, passed as the model parameter to the API
+    # Commonly used: qwen3.7-max, qwen3.5-plus, qwen-max, qwen-plus
     name: "qwen3.7-max"
 
+  # ── Request Parameters ──────────────────────────────────────────────────────
   setup:
-    temperature: 0.0
+
+    # Maximum number of output tokens
+    # Note: Actual limit is constrained by the model's context window size
     max_completion_tokens: 100000
+
+    # Sampling temperature, controls output randomness
+    # Range: [0, 2], higher values produce more random output, lower values are more deterministic
+    temperature: 0.0
+
+    # Nucleus sampling probability, can be used alone or combined with temperature
+    # Range: [0, 1], set to 1.0 to disable nucleus sampling
     top_p: 1.0
-    frequency_penalty: 0.0
+
+    # Presence penalty, encourages the model to discuss new topics
+    # Range: [-2.0, 2.0]
     presence_penalty: 0.0
 
+    # Stop sequences, generation stops when these strings are encountered
+    # Format: ["stop1", "stop2"]
+    stop: null
+
+    # Whether to return log probabilities for each token
+    logprobs: false
+
+    # Number of most likely tokens to return per position
+    # Range: [0, 20], only effective when logprobs=true
+    top_logprobs: 0
+
+    # Whether to enable parallel tool calls
+    # Set to true: Multiple tool calls can be made in parallel
+    parallel_tool_calls: false
+
+    # Response format control
+    # Set to true: Forces JSON output format
+    # Note: If gold_answer_path is configured, a JSON Schema will be auto-generated for structured output
     response_format: true
 
+    # Extra body parameters (Qwen-specific)
+    # These are passed as extra_body to the OpenAI SDK
+    extra_body:
+      # Repetition penalty, reduces repetition of the same tokens
+      # Range: [1.0, 2.0], 1.0 means no penalty
+      repetition_penalty: 1.0
+
+      # Enable thinking mode (extended reasoning)
+      # Set to true: Model will show reasoning process
+      enable_thinking: false
+
+      # Preserve thinking content in response
+      # Set to true: Thinking content is included in response
+      preserve_thinking: false
+
+      # Enable search capabilities
+      # Set to true: Model can search for information
+      enable_search: false
+
+      # Clear thinking content from response
+      # Set to true: Thinking content is removed from final response
+      clear_thinking: false
+
+      # Thinking token budget (only when enable_thinking=true)
+      # Range: [1024, 32768]
+      thinking_budget: 4096
+
+      # Reasoning effort level (mutually exclusive with thinking_budget)
+      # Options: "none" | "low" | "medium" | "high"
+      reasoning_effort: null
+
+    # Tool configuration
     tools:
+      # Web search tool, allows the model to search the internet for real-time information
       web_search: false
+
+      # File search tool, allows the model to search through uploaded files
+      # Format: ["vector_store_id_1", "vector_store_id_2"]
       file_search: []
+
+      # Tool search tool, allows the model to dynamically discover available tools at runtime
+      # Format: {"name": "namespace_name", "description": "namespace desc"}
       tool_search: {}
+
+      # MCP (Model Context Protocol) server configuration
+      # Format: {"server_label": "name", "server_url": "https://...", "require_approval": "always" | "never"}
       mcp_server: {}
+
+    # Tool choice strategy, controls how the model selects which tool to use
+    # Options: "auto" | "none" | "required"
+    # Or specify a function: {"type": "function", "function": {"name": "func_name"}}
     tool_choice: "auto"
 
+# =============================================================================
+# Task Configuration
+# =============================================================================
 task:
+  # Dataset file path (JSON format)
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+
+  # Prompt template file path (text file, first two lines are automatically skipped)
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+
+  # Whether file input is required (e.g., PDF file path)
   file_input: true
+
+  # Maximum number of samples, limits the amount of data processed (useful for testing)
+  # Set to null or comment out to process all data
   max_samples: 100
+
+  # Whether to shuffle the dataset order
   shuffle: false
 
+  # Whether to enable structured output (JSON Schema constraint)
+  # When set to true, JSON Schema will be automatically inferred from gold_answer_path
   structured_output: true
+
+  # Gold standard answer file path, used for structured output schema inference
   gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
+# =============================================================================
+# Execution Configuration
+# =============================================================================
 execution:
+  # Maximum concurrency, controls the number of parallel requests
   concurrency: 1
+
+  # Timeout per task (seconds)
   timeout: 300
+
+  # Output file path (JSONL format)
   output_path: "results/qwen3.7-max_outputs.jsonl"

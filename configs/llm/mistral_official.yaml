@@ -1,88 +1,167 @@
 # =============================================================================
-# Mistral Large - Mistral AI Official SDK Configuration
+# Mistral Model - Mistral AI Official SDK Full Configuration
 # Optis Benchmark - LLM Prediction
 # =============================================================================
 #
 # Uses official Mistral AI SDK (mistralai) for API calls.
 # SDK: pip install mistralai
 # Reference: https://docs.mistral.ai/studio/conversations/chat-completion
+# Note: Only supports MistralProvider (official SDK).
 
+# =============================================================================
+# LLM Configuration (Provider + Model + Request Parameters)
+# =============================================================================
 llm:
+
+  # ── Provider Configuration ──────────────────────────────────────────────────
   provider:
+    # Provider type, corresponds to a key in _PROVIDER_MAP
+    # Options: "mistral" | "openai" | "anthropic" | "google" | "groq" | "ollama" | "bedrock" | "together"
     type: "mistral"
+
+    # API key, read from environment variable using ${ENV_VAR} syntax
     api_key: "${MISTRAL_API_KEY}"
 
+  # ── Model Configuration ──────────────────────────────────────────────────────
   model:
+    # Model type, corresponds to a key in _LLM_MAP, determines which LLM class to use
+    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "groq" | "ollama" | "glm" | "kimi"
     type: "mistral"
+
+    # Model name, passed as the model parameter to the API
+    # Commonly used: mistral-large-latest, mistral-medium-latest, mistral-small-latest
     name: "mistral-large-latest"
 
-    # Mistral SDK chat.complete_async parameters:
-    # temperature: 0.0                                # sampling temperature (0.0-0.7)
-    # top_p: 1.0                                     # nucleus sampling threshold
-    # max_tokens: 4096                               # max tokens in response
-    # stop: []                                       # stop sequences
-    # random_seed: 42                                # random seed for reproducibility
-    # presence_penalty: 0.0                          # penalize new tokens based on presence
-    # frequency_penalty: 0.0                         # penalize new tokens based on frequency
-    # n: 1                                           # number of completions
-    # safe_prompt: false                             # moderate against sensitive content
-    # parallel_tool_calls: true                      # parallel tool calls
-    # reasoning_effort: "low" | "medium" | "high"    # reasoning effort level
-    # prompt_mode: ...                               # prompt mode
-    # prompt_cache_key: "..."                        # prompt cache key
-    # response_format:
-    #   type: "json_object"                          # structured output (json_object)
-    #   type: "json_schema"                          # structured output (json_schema)
-    #     json_schema:
-    #       name: "response_schema"
-    #       strict: true
-    #       schema:
-    #         type: "object"
-    #         properties:
-    #           answer: {type: "string"}
-    #         required: ["answer"]
-    #         additionalProperties: false
-    # tools:
-    #   function_declarations:                       # custom function declarations
-    #     - name: "get_weather"
-    #       description: "Get current weather for a location"
-    #       parameters:
-    #         type: "object"
-    #         properties:
-    #           location: {type: "string", description: "City name"}
-    #         required: ["location"]
-    # tool_choice: "auto" | "any" | "none"           # function calling mode
-
+  # ── Request Parameters ──────────────────────────────────────────────────────
   setup:
+
+    # Sampling temperature, controls output randomness
+    # Range: [0, 0.7], higher values produce more random output, lower values are more deterministic
     temperature: 0.0
-    max_completion_tokens: 4096
+
+    # Nucleus sampling probability, can be used alone or combined with temperature
+    # Range: [0, 1], set to 1.0 to disable nucleus sampling
     top_p: 1.0
+
+    # Maximum number of output tokens
+    # Note: Actual limit is constrained by the model's context window size
+    max_tokens: 4096
+
+    # Frequency penalty, reduces repetition of the same tokens
+    # Range: [-2.0, 2.0]
+    frequency_penalty: 0.0
+
+    # Presence penalty, encourages the model to discuss new topics
+    # Range: [-2.0, 2.0]
+    presence_penalty: 0.0
+
+    # Number of completion choices to generate per input message
+    # Range: 1-n
+    n: 1
+
+    # Random seed for reproducibility
+    # Note: Best-effort, not guaranteed
+    random_seed: null
+
+    # Whether to enable parallel tool calls
+    # Set to true: Multiple tool calls can be made in parallel
+    parallel_tool_calls: true
+
+    # Reasoning effort level (only supported by reasoning models)
+    # Options: "none" | "low" | "medium" | "high"
+    reasoning_effort: null
+
+    # Service tier, controls the processing priority of requests
+    # Options: "auto" | "standard" | "priority"
+    service_tier: null
+
+    # Stop sequences, generation stops when these strings are encountered
+    # Format: ["stop1", "stop2"]
+    stop: null
+
+    # Safe prompt mode, moderates against sensitive content
+    # Set to true: Input/output moderation enabled
+    safe_prompt: false
+
+    # Prompt mode configuration
+    # Options: null | "tool" | "system"
+    prompt_mode: null
+
+    # Prompt cache key, used to reuse cache across requests
+    # Format: "cache_key" or null
+    prompt_cache_key: null
+
+    # Prediction configuration (for speculative decoding)
+    # Format: {"type": "disabled"} | {"type": "enabled", "content": "predicted_text"}
+    prediction: null
+
+    # Metadata configuration
+    # Format: {"user_id": "user-123"}
+    metadata: null
+
+    # Response format control
+    # Options: "text" | "json_object" | {"type": "json_schema", "json_schema": {...}}
     response_format: true
 
-    # Tools configuration
-    # tools:
-    #   function_declarations:
-    #     - name: "get_optical_property"
-    #       description: "Get optical property of a material"
-    #       parameters:
-    #         type: "object"
-    #         properties:
-    #           material: {type: "string", description: "Material name"}
-    #           wavelength: {type: "number", description: "Wavelength in nm"}
-    #         required: ["material", "wavelength"]
-    # tool_choice: "auto"
+    # Tool configuration
+    tools:
+      # Function declarations for custom tools
+      function_declarations:
+        # Example function declaration
+        # - name: "get_optical_property"
+        #   description: "Get optical property of a material"
+        #   parameters:
+        #     type: "object"
+        #     properties:
+        #       material: {type: "string", description: "Material name"}
+        #       wavelength: {type: "number", description: "Wavelength in nm"}
+        #     required: ["material", "wavelength"]
 
+      # Custom tools list
+      # Format: [{"type": "custom_tool", ...}]
+      custom: []
+
+    # Tool choice strategy, controls how the model selects which tool to use
+    # Options: "auto" | "none" | "required"
+    # Or specify a function: {"type": "function", "function": {"name": "func_name"}}
+    tool_choice: "auto"
+
+# =============================================================================
+# Task Configuration
+# =============================================================================
 task:
+  # Dataset file path (JSON format)
   dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+
+  # Prompt template file path (text file, first two lines are automatically skipped)
   prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
+
+  # Whether file input is required (e.g., PDF file path)
   file_input: true
+
+  # Maximum number of samples, limits the amount of data processed (useful for testing)
+  # Set to null or comment out to process all data
   max_samples: 10
+
+  # Whether to shuffle the dataset order
   shuffle: false
 
+  # Whether to enable structured output (JSON Schema constraint)
+  # When set to true, JSON Schema will be automatically inferred from gold_answer_path
   structured_output: true
+
+  # Gold standard answer file path, used for structured output schema inference
   gold_answer_path: "dataset/paper_info_extract/dataset_json/gold_answer_v1.json"
 
+# =============================================================================
+# Execution Configuration
+# =============================================================================
 execution:
+  # Maximum concurrency, controls the number of parallel requests
   concurrency: 1
+
+  # Timeout per task (seconds)
   timeout: 300
+
+  # Output file path (JSONL format)
   output_path: "results/llm_outputs_mistral.jsonl"

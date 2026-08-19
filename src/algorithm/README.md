@@ -11,15 +11,10 @@ This directory contains evaluation metric implementations used by the Optis Benc
 | [em_eval_utils.py](#em_eval_utilspy) | Exact Match | none | Lightweight |
 | [rouge_eval_utils.py](#rouge_eval_utilspy) | N-gram Overlap | nltk, rouge-score | Lightweight |
 | [bleu_eval_utils.py](#bleu_eval_utilspy) | N-gram Precision | none (pure Python) | Lightweight |
-| [edit_distance_utils.py](#edit_distance_utilspy) | Edit Distance | none (pure Python) | Lightweight |
-| [jaccard_similarity_utils.py](#jaccard_similarity_utilspy) | Set-based Similarity | none (pure Python) | Lightweight |
-| [meteor_eval_utils.py](#meteor_eval_utilspy) | N-gram Overlap + Recall | nltk, WordNet | Lightweight |
-| [perplexity_eval_utils.py](#perplexity_eval_utilspy) | Language Model Fluency | torch, transformers | Heavy |
-| [cider_eval_utils.py](#cider_eval_utilspy) | TF-IDF N-gram Consensus | none (pure Python) | Lightweight |
 | [bertScore_eval_utils.py](#bertscore_eval_utilspy) | Semantic Similarity | torch, bert-score | Heavy |
-| [sentence_similarity_utils.py](#sentence_similarity_utilspy) | Semantic Embeddings | torch, transformers | Heavy |
-| [hungarian_algorithm_utils.py](#hungarian_algorithm_utilspy) | Assignment Matching | numpy, scipy | Lightweight |
 | [citation_eval_utils.py](#citation_eval_utilspy) | Citation Structure | torch, transformers, nltk | Heavy |
+| [hungarian_algorithm_utils.py](#hungarian_algorithm_utilspy) | Assignment Matching | numpy, scipy | Lightweight |
+| [sentence_similarity_utils.py](#sentence_similarity_utilspy) | Semantic Embeddings | torch, transformers | Heavy |
 | [model_registry.py](#model_registrypy) | Model Registry | none | Lightweight |
 
 ---
@@ -107,154 +102,7 @@ Implements smoothing (method 1 from Chen & Cherry 2014): when a precision would 
 
 ---
 
-## edit_distance_utils.py
-
-**Edit Distance — measures the minimum number of character or word edits to transform one string into another.**
-
-### Principle
-Levenshtein distance counts insertions, deletions, and substitutions at the character level. Normalized similarity maps this to [0, 1]. Word Error Rate applies the same concept at the word level.
-
-Uses a space-optimized DP approach (O(min(m,n)) memory).
-
-### Functions
-- `levenshtein_distance(s1, s2)` — Character-level edit distance.
-- `normalized_edit_similarity(s1, s2)` — `1 - dist / max_len`, in [0, 1].
-- `word_error_rate(pred, ref)` — Word-level edit distance / ref length.
-- `word_edit_similarity(pred, ref)` — Word-level similarity in [0, 1].
-
-### Applications
-- OCR / ASR evaluation (WER is the standard metric).
-- Tasks where small typos, spelling errors, or near-matches matter.
-- Graded alternative to exact match for fuzzy matching.
-
-### Pros & Cons
-| Pros | Cons |
-|------|------|
-| Pure Python, no deps | Character-level is language-agnostic but ignores semantics |
-| Intuitive distance metric | Equal cost for all edits (no synonyms) |
-| Works at any granularity | Not suitable for long-form text comparison |
-
----
-
-## jaccard_similarity_utils.py
-
-**Set-based Similarity — measures word/character-n-gram overlap using set operations.**
-
-### Principle
-Jaccard uses |intersection| / |union| of word tokens (or character n-grams). Dice uses `2|intersection| / (|A| + |B|)`, which typically gives higher values. Keyword coverage extracts TF-based keywords and measures precision/recall/F1 against a gold set.
-
-### Functions
-- `jaccard_similarity(text1, text2)` — Word-level Jaccard coefficient.
-- `dice_coefficient(text1, text2)` — Sørensen-Dice coefficient.
-- `char_ngram_jaccard(text1, text2, n=3)` — Character n-gram Jaccard.
-- `extract_keywords_by_tf(text, top_n=10)` — TF-based keyword extraction.
-- `keyword_precision_recall(pred_keywords, gold_keywords)` — Precision/recall/F1 over keyword sets.
-- `keyword_coverage(pred_text, gold_keywords)` — Checks gold keyword presence in predicted text.
-
-### Applications
-- Quick content overlap analysis (no GPU, no model loading).
-- Keyword-based evaluation for retrieval or extractive tasks.
-- Baseline comparison before using semantic (BERTScore) methods.
-
-### Pros & Cons
-| Pros | Cons |
-|------|------|
-| Zero external dependencies | Ignores word order and semantics |
-| Fast and deterministic | Synonym blindness ("car" vs "automobile") |
-| Keyword coverage is interpretable | Short texts have unstable scores |
-
-### Relationship Between Jaccard, Dice, and Char-Ngram
-| Metric | Formula | Typical Usage |
-|--------|---------|---------------|
-| Jaccard | ∩ / ∪ | Word-level overlap baseline |
-| Dice | 2∩ / (A+B) | When emphasizing agreement |
-| Char n-gram Jaccard | n-gram ∩ / ∪ | Morphologically rich languages; typo tolerance |
-
----
-
-## meteor_eval_utils.py
-
-**METEOR (Metric for Evaluation of Translation with Explicit ORdering) — unigram precision/recall with stemming and synonym matching.**
-
-### Principle
-Computes unigram precision and recall between prediction and reference, then combines them via a parameterized harmonic mean. A fragmentation penalty accounts for word order differences. Uses WordNet for synonym matching, making it more flexible than BLEU.
-
-### Functions
-- `compute_meteor(pred_answer, gold_answers, alpha=0.9, beta=3.0, gamma=0.5)` — Returns dict with `meteor`, `precision`, `recall`, `frag_penalty`.
-
-### Applications
-- Machine translation evaluation.
-- Complementary to BLEU (recall-oriented vs precision-oriented).
-- Tasks where synonyms and paraphrasing should be rewarded.
-
-### Pros & Cons
-| Pros | Cons |
-|------|------|
-| Synonym-aware via WordNet | Requires WordNet download |
-| Better correlation with human judgment than BLEU | Slower than pure n-gram methods |
-| Fragmentation penalty captures word order | Single-reference score less stable |
-
-### Relationship to BLEU and ROUGE
-| Aspect | BLEU | ROUGE | METEOR |
-|--------|------|-------|--------|
-| Orientation | Precision | Recall | Harmonic mean |
-| Synonym handling | No | No | Yes (WordNet) |
-| Stemming | No | No | Yes |
-| Fragmentation penalty | No | No | Yes |
-
----
-
-## perplexity_eval_utils.py
-
-**Perplexity — measures how "surprised" a language model is by the text.**
-
-### Principle
-Uses a causal language model (GPT-2 by default) to compute the negative log-likelihood of each token, then exponentiates the average. Lower perplexity means the text is more fluent and "expected" by the model.
-
-For long texts, a sliding-window approach prevents OOM.
-
-### Functions
-- `compute_perplexity(text, model_name="gpt2", max_length=1024, stride=512, device=None)` — Returns dict with `perplexity`, `avg_log_likelihood`, `num_tokens`, `model_name`.
-
-### Applications
-- Evaluating text fluency and naturalness.
-- Detecting unnatural or degenerate model outputs.
-- Comparing language model quality on domain-specific text.
-
-### Pros & Cons
-| Pros | Cons |
-|------|------|
-| Well-understood information-theoretic metric | Depends on the choice of LM |
-| Correlates with human fluency judgments | Large model required (GPT-2 ≈ 500 MB) |
-| No reference needed (intrinsic metric) | Not suitable for task-specific correctness |
-
----
-
-## cider_eval_utils.py
-
-**CIDEr (Consensus-based Image Description Evaluation) — TF-IDF weighted n-gram cosine similarity.**
-
-### Principle
-Computes TF-IDF vectors for n-grams (1 to 4) in the prediction and each reference, then averages the cosine similarities across n-gram orders with Gaussian decay weighting. Originally designed for image captioning, it works for any text generation task with multiple references.
-
-### Functions
-- `compute_cider(pred_answer, gold_answers, max_n=4, sigma=6.0)` — Returns dict with `cider` (aggregate), `cider_n` (per-n list).
-
-### Applications
-- Text generation with multiple acceptable references.
-- Consensus-based evaluation where agreement across raters matters.
-- Tasks where TF-IDF weighting helps emphasize distinctive content.
-
-### Pros & Cons
-| Pros | Cons |
-|------|------|
-| Pure Python, zero external deps | Requires multiple references for stable scores |
-| TF-IDF weighting highlights distinctive n-grams | Word-order insensitive beyond n-gram window |
-| Gaussian decay weights higher-order n-grams less | Overlapping vocabulary can inflate scores |
-
----
-
-## bertScore_eval_utils.py
+## bleu_eval_utils.py
 
 **BERTScore — computes semantic similarity using contextual embeddings from BERT.**
 
@@ -375,14 +223,9 @@ Provides a centralized mapping of model names to their configurations, enabling 
 | When to Use | Recommended Metric(s) |
 |-------------|----------------------|
 | Output must be exact | Exact Match |
-| Summarization quality | ROUGE + BLEU + METEOR (recall + precision + harmonic) |
-| Small typos / OCR errors | Edit Distance |
-| Quick content overlap | Jaccard/Dice |
-| Synonym-aware matching | METEOR (WordNet stemming) |
-| Text fluency / naturalness | Perplexity (intrinsic, no reference) |
-| Multi-reference consensus | CIDEr (TF-IDF n-gram) |
+| Summarization quality | ROUGE + BLEU (recall + precision) |
 | Semantic similarity (paraphrasing) | BERTScore |
 | Multi-sentence alignment | Sentence Similarity + Hungarian |
 | Citation verification | Citation Evaluation |
-| Need results fast, no GPU | Exact Match, ROUGE, BLEU, METEOR, Edit Distance, Jaccard, CIDEr |
-| Need results accurate, GPU available | Perplexity, BERTScore, Citation Evaluation |
+| Need results fast, no GPU | Exact Match, ROUGE, BLEU |
+| Need results accurate, GPU available | BERTScore, Citation Evaluation |
