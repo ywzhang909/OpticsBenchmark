@@ -47,7 +47,6 @@ dependencies = [
     "rouge-score>=0.1.2",
     "sentencepiece>=0.2.1",
     "tiktoken>=0.13.0",
-    "pypdf2>=3.0.1",
     "python-docx>=1.2.0",
     "accelerate>=1.14.0",
     "protobuf>=7.35.1",
@@ -68,7 +67,6 @@ dev = [
 ]
 providers = [
     "boto3>=1.28.0",
-    "groq>=0.4.0",
 ]
 docs = [
     "sphinx>=7.0.0",
@@ -79,14 +77,12 @@ all = [
 ]
 
 [project.scripts]
-optis = "src.main:main"
+optis = "src.llm_pred:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/optis_benchmark"
-Documentation = "https://optis-bench.org/docs"
-Repository = "https://github.com/your-org/optis_benchmark"
-Issues = "https://github.com/your-org/optis_benchmark/issues"
-Changelog = "https://github.com/your-org/optis_benchmark/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/ywzhang909/OpticsBenchmark"
+Repository = "https://github.com/ywzhang909/OpticsBenchmark"
+Issues = "https://github.com/ywzhang909/OpticsBenchmark/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -126,13 +122,6 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-asyncio_mode = "auto"
-addopts = "-v --tb=short"
 
 [tool.coverage.run]
 source = ["src"]

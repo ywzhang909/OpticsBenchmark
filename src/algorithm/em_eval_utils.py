@@ -60,13 +60,13 @@ def record_doi_punctuation(doi: str) -> dict[str, list[int]]:
     return result
 
 
-def compute_exact_match(a_gold, a_pred):
+def compute_exact_match(a_gold: str, a_pred: str) -> int:
     """Check whether two strings are equal up to normalization."""
 
     return int(normalize_text(a_gold) == normalize_text(a_pred))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Exact Match Evaluation")
     parser.add_argument("--gold", type=str, required=True, help="Gold/reference text")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")

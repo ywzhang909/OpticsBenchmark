@@ -42,7 +42,7 @@ def hungarian_match(sim_matrix: np.ndarray) -> tuple[list[tuple[int, int]], floa
     return assignments, total_score
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Hungarian Algorithm — Optimal Assignment")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(

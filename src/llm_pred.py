@@ -54,7 +54,7 @@ Examples:
         "--config",
         type=str,
         # required=True,
-        default="/configs/llm/llama_together.yaml",
+        default="configs/llm/qwen_openai.yaml",
         help="LLM config file path (YAML)",
     )
     parser.add_argument(

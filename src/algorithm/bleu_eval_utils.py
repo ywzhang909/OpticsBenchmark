@@ -15,7 +15,6 @@ import argparse
 import json
 import math
 from collections import Counter
-from typing import List
 
 
 def _count_ngrams(text: str, n: int) -> Counter:
@@ -59,7 +58,7 @@ def _clip_count(
 
 def compute_bleu(
     pred_answer: str,
-    gold_answers: List[str],
+    gold_answers: list[str],
     max_n: int = 4,
     smooth: bool = True,
 ) -> dict:
@@ -143,7 +142,7 @@ def compute_bleu(
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="BLEU Score Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")

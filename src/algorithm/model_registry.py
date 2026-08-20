@@ -1,9 +1,10 @@
 """
-GPU 模型注册表 — 所有 GPU 模型的统一生命周期管理。
+GPU Model Registry — Unified lifecycle management for all GPU models.
 
-所有 GPU 常驻模型应通过此注册表加载，以便追踪和显式释放。
-评估器通过 ModelRegistry 加载模型，评估批次结束后卸载，
-避免多个大型模型同时占用显存导致 CUDA OOM。
+All GPU-resident models should be loaded through this registry for tracking
+and explicit unloading. Evaluators load models via ModelRegistry and unload
+after evaluation batches to prevent multiple large models from consuming
+GPU memory simultaneously (CUDA OOM).
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ except ImportError:
 
 
 class ModelRegistry:
-    """线程安全的单例注册表，管理 GPU 模型的加载、缓存和卸载。
+    """Thread-safe singleton registry for managing GPU model loading, caching, and unloading.
 
     Key naming convention: ``"{category}:{model_name}"``
     e.g. ``"sentence_embedder:BAAI/bge-m3"``, ``"bert_scorer:roberta-large"``.
@@ -40,15 +41,15 @@ class ModelRegistry:
         *,
         force_reload: bool = False,
     ) -> Any:
-        """获取已缓存的模型，或通过 ``loader`` 创建并缓存。
+        """Get a cached model or create it via ``loader``.
 
         Args:
-            key: 模型唯一标识（类别:模型名）。
-            loader: 无参工厂函数，返回模型对象。
-            force_reload: 为 True 时忽略缓存，强制重新加载。
+            key: Unique model identifier (category:model_name).
+            loader: No-argument factory function that returns the model object.
+            force_reload: When True, ignore cache and force reload.
 
         Returns:
-            缓存或新加载的模型对象。
+            Cached or newly loaded model object.
         """
         if not force_reload and key in self._registry:
             return self._registry[key]
@@ -61,10 +62,10 @@ class ModelRegistry:
             return model
 
     def unload(self, key: str) -> None:
-        """卸载指定模型并释放 GPU 显存。
+        """Unload the specified model and release GPU memory.
 
-        删除引用后执行 ``gc.collect()`` + ``torch.cuda.empty_cache()``
-        强制回收显存碎片。
+        After deleting the reference, executes ``gc.collect()`` +
+        ``torch.cuda.empty_cache()`` to force reclaim GPU memory fragments.
         """
         with self._lock:
             if key not in self._registry:
@@ -76,22 +77,22 @@ class ModelRegistry:
             torch.cuda.empty_cache()
 
     def unload_all(self) -> None:
-        """卸载所有已注册模型。"""
+        """Unload all registered models."""
         with self._lock:
             keys = list(self._registry.keys())
         for key in keys:
             self.unload(key)
 
     def is_loaded(self, key: str) -> bool:
-        """检查指定模型是否已加载。"""
+        """Check if the specified model is loaded."""
         return key in self._registry
 
     def get_loaded_keys(self) -> list[str]:
-        """返回当前已加载的所有模型键名。"""
+        """Return all currently loaded model keys."""
         return list(self._registry.keys())
 
     def gpu_memory_snapshot(self) -> dict[str, Any]:
-        """返回当前 GPU 显存状态快照，用于调试和日志。"""
+        """Return a snapshot of current GPU memory status for debugging and logging."""
         if not _CUDA_AVAILABLE:
             return {"cuda_available": False}
         free, total = torch.cuda.mem_get_info()
@@ -105,5 +106,5 @@ class ModelRegistry:
         }
 
 
-# 进程级单例
+# Process-level singleton
 model_registry = ModelRegistry()

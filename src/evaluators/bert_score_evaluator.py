@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from src.algorithm.bertScore_eval_utils import _get_scorer, unload_bert_scorer
+from src.algorithm.bert_score_eval_utils import _get_scorer, unload_bert_scorer
 from src.module import AggregatedResults, EvaluationResult
 from src.utils import logger
 

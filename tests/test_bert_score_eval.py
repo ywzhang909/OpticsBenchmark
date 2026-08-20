@@ -13,14 +13,14 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 try:
-    from algorithm.bertScore_eval_utils import compute_bert_score
+    from algorithm.bert_score_eval_utils import compute_bert_score
 
     BERTSCORE_AVAILABLE = True
 except (ImportError, OSError):
     BERTSCORE_AVAILABLE = False
 
 
-@pytest.mark.skipif(not BERTSCORE_AVAILABLE, reason="bertScore_eval_utils not available")
+@pytest.mark.skipif(not BERTSCORE_AVAILABLE, reason="bert_score_eval_utils not available")
 class TestComputeBertScore:
     """Tests for compute_bert_score function."""
 

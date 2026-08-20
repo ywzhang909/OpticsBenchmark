@@ -1,4 +1,4 @@
-# bertScore_eval_utils.py
+# bert_score_eval_utils.py
 """
 BERTScore Evaluation Utilities Module
 
@@ -17,7 +17,7 @@ _BERT_SCORER_PREFIX = "bert_scorer"
 
 
 def _get_scorer(model_name: str = "roberta-large") -> BERTScorer:
-    """获取或创建缓存的 BERTScorer 实例。"""
+    """Get or create a cached BERTScorer instance."""
     key = f"{_BERT_SCORER_PREFIX}:{model_name}"
     return model_registry.get_or_load(
         key,
@@ -26,7 +26,7 @@ def _get_scorer(model_name: str = "roberta-large") -> BERTScorer:
 
 
 def unload_bert_scorer(model_name: str = "roberta-large") -> None:
-    """显式卸载指定的 BERTScorer 模型，释放 GPU 显存。"""
+    """Explicitly unload the specified BERTScorer model to free GPU memory."""
     model_registry.unload(f"{_BERT_SCORER_PREFIX}:{model_name}")
 
 
@@ -102,7 +102,7 @@ def compute_bert_score(
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="BERTScore Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, nargs="+", help="Gold/reference text(s)")

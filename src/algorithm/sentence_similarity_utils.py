@@ -66,7 +66,7 @@ class SentenceEmbedder:
         self.model.eval()
 
     def close(self) -> None:
-        """释放模型，回收 GPU 显存。"""
+        """Release model and reclaim GPU memory."""
         if hasattr(self, "model"):
             del self.model
         if hasattr(self, "tokenizer"):
@@ -79,14 +79,14 @@ class SentenceEmbedder:
         except ImportError:
             pass
 
-    def __del__(self):
+    def __del__(self) -> None:
         try:
             self.close()
         except Exception:
             pass
 
     @staticmethod
-    def _load_tokenizer(model_name: str):
+    def _load_tokenizer(model_name: str) -> AutoTokenizer:
         """Load tokenizer with fallback for transformers 5.x compatibility."""
         try:
             return AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -105,7 +105,7 @@ class SentenceEmbedder:
         )
 
     @staticmethod
-    def _load_model(model_name: str):
+    def _load_model(model_name: str) -> AutoModel:
         """Load model with fallback for transformers 5.x compatibility."""
         try:
             return AutoModel.from_pretrained(model_name, trust_remote_code=True)
@@ -190,7 +190,7 @@ def compute_similarity_matrix(
     return np.dot(pred_embs, gold_embs.T).astype(np.float32)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Sentence Similarity Matrix")
     group_pred = parser.add_mutually_exclusive_group(required=True)
     group_pred.add_argument("--pred-sentences", type=str, nargs="+", help="Predicted sentences")

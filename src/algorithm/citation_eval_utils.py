@@ -1,3 +1,9 @@
+"""
+Citation F1 Evaluation Utilities Module
+
+Citation precision/recall/F1 via AutoAIS NLI model for attribution validation.
+"""
+
 import argparse
 import copy
 import json
@@ -17,9 +23,9 @@ from src.utils.logger import logger
 OSU_AUTOAIS_MODEL = "osunlp/attrscore-flan-t5-xl"
 _CITATION_NLI_KEY = f"citation_nli:{OSU_AUTOAIS_MODEL}"
 _CITATION_TOKENIZER_KEY = f"citation_nli_tokenizer:{OSU_AUTOAIS_MODEL}"
-input_prompt = "As an Attribution Validator, your task is to verify whether a given reference can support the given claim. A claim can be either a plain sentence or a question followed by its answer. Specifically, your response should clearly indicate the relationship: Attributable, Contradictory or Extrapolatory. A contradictory error occurs when you can infer that the answer contradicts the fact presented in the context, while an extrapolatory error means that you cannot infer the correctness of the answer based on the information provided in the context. \n\nClaim: {claim}\n Reference: {output}"
+INPUT_PROMPT = "As an Attribution Validator, your task is to verify whether a given reference can support the given claim. A claim can be either a plain sentence or a question followed by its answer. Specifically, your response should clearly indicate the relationship: Attributable, Contradictory or Extrapolatory. A contradictory error occurs when you can infer that the answer contradicts the fact presented in the context, while an extrapolatory error means that you cannot infer the correctness of the answer based on the information provided in the context. \n\nClaim: {claim}\n Reference: {output}"
 
-def get_max_memory():
+def get_max_memory() -> dict:
     """Get the maximum memory available across all GPUs for loading models."""
     n_gpus = torch.cuda.device_count()
     total_free = sum(
@@ -34,7 +40,7 @@ def get_max_memory():
         )
     return dict.fromkeys(range(n_gpus), f"{per_gpu}GB")
 
-def remove_citations(text):
+def remove_citations(text: str) -> str:
     """
     Remove citation markers from text.
 
@@ -62,7 +68,7 @@ def remove_citations(text):
     cleaned_text = cleaned_text.replace(" ,", ",")
     return cleaned_text
 
-def extract_citations(text):
+def extract_citations(text: str) -> list[str]:
     """
     Extract citation numbers from text.
 
@@ -120,14 +126,14 @@ def unload_citation_model() -> None:
     model_registry.unload(_CITATION_TOKENIZER_KEY)
 
 
-def _run_nli_autoais(passage, claim):
+def _run_nli_autoais(passage: str, claim: str) -> float:
     """
     Run inference for assessing AIS between a premise and hypothesis.
     Adapted from https://github.com/google-research-datasets/Attributed-QA/blob/main/evaluation.py
     """
     autoais_model = _get_citation_model()
     autoais_tokenizer = _get_citation_tokenizer()
-    input_text = input_prompt.format_map({"output": passage, "claim": claim})
+    input_text = INPUT_PROMPT.format_map({"output": passage, "claim": claim})
     input_ids = autoais_tokenizer(input_text, return_tensors="pt").input_ids.to(
         autoais_model.device
     )
@@ -142,7 +148,11 @@ def _run_nli_autoais(passage, claim):
     return inference
 
 
-def compute_citation_f1(pred_answer, citations, at_most_citations=None):
+def compute_citation_f1(
+    pred_answer: str,
+    citations: list[dict],
+    at_most_citations: int | None = None,
+) -> dict:
     """
     Compute AutoAIS score.
 
@@ -198,35 +208,35 @@ def compute_citation_f1(pred_answer, citations, at_most_citations=None):
     total_sents = len(sents)
     previous_citations = None
     for sent_id, sent in enumerate(sents):
-      target_sent = target_sents[sent_id]  # Citation removed and (if opted for) decontextualized
-      joint_entail = -1  # Undecided
+        target_sent = target_sents[sent_id]  # Citation removed and (if opted for) decontextualized
+        joint_entail = -1  # Undecided
 
-      # Find references
-      ref = [int(r[1:]) for r in re.findall(r"\[\d+", sent)]
-      logger.info(f"For `{sent}`, find citations {ref}")
-      if len(ref) == 0 and previous_citations is not None:
-          ref = previous_citations
+        # Find references
+        ref = [int(r[1:]) for r in re.findall(r"\[\d+", sent)]
+        logger.info(f"For `{sent}`, find citations {ref}")
+        if len(ref) == 0 and previous_citations is not None:
+            ref = previous_citations
 
-      if len(ref) == 0:
-          # No citations
-          joint_entail = 0
-      elif any(ref_id >= len(citations) for ref_id in ref):
-          # Citations out of range
-          joint_entail = 0
-      else:
-          previous_citations = ref
-          if at_most_citations is not None:
-              ref = ref[:at_most_citations]
-          total_citations += len(ref)
-          # print(item['docs'].keys())
-          joint_passage = "\n".join(
-              [_format_document(citations[psgs_id]["text"]) for psgs_id in ref if psgs_id >= 0]
-          )
+        if len(ref) == 0:
+            # No citations
+            joint_entail = 0
+        elif any(ref_id >= len(citations) for ref_id in ref):
+            # Citations out of range
+            joint_entail = 0
+        else:
+            previous_citations = ref
+            if at_most_citations is not None:
+                ref = ref[:at_most_citations]
+            total_citations += len(ref)
+            # print(item['docs'].keys())
+            joint_passage = "\n".join(
+                [_format_document(citations[psgs_id]["text"]) for psgs_id in ref if psgs_id >= 0]
+            )
 
-      # If not directly rejected by citation format error, calculate the recall score
-      if joint_entail == -1:
-          joint_entail = _run_nli_autoais(joint_passage, target_sent)
-          autoais_log.append(
+        # If not directly rejected by citation format error, calculate the recall score
+        if joint_entail == -1:
+            joint_entail = _run_nli_autoais(joint_passage, target_sent)
+            autoais_log.append(
                 {
                     "output": pred_answer,
                     "claim": sent,
@@ -236,35 +246,35 @@ def compute_citation_f1(pred_answer, citations, at_most_citations=None):
                 }
             )
 
-      entail += joint_entail
-      if len(ref) > 1:
-          sent_mcite += 1
+        entail += joint_entail
+        if len(ref) > 1:
+            sent_mcite += 1
 
-      # calculate the precision score if applicable
-      if joint_entail and len(ref) > 1:
-          sent_mcite_support += 1
-          # Precision check: did the model cite any unnecessary documents?
-          for psgs_id in ref:
-              # condition A
-              passage = _format_document(citations[psgs_id]["text"])
-              nli_result = _run_nli_autoais(passage, target_sent)
+        # calculate the precision score if applicable
+        if joint_entail and len(ref) > 1:
+            sent_mcite_support += 1
+            # Precision check: did the model cite any unnecessary documents?
+            for psgs_id in ref:
+                # condition A
+                passage = _format_document(citations[psgs_id]["text"])
+                nli_result = _run_nli_autoais(passage, target_sent)
 
-              # condition B
-              if not nli_result:
-                  subset_exclude = copy.deepcopy(ref)
-                  subset_exclude.remove(psgs_id)
-                  passage = "\n".join(
-                      [_format_document(citations[pid]["text"]) for pid in subset_exclude]
-                  )
-                  nli_result = _run_nli_autoais(passage, target_sent)
-                  if nli_result:  # psgs_id is not necessary
-                      sent_mcite_overcite += 1
-                  else:
-                      entail_prec += 1
-              else:
-                  entail_prec += 1
-      else:
-          entail_prec += joint_entail
+                # condition B
+                if not nli_result:
+                    subset_exclude = copy.deepcopy(ref)
+                    subset_exclude.remove(psgs_id)
+                    passage = "\n".join(
+                        [_format_document(citations[pid]["text"]) for pid in subset_exclude]
+                    )
+                    nli_result = _run_nli_autoais(passage, target_sent)
+                    if nli_result:  # psgs_id is not necessary
+                        sent_mcite_overcite += 1
+                    else:
+                        entail_prec += 1
+                else:
+                    entail_prec += 1
+        else:
+            entail_prec += joint_entail
 
     if total_sents > 0:
         citation_rec = entail / total_sents
@@ -276,12 +286,16 @@ def compute_citation_f1(pred_answer, citations, at_most_citations=None):
     return {
         "citation_rec": citation_rec,
         "citation_prec": citation_prec,
-        "citation_f1": 2 * citation_rec * citation_prec / (citation_rec + citation_prec) if citation_rec + citation_prec > 0 else 0,
+        "citation_f1": (
+            2 * citation_rec * citation_prec / (citation_rec + citation_prec)
+            if citation_rec + citation_prec > 0
+            else 0
+        ),
         "cited_paper_numbers": total_citations,
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Citation F1 Evaluation (AutoAIS)")
     parser.add_argument("--pred", type=str, required=True, help="Predicted answer with citations")
     parser.add_argument(

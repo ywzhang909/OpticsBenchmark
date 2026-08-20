@@ -11,7 +11,7 @@ This directory contains evaluation metric implementations used by the Optis Benc
 | [em_eval_utils.py](#em_eval_utilspy) | Exact Match | none | Lightweight |
 | [rouge_eval_utils.py](#rouge_eval_utilspy) | N-gram Overlap | nltk, rouge-score | Lightweight |
 | [bleu_eval_utils.py](#bleu_eval_utilspy) | N-gram Precision | none (pure Python) | Lightweight |
-| [bertScore_eval_utils.py](#bertscore_eval_utilspy) | Semantic Similarity | torch, bert-score | Heavy |
+| [bert_score_eval_utils.py](#bert_score_eval_utilspy) | Semantic Similarity | torch, bert-score | Heavy |
 | [citation_eval_utils.py](#citation_eval_utilspy) | Citation Structure | torch, transformers, nltk | Heavy |
 | [hungarian_algorithm_utils.py](#hungarian_algorithm_utilspy) | Assignment Matching | numpy, scipy | Lightweight |
 | [sentence_similarity_utils.py](#sentence_similarity_utilspy) | Semantic Embeddings | torch, transformers | Heavy |
@@ -102,7 +102,7 @@ Implements smoothing (method 1 from Chen & Cherry 2014): when a precision would 
 
 ---
 
-## bertScore_eval_utils.py
+## bert_score_eval_utils.py
 
 ### Principle
 Encodes both prediction and reference with a pre-trained BERT model, then computes cosine similarity between token embeddings, greedily matching tokens to maximize similarity. The final score is an aggregate (F1) of precision and recall over token alignments.

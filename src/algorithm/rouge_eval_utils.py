@@ -15,7 +15,7 @@ from rouge_score import rouge_scorer
 from src.algorithm.em_eval_utils import normalize_text
 
 
-def ensure_nltk_resources():
+def ensure_nltk_resources() -> None:
     """Download required NLTK resources if not already present."""
     try:
         nltk.data.find("tokenizers/punkt_tab")
@@ -32,7 +32,7 @@ def ensure_nltk_resources():
                     pass
 
 
-def compute_rouge(pred_answer, gold_answer, metrics=None):
+def compute_rouge(pred_answer: str, gold_answer: str, metrics: list[str] | None = None) -> dict:
     """Main function for rouge scoring.
     If two references are provided,
     the best score is chosen for each instance.
@@ -56,13 +56,13 @@ def compute_rouge(pred_answer, gold_answer, metrics=None):
     return _rouge_calculation(h, g, metrics)
 
 
-def _rouge_calculation(hypothese, reference, metrics=None):
+def _rouge_calculation(hypothesis: str, reference: str, metrics: list[str] | None = None) -> dict:
     scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
-    LABEL_MAP = {"rouge1": "rouge_1", "rouge2": "rouge_2", "rougeL": "rouge_l"}
+    label_map = {"rouge1": "rouge_1", "rouge2": "rouge_2", "rougeL": "rouge_l"}
     result = {}
-    scores = scorer.score(reference, hypothese)
+    scores = scorer.score(reference, hypothesis)
     for m in metrics:
-        label = LABEL_MAP.get(m, m)
+        label = label_map.get(m, m)
         for attr, suffix in [("precision", "precision"), ("recall", "recall"), ("fmeasure", "f_score")]:
             key = f"{label}_{suffix}"
             val = getattr(scores[m], attr)
@@ -70,7 +70,7 @@ def _rouge_calculation(hypothese, reference, metrics=None):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="ROUGE Score Evaluation")
     parser.add_argument("--pred", type=str, required=True, help="Predicted text")
     parser.add_argument("--gold", type=str, required=True, help="Gold/reference text")

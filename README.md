@@ -72,6 +72,8 @@ ANTHROPIC_API_KEY=sk-ant-your-key
 GOOGLE_API_KEY=your-gemini-key
 MOONSHOT_API_KEY=your-moonshot-key
 ZHIPUAI_API_KEY=your-zhipuai-key
+QWEN_API_KEY=your-qwen-key
+DEEPSEEK_API_KEY=your-deepseek-key
 MISTRAL_API_KEY=your-mistral-key
 GROQ_API_KEY=your-groq-key
 TOGETHER_API_KEY=your-together-key
@@ -83,36 +85,43 @@ EOF
 ### Download Datasets
 
 ```bash
-# Dataset files are included in the repository under dataset/
-# If data is hosted remotely, clone or download to the appropriate subdirectory
-ls dataset/paper_info_extract/data_v1/  # Verify PDF papers are present
+# Dataset directories are excluded from version control via .gitignore
+# You need to prepare them manually:
+# - dataset/paper_info_extract/    (PDF papers + JSON dataset/gold-answer files)
+# - dataset/info_extraction/       (AO paper analysis files)
+# - dataset/paper_review/          (Paper review dataset)
+# - dataset/optics_question_answer/ (Q&A dataset)
+
+ls dataset/paper_info_extract/  # Verify PDF papers are present
 ```
 
 ### Run an Evaluation (Two-Phase Pipeline)
 
-**Phase 1** — Run agent to generate output dataset (via `optis` CLI or `src/llm_pred.py`):
+> **Note:** The `optis` CLI entry point is currently unavailable (`src/main.py` was removed). Use `python src/llm_pred.py` directly.
+
+**Phase 1** — Run model inference to generate outputs (via `src/llm_pred.py`):
 
 ```bash
-# Using the installed CLI entry point
-optis -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
+# Run inference with a config file
+python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml
 
-# Or run directly
-python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract
+# Override output path
+python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml -o results/my_outputs.jsonl
 
-# All tasks with 4 concurrent workers
-python src/llm_pred.py -a configs/llm/claude_anthropic.yaml --all-tasks -c 4
+# Limit sample count
+python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml -n 10
 
-# Specify output path
-python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract -o results/agent_outputs.jsonl
+# Set concurrency
+python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml --concurrency 4
 
-# Dry run to validate config without calling APIs
-python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract --dry-run
+# Dry run (show config only, no API calls)
+python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml --dry-run
 ```
 
-**Phase 2** — Evaluate agent outputs with scoring metrics:
+**Phase 2** — Evaluate model outputs with scoring metrics:
 
 ```bash
-# Evaluate agent outputs using eval config and gold answers
+# Evaluate using eval config and gold answers
 python src/eval.py -i results/agent_outputs.jsonl -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json -e configs/evaluations/paper_info_extract.yaml
 
 # Specify output path for evaluation results
@@ -125,105 +134,145 @@ python src/eval.py -i results/agent_outputs.jsonl -g dataset/paper_info_extract/
 
 ```
 OpticsBenchmark/
-├── configs/                        # Configuration center
-│   ├── system/template.yaml       # Global system config template
-│   ├── evaluations/               # Evaluation configs
-│   │   ├── paper_info_extract.yaml
-│   │   └── template.yaml
-│   ├── llm/                       # LLM provider configs (9 YAML files)
-│   │   ├── GPT_OpenAI.yaml        # OpenAI GPT-4/4o
-│   │   ├── claude_anthropic.yaml  # Anthropic Claude 3.5 Sonnet
-│   │   ├── gemini_google.yaml     # Google Gemini 1.5 Pro
-│   │   ├── kimi_openai.yaml       # Moonshot Kimi (K3/K2.x)
-│   │   ├── glm_openai.yaml        # Zhipu GLM-4/GLM-Z1
-│   │   ├── deepseek_openai.yaml   # DeepSeek V4 Pro
-│   │   ├── qwen_openai.yaml       # Alibaba Qwen 3.5/3.7
-│   │   ├── llama_openai.yaml      # Meta Llama 4 via Together AI
-│   │   └── mistral_official.yaml  # Mistral via official SDK
-│   └── README.md
-├── src/                           # Core source package
-│   ├── __init__.py
-│   ├── llm_pred.py               # Phase 1: Agent output generator (CLI: optis)
-│   ├── eval.py                    # Phase 2: Evaluation engine
+├── configs/                                # Configuration center
+│   ├── system/template.yaml               # Global runtime settings template
+│   ├── evaluations/                       # Evaluation configs
+│   │   ├── paper_info_extract.yaml        # Paper info extraction evaluator config
+│   │   └── template.yaml                  # Generic evaluator config template
+│   ├── llm/                               # LLM provider configs (9 YAML files)
+│   │   ├── GPT_OpenAI.yaml                # OpenAI GPT-4/4o
+│   │   ├── claude_anthropic.yaml          # Anthropic Claude 3.5 Sonnet
+│   │   ├── gemini_google.yaml             # Google Gemini 1.5 Pro
+│   │   ├── kimi_openai.yaml               # Moonshot Kimi (K3/K2.x)
+│   │   ├── glm_openai.yaml                # Zhipu GLM-4/GLM-Z1
+│   │   ├── deepseek_openai.yaml           # DeepSeek V4 Pro
+│   │   ├── qwen_openai.yaml               # Alibaba Qwen 3.5/3.7
+│   │   ├── llama_openai.yaml              # Meta Llama 4 via Together AI
+│   │   └── mistral_official.yaml          # Mistral via official SDK
+│   └── README.md                          # Configuration system documentation
+├── src/                                   # Core source package
+│   ├── __init__.py                        # Package root exporting core modules, environments, utils
+│   ├── llm_pred.py                        # Phase 1: LLM inference entry point
+│   ├── eval.py                            # Phase 2: Evaluation engine
 │   ├── core/
-│   │   ├── config.py             # Shared TaskConfig dataclass
-│   │   ├── llm_judge.py          # LLM-as-judge with anchored rubrics
-│   │   ├── llm_runner.py         # LLMPredRunner for prediction
-│   │   └── runner.py             # Async parallel AgentRunner (259 lines)
-│   ├── evaluators/               # Metric evaluators
-│   │   ├── base.py               # BaseEvaluator ABC
-│   │   ├── factory.py            # create_evaluator() config-driven factory
-│   │   ├── helpers.py            # JSON parsing, sentence matching, dict normalization
-│   │   ├── exact_match_evaluator.py
-│   │   ├── rouge_evaluator.py
-│   │   ├── bert_score_evaluator.py
-│   │   ├── citation_evaluator.py
-│   │   └── scorer/               # Thin wrappers → algorithm/* functions
-│   ├── algorithm/                # Pure-math evaluation algorithms (8 modules)
-│   │   ├── em_eval_utils.py
-│   │   ├── rouge_eval_utils.py
-│   │   ├── bleu_eval_utils.py
-│   │   ├── bertScore_eval_utils.py
- citation_eval_utils.py
-│   │   ├── hungarian_algorithm_utils.py
-│   │   ├── sentence_similarity_utils.py
-│   │   └── model_registry.py
-│   ├── llm/                      # LLM abstraction layer (10 model classes, 8 providers)
-│   │   ├── base.py               # BaseLLM ABC
-│   │   ├── models/               # Model-specific LLM implementations
-│   │   │   ├── ClaudeLLM.py      # Anthropic Claude (official SDK)
-│   │   │   ├── DeepSeekLLM.py    # DeepSeek (OpenAI-compatible)
-│   │   │   ├── GeminiLLM.py      # Google Gemini (Interactions API)
-│   │   │   ├── GlmLLM.py         # Zhipu GLM (OpenAI SDK)
-│   │   │   ├── GPTLLM.py         # OpenAI GPT (Chat Completions + Responses)
-│   │   │   ├── KimiLLM.py        # Moonshot Kimi (OpenAI-compatible)
-│   │   │   ├── LlamaLLM.py       # Meta Llama (Together AI + OpenAI SDK)
-│   │   │   ├── MistralLLM.py     # Mistral (official mistralai SDK)
-│   │   │   ├── OllamaLLM.py      # Ollama (local)
-│   │   │   └── QwenLLM.py        # Alibaba Qwen (OpenAI-compatible)
-│   │   └── providers/            # Provider-specific API clients
-│   │       ├── AnthropicProvider.py
-│   │       ├── BedrockProvider.py
-│   │       ├── GoogleProvider.py
-│   │       ├── MistralProvider.py
-│   │       ├── OllamaProvider.py
-│   │       ├── OpenAIProvider.py
-│   │       └── TogetherAIProvider.py
+│   │   ├── config.py                      # Shared TaskConfig dataclass
+│   │   ├── llm_judge.py                   # LLM-as-judge with anchored rubrics
+│   │   ├── llm_runner.py                  # LLMPredRunner for prediction
+│   │   └── runner.py                      # Async parallel AgentRunner (255 lines)
+│   ├── evaluators/                        # Metric evaluators
+│   │   ├── base.py                        # BaseEvaluator ABC
+│   │   ├── factory.py                     # create_evaluator() config-driven factory
+│   │   ├── helpers.py                     # JSON parsing, sentence matching, dict normalization
+│   │   ├── exact_match_evaluator.py       # Normalized string equality evaluator
+│   │   ├── rouge_evaluator.py             # ROUGE-1/2/L evaluator with Hungarian alignment
+│   │   ├── bert_score_evaluator.py        # BERTScore precision/recall/F1 evaluator
+│   │   ├── citation_evaluator.py          # Citation precision/recall/F1 via NLI
+│   │   └── scorer/                        # Thin wrappers → algorithm/* functions
+│   ├── algorithm/                         # Pure-math evaluation algorithms (8 modules)
+│   │   ├── em_eval_utils.py               # Text normalization and exact-match utilities
+│   │   ├── rouge_eval_utils.py            # ROUGE score computation with multi-reference support
+│   │   ├── bleu_eval_utils.py             # BLEU score computation with smoothing
+│   │   ├── bert_score_eval_utils.py        # BERTScore computation with batch support
+│   │   ├── citation_eval_utils.py         # Citation F1 via AutoAIS NLI model
+│   │   ├── hungarian_algorithm_utils.py   # Optimal sentence assignment via Hungarian algorithm
+│   │   ├── sentence_similarity_utils.py   # Transformer-based sentence embedding similarity
+│   │   └── model_registry.py              # Thread-safe GPU model registry and caching
+│   ├── llm/                               # LLM abstraction layer (11 model classes, 7 providers)
+│   │   ├── __init__.py                    # Provider/LLM registry + factory functions
+│   │   ├── base.py                        # BaseLLM ABC
+│   │   ├── models/                        # Model-specific LLM implementations
+│   │   │   ├── ClaudeLLM.py               # Anthropic Claude (official SDK)
+│   │   │   ├── DeepSeekLLM.py             # DeepSeek (OpenAI-compatible)
+│   │   │   ├── GeminiLLM.py               # Google Gemini (Interactions API)
+│   │   │   ├── GlmLLM.py                  # Zhipu GLM (OpenAI SDK)
+│   │   │   ├── GPTLLM.py                  # OpenAI GPT (Chat Completions + Responses)
+│   │   │   ├── KimiLLM.py                 # Moonshot Kimi (OpenAI-compatible)
+│   │   │   ├── LlamaLLM.py                # Meta Llama (Together AI + OpenAI SDK)
+│   │   │   ├── MistralLLM.py              # Mistral (official mistralai SDK)
+│   │   │   ├── OllamaLLM.py               # Ollama (local)
+│   │   │   └── QwenLLM.py                 # Alibaba Qwen (OpenAI-compatible)
+│   │   └── providers/                     # Provider-specific API clients
+│   │       ├── AnthropicProvider.py        # Async Anthropic SDK wrapper
+│   │       ├── BedrockProvider.py          # Async AWS Bedrock boto3 wrapper
+│   │       ├── GoogleProvider.py           # Async Google GenAI client wrapper
+│   │       ├── MistralProvider.py          # Async Mistral SDK wrapper
+│   │       ├── OllamaProvider.py           # Async Ollama HTTP API wrapper
+│   │       ├── OpenAIProvider.py           # Async OpenAI-compatible SDK wrapper
+│   │       └── TogetherAIProvider.py       # Async Together AI HTTP API wrapper
 │   ├── environments/
-│   │   ├── base_env.py           # BaseEnvironment ABC + LocalEnvironment
-│   │   └── zos_env.py            # Zemax ZOS-API integration (stub)
+│   │   ├── base_env.py                    # BaseEnvironment ABC + LocalEnvironment
+│   │   └── zos_env.py                     # Zemax ZOS-API integration (stub)
 │   ├── module/
-│   │   └── result.py             # EvaluationResult + AggregatedResults dataclasses
+│   │   └── result.py                      # EvaluationResult + AggregatedResults dataclasses
 │   ├── utils/
-│   │   ├── logger.py             # Loguru-based logging (console + file + rotation)
-│   │   ├── parser.py             # YAML/JSONL/config parser with env-var expansion
-│   │   ├── generate_report.py    # HTML/Markdown report generator
-│   │   └── general.py            # Standalone utilities (_dict_to_response_format)
-├── dataset/                       # Evaluation datasets
-│   ├── paper_info_extract/       # 15 PDF papers + JSON dataset/gold-answer files
-│   ├── info_extraction/          # AO paper analysis files (274 texts)
-│   ├── paper_review/             # Paper review dataset (empty, pending)
-│   └── optics_question_answer/   # Q&A dataset (empty, pending)
-├── prompts/                       # LLM prompt templates
-│   ├── system/                   # System prompts (optical_agent, research_agent)
-│   ├── templates/                # Task-specific templates
-│   ├── paper_info_extract/       # Paper info extraction prompt
-│   ├── paper_review/             # Paper review prompt
-│   └── optics_question_answers/  # Optics Q&A prompt
-├── utils/                         # Standalone utility scripts
-│   ├── list_openai_support_models.py
-│   └── paper_data_to_dateset.py
-├── self_test/                     # Self-test datasets and scripts
-├── tests/                         # Pytest test suite (20 test files)
-├── docs/                          # Chinese technical documentation
-│   ├── foundation/               # Optical basics, agent theory, evaluation methodology
-│   ├── theory.md                 # Evaluation theory
-│   ├── contribution.md           # Contribution guide
-│   └── ...                       # Design docs
-├── pyproject.toml                 # Single-source config (build, deps, tools)
-├── requirements.txt
-└── environment.yml
+│   │   ├── logger.py                      # Loguru-based logging (console + file + rotation)
+│   │   ├── parser.py                      # YAML/JSONL/config parser with env-var expansion
+│   │   ├── generate_report.py             # HTML/Markdown report generator
+│   │   └── general.py                     # Standalone utilities (_dict_to_response_format)
+├── dataset/                                # Evaluation datasets (excluded from git, prepare locally)
+│   ├── paper_info_extract/                # 15 PDF papers + JSON dataset/gold-answer files
+│   ├── info_extraction/                   # AO paper analysis files (274 texts)
+│   ├── paper_review/                      # Paper review dataset
+│   └── optics_question_answer/            # Q&A dataset
+├── prompts/                                # LLM prompt templates
+│   ├── system/                            # System prompts (optical_agent, research_agent)
+│   ├── templates/                         # Task-specific templates
+│   ├── paper_info_extract/                # Paper info extraction prompt
+│   ├── paper_review/                      # Paper review prompt
+│   └── optics_question_answers/           # Optics Q&A prompt
+├── utils/                                  # Standalone utility scripts
+│   ├── list_openai_support_models.py      # List available OpenAI-compatible models
+│   └── paper_data_to_dateset.py           # Convert paper files to JSON dataset
+├── self_test/                              # Self-test datasets and scripts (excluded from git)
+├── tests/                                  # Pytest test suite (18 test files)
+├── docs/                                   # Chinese technical documentation
+│   ├── foundation/                        # Optical basics, agent theory, evaluation methodology
+│   ├── theory.md                          # Evaluation theory
+│   ├── contribution.md                    # Contribution guide
+│   └── ...                                # Design docs
+├── AGENTS.md                               # AI agent instructions
+├── STANDARDS.md                            # Code standards and conventions
+├── TODO.md                                 # Development roadmap and known issues
+├── pyproject.toml                          # Single-source config (build, deps, tools)
+├── requirements.txt                        # Python dependency list
+└── environment.yml                         # Conda environment specification
 ```
+
+---
+
+## LLM Config Format
+
+Each YAML config file in `configs/llm/` follows a three-section structure:
+
+```yaml
+llm:
+  provider:
+    type: openai          # Maps to Provider registry (openai, anthropic, google, etc.)
+    api_key: ${OPENAI_API_KEY}  # Supports ${ENV_VAR} expansion
+    base_url: https://api.openai.com/v1
+  model:
+    type: gpt             # Maps to LLM registry (gpt, claude, qwen, etc.)
+    name: gpt-4o          # Actual API model name
+  setup:                  # Request parameters
+    max_completion_tokens: 4096
+    temperature: 0.7
+    # ... model-specific params (thinking_budget, tools, etc.)
+
+task:
+  dataset_path: dataset/paper_info_extract/dataset_json/gold_answer_v1.json
+  prompt_template: prompts/paper_info_extract/
+  file_input: true        # Read files (PDF) instead of text
+  max_samples: null       # null = all samples
+  structured_output: false
+  gold_answer_path: dataset/paper_info_extract/dataset_json/gold_answer_v1.json
+
+execution:
+  concurrency: 1
+  timeout: 300
+  output_path: results/pred.jsonl
+```
+
+See [`configs/README.md`](configs/README.md) for detailed field documentation.
 
 ---
 
@@ -243,6 +292,8 @@ OpticsBenchmark/
 | Ollama (local) | via `src/llm/models/OllamaLLM.py` | `httpx` |
 | AWS Bedrock | via `src/llm/providers/BedrockProvider.py` | `boto3` |
 | Together AI | via `src/llm/providers/TogetherAIProvider.py` | `openai` (compatible) |
+
+> **Note:** Groq is registered in the provider/LLM maps (`src/llm/__init__.py`) but `GroqProvider.py` and `GroqLLM.py` have not been implemented yet.
 
 Per-provider features:
 - **OpenAI**: Chat Completions API + Responses API (selectable via `api_method`); structured output via `response_format`
@@ -295,7 +346,7 @@ These 8 independent evaluation utility modules are self-contained with consisten
 | `em_eval_utils.py` | Exact Match | Normalized text equality |
 | `rouge_eval_utils.py` | ROUGE-L F1 | Recall-oriented n-gram overlap |
 | `bleu_eval_utils.py` | BLEU | N-gram precision |
-| `bertScore_eval_utils.py` | BERTScore | Semantic similarity via BERT embeddings |
+| `bert_score_eval_utils.py` | BERTScore | Semantic similarity via BERT embeddings |
 | `citation_eval_utils.py` | Citation F1 | Citation verification via NLI |
 | `hungarian_algorithm_utils.py` | Optimal Assignment | Minimum-cost matching |
 | `sentence_similarity_utils.py` | Sentence Embedding | Semantic similarity + Hungarian matching |
@@ -339,6 +390,24 @@ The `LLMJudge` provides structured rubric-based scoring with 7 default quality r
 
 The `build_coverage_report()` function aggregates multiple `ScoreReport` objects into a coverage report showing which dimensions were evaluated, how many tasks had judge-layer scoring, anti-pattern breakdowns, and coverage gaps — mirroring PluginEval's coverage reporting concept.
 
+### Evaluator Priority
+
+Evaluators can be assigned a `priority` field in the evaluation config YAML (higher = runs first). This allows running expensive models first (e.g., BERTScore) before lightweight checks (e.g., Exact Match), optimizing total evaluation time:
+
+```yaml
+eval_metrics:
+  exact_match:
+    priority: 4    # Runs last (fastest)
+  rouge:
+    priority: 3
+  bert_score:
+    priority: 2    # Runs early (slowest, uses transformer model)
+  citation:
+    priority: 1    # Runs first
+```
+
+The `sort_evaluators_by_priority()` function in `src/eval.py` sorts evaluators by priority before execution.
+
 ### Structured Output (OpenAI)
 
 When `structured_output: true` is set in a task config, the OpenAI agent generates a JSON Schema from the gold-answer file at runtime, stripping any keys containing `id` (case-insensitive). This is passed as `text.format` with `strict: true` to `client.responses.create()`, enforcing the schema during generation.
@@ -347,7 +416,7 @@ When `structured_output: true` is set in a task config, the OpenAI agent generat
 
 The evaluation is split into **two independent phases**, allowing re-evaluation with different metrics without re-running the LLM:
 
-**Phase 1 — Agent Output** (`src/llm_pred.py`, CLI entry point: `optis`):
+**Phase 1 — Agent Output** (`src/llm_pred.py`):
 
 1. Load agent config and task config from YAML
 2. Load task instances from the dataset JSON
@@ -366,30 +435,24 @@ The evaluation is split into **two independent phases**, allowing re-evaluation 
 
 ## CLI Reference
 
-### `optis` / `python src/llm_pred.py` — Phase 1: Agent Output Generator
+### `python src/llm_pred.py` — Phase 1: LLM Inference
 
 ```
-Usage: python src/llm_pred.py -a <agent_config> -t <task_set> [options]
+Usage: python src/llm_pred.py [options]
 
 Arguments:
-  -a, --agent-config PATH    Agent YAML config file (default: configs/llm/GPT_OpenAI.yaml)
-  -t, --task-set NAME        Task set name (e.g., paper_info_extract)
-  --all-tasks                Run all available task sets
-  -o, --output PATH          Output JSONL path (default: results/agent_outputs.jsonl)
-  -c, --concurrency N        Max concurrent agent sessions (default: 1)
-  --timeout SECONDS          Per-task timeout (default: 300)
-  --max-samples N            Limit samples per task
-  --system-config PATH       System config path (default: configs/system/template.yaml)
-  --dry-run                  Validate config without calling APIs
-  --log-level LEVEL          Logging level (default: INFO)
-  --log-file PATH            Log file path
-  --version                  Show version and exit
+  -c, --config PATH          LLM config file path (default: configs/llm/qwen_openai.yaml)
+  -o, --output PATH          Output JSONL path (default: results/qwen3.8-max_pred.jsonl)
+  -n, --max-samples N        Max samples (overrides max_samples in config)
+  --concurrency N            Concurrency (overrides concurrency in config)
+  --dry-run                  Show config only, do not run inference
+  --log-level LEVEL          Logging level: DEBUG/INFO/WARNING/ERROR/CRITICAL (default: INFO)
 ```
 
 ### `python src/eval.py` — Phase 2: Evaluation Engine
 
 ```
-Usage: python src/eval.py -i <agent_outputs> -g <gold> -e <eval_config> [options]
+Usage: python src/eval.py [options]
 
 Arguments:
   -i, --input PATH           Agent outputs JSONL file (default: self_test/dataset/paper_info_extract/test_v1.jsonl)

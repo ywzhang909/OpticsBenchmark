@@ -42,7 +42,7 @@ src/
 │   ├── __init__.py
 │   ├── em_eval_utils.py          # Text normalization + exact match
 │   ├── rouge_eval_utils.py       # ROUGE-1/2/L via rouge_score library
-│   ├── bertScore_eval_utils.py   # BERTScore via bert-score library
+│   ├── bert_score_eval_utils.py   # BERTScore via bert-score library
 │   ├── bleu_eval_utils.py        # BLEU with smoothing (pure Python)
 │   ├── citation_eval_utils.py    # AutoAIS-based citation F1
 │   ├── hungarian_algorithm_utils.py  # Optimal assignment via scipy
@@ -189,7 +189,7 @@ gold_sentences     ───┘                                            │
 |--------|-----------|------------|
 | `em_eval_utils` | Text normalization + binary exact match | none |
 | `rouge_eval_utils` | ROUGE-1/2/L | `rouge_score`, `nltk` |
-| `bertScore_eval_utils` | BERTScore P/R/F1 | `bert-score` |
+| `bert_score_eval_utils` | BERTScore P/R/F1 | `bert-score` |
 | `bleu_eval_utils` | BLEU with Chen & Cherry smoothing | none (pure Python) |
 | `citation_eval_utils` | AutoAIS-based citation F1 | none |
 | `hungarian_algorithm_utils` | `hungarian_match()` | `scipy` |
