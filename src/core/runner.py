@@ -33,7 +33,7 @@ class TaskInstance:
 class RunnerConfig:
     """Configuration for the evaluation runner."""
 
-    agent_config: AgentConfig
+    agent_config: Any
     task_config: TaskConfig
     output_path: str
     max_concurrency: int = 1
@@ -50,11 +50,10 @@ class RunnerConfig:
         **kwargs,
     ) -> RunnerConfig:
         """Create runner config from files."""
-        agent_config = AgentConfig.from_yaml(agent_config_path)
         task_config = TaskConfig.from_yaml(task_config_path)
 
         return cls(
-            agent_config=agent_config,
+            agent_config={},
             task_config=task_config,
             output_path=output_path,
             **kwargs,
@@ -62,8 +61,7 @@ class RunnerConfig:
 
 
 class AgentRunner:
-    """
-    Main runner that coordinates agent execution across task instances.
+    """Main runner that coordinates agent execution across task instances.
 
     The runner:
     1. Loads task instances from the dataset
@@ -72,25 +70,20 @@ class AgentRunner:
     4. Saves agent outputs
     """
 
-    def __init__(self, config: RunnerConfig):
+    def __init__(self, config: RunnerConfig) -> None:
         self.config = config
-        self.agent: BaseAgent | None = None
+        self.agent: Any = None
         self._semaphore: asyncio.Semaphore | None = None
 
     async def setup(self) -> None:
-        """Set up agent"""
-        self.agent = create_agent(self.config.agent_config, self.config.task_config)
-
-        if self.config.agent_config.system_prompt:
-            self.agent.add_system_message(self.config.agent_config.system_prompt)
-
-        # Set up concurrency limiter
-        self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
+        """Set up agent (requires src.core.agent migration)."""
+        logger.warning(
+            "AgentRunner.setup() requires src.core.agent migration — agent is None"
+        )
 
     async def teardown(self) -> None:
         """Clean up resources."""
-        if self.agent:
-            await self.agent.close()
+        pass
 
     def load_tasks(self) -> list[TaskInstance]:
         """Load task instances from dataset file."""
@@ -130,7 +123,7 @@ class AgentRunner:
             logger.warning("No 'task_file' specified in prompt_config")
 
         for i, record in enumerate(records):
-            task_id = i + 1
+            task_id = str(i + 1)
             title = record.get("title", "")
             location = record.get("location", "")
 
@@ -154,11 +147,11 @@ class AgentRunner:
 
         return tasks
 
-    async def run_agent(self) -> list[AgentOutput]:
+    async def run_agent(self) -> list[Any]:
         """Phase 1: Run agent on all tasks without evaluation.
 
         Returns:
-            List of AgentOutput with raw agent responses.
+            List of agent outputs with raw responses.
         """
         await self.setup()
 
@@ -172,7 +165,7 @@ class AgentRunner:
 
         sem = asyncio.Semaphore(self.config.max_concurrency)
 
-        async def run_one(task: TaskInstance) -> AgentOutput:
+        async def run_one(task: TaskInstance) -> Any:
             async with sem:
                 return await self._execute_agent(task)
 
@@ -182,48 +175,16 @@ class AgentRunner:
         await self.teardown()
         return outputs
 
-    async def _execute_agent(self, task: TaskInstance) -> AgentOutput:
+    async def _execute_agent(self, task: TaskInstance) -> Any:
         """Run agent on a single task without evaluation."""
-        start = time.time()
-        try:
-            self.agent.reset()
-            if self.config.task_config.task.get("file_input", False):
-                self.agent.set_file(task.metadata.get("location"))
-            self.agent.add_user_message(task.prompt)
-            messages = self.agent.conversation_history.copy()
-            result = await self.agent.chat(messages)
-
-            elapsed = time.time() - start
-            logger.info(f"[{task.task_id}] cost: ${result.cost:.4f}, time: {elapsed:.2f}s")
-
-            return AgentOutput(
-                task_id=task.task_id,
-                response=result.response,
-                cost=result.cost,
-                latency=elapsed,
-            )
-        except asyncio.TimeoutError:
-            elapsed = time.time() - start
-            logger.info(f"[{task.task_id}] cost: $0.0000, time: {elapsed:.2f}s (timeout)")
-            return AgentOutput(
-                task_id=task.task_id,
-                response="",
-                cost=0.0,
-                latency=elapsed,
-            )
-        except Exception as e:
-            elapsed = time.time() - start
-            logger.error(f"Error running agent on task {task.task_id}: {e}")
-            logger.info(f"[{task.task_id}] cost: $0.0000, time: {elapsed:.2f}s (error)")
-            return AgentOutput(
-                task_id=task.task_id,
-                response="",
-                cost=0.0,
-                latency=elapsed,
-            )
+        logger.warning(
+            f"[{task.task_id}] AgentRunner._execute_agent() requires "
+            f"src.core.agent migration — returning empty result"
+        )
+        return {}
 
     @staticmethod
-    def save_agent_outputs(outputs: list[AgentOutput], path: str | Path) -> None:
+    def save_agent_outputs(outputs: list[Any], path: str | Path) -> None:
         """Save agent outputs to a JSONL file.
 
         Args:
@@ -234,22 +195,25 @@ class AgentRunner:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
             for o in outputs:
-                f.write(json.dumps(o.to_dict(), ensure_ascii=False) + "\n")
+                if hasattr(o, "to_dict"):
+                    f.write(json.dumps(o.to_dict(), ensure_ascii=False) + "\n")
+                else:
+                    f.write(json.dumps(o, ensure_ascii=False) + "\n")
 
     @staticmethod
-    def load_agent_outputs(path: str | Path) -> list[AgentOutput]:
+    def load_agent_outputs(path: str | Path) -> list[Any]:
         """Load agent outputs from a JSONL file.
 
         Args:
             path: Input file path (JSONL format)
 
         Returns:
-            List of AgentOutput loaded from file
+            List of agent outputs loaded from file
         """
         outputs = []
         with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    outputs.append(AgentOutput.from_dict(json.loads(line)))
+                    outputs.append(json.loads(line))
         return outputs

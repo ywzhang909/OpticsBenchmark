@@ -35,7 +35,7 @@ class TaskConfig:
         prompt_data = data.get("prompt", {})
 
         return cls(
-            task = task_data,
+            task=task_data,
             dataset_config=dataset_data,
             prompt_config=prompt_data,
             max_samples=dataset_data.get("num_samples"),

@@ -1,8 +1,8 @@
 """
 Optis Benchmark - LLM Prediction Runner Module
 
-与 AgentRunner 对齐的 LLM 推理 Runner。
-使用 Provider + LLM 架构执行推理任务。
+LLM inference runner aligned with AgentRunner.
+Uses Provider + LLM architecture to execute inference tasks.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from src.utils import logger
 
 
 def _expand_env_vars(data: Any) -> Any:
-    """递归展开环境变量 ${VAR_NAME}。"""
+    """Recursively expand environment variables ${VAR_NAME}."""
     if isinstance(data, str):
         if data.startswith("${") and data.endswith("}"):
             return os.environ.get(data[2:-1], "")
@@ -46,7 +46,7 @@ def _expand_env_vars(data: Any) -> Any:
 
 @dataclass
 class LLMOutput:
-    """单个任务的推理输出。"""
+    """Inference output for a single task."""
 
     task_id: str = ""
     response: str = ""
@@ -57,7 +57,7 @@ class LLMOutput:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """转换为字典。"""
+        """Convert to dictionary."""
         result = {
             "id": self.task_id,
             "data": self.response,
@@ -72,7 +72,7 @@ class LLMOutput:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> LLMOutput:
-        """从字典创建。"""
+        """Create from dictionary."""
         return cls(
             task_id=data.get("id", ""),
             response=data.get("data", ""),
@@ -91,7 +91,7 @@ class LLMOutput:
 
 @dataclass
 class LLMRunnerConfig:
-    """LLM 推理配置。"""
+    """LLM inference configuration."""
 
     provider_config: dict[str, Any] = field(default_factory=dict)
     model_config: dict[str, Any] = field(default_factory=dict)
@@ -103,10 +103,10 @@ class LLMRunnerConfig:
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> LLMRunnerConfig:
-        """从 YAML 文件加载配置。"""
+        """Load configuration from YAML file."""
         path = Path(path)
         if not path.exists():
-            raise FileNotFoundError(f"配置文件不存在: {path}")
+            raise FileNotFoundError(f"Config file not found: {path}")
 
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -134,14 +134,13 @@ class LLMRunnerConfig:
 
 
 class LLMPredRunner:
-    """
-    LLM 推理 Runner。
+    """LLM inference runner.
 
-    执行流程：
-    1. setup() - 创建 Provider 和 LLM
-    2. load_tasks() - 加载数据集
-    3. run() - 并发执行推理
-    4. teardown() - 清理资源
+    Execution flow:
+    1. setup() - Create Provider and LLM
+    2. load_tasks() - Load dataset
+    3. run() - Execute inference concurrently
+    4. teardown() - Clean up resources
     """
 
     def __init__(self, config: LLMRunnerConfig):
@@ -151,7 +150,7 @@ class LLMPredRunner:
         self._semaphore: asyncio.Semaphore | None = None
 
     async def setup(self) -> None:
-        """创建 Provider 和 LLM 实例。"""
+        """Create Provider and LLM instances."""
         self.provider = create_provider(self.config.provider_config)
         self.llm = create_llm(self.config.model_config)
         self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
@@ -160,7 +159,7 @@ class LLMPredRunner:
         logger.info(f"LLM: {self.llm.model_name}")
 
     async def teardown(self) -> None:
-        """清理资源。"""
+        """Clean up resources."""
         if self.provider:
             try:
                 await self.provider.close()
@@ -168,34 +167,34 @@ class LLMPredRunner:
                 pass
 
     def load_tasks(self) -> list[dict[str, Any]]:
-        """加载数据集。"""
+        """Load dataset."""
         dataset_path = self.config.task_config.get("dataset_path", "")
         if not dataset_path:
-            raise ValueError("未指定 dataset_path")
+            raise ValueError("dataset_path not specified")
 
         path = Path(dataset_path)
         if not path.exists():
-            raise FileNotFoundError(f"数据集不存在: {dataset_path}")
+            raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 
         with open(path, encoding="utf-8") as f:
             records = json.load(f)
 
         if not isinstance(records, list):
-            raise ValueError(f"数据集应为 JSON 数组，实际为 {type(records).__name__}")
+            raise ValueError(f"Expected JSON array, got {type(records).__name__}")
 
-        # 加载 prompt
+        # Load prompt
         prompt = ""
         prompt_file = self.config.task_config.get("prompt_file", "")
         if prompt_file:
             prompt = self._load_prompt(prompt_file)
 
-        # 加载 gold_answer，构建 title → id 映射（忽略大小写）
+        # Load gold_answer, build title -> id mapping (case-insensitive)
         gold_answer_path = self.config.task_config.get("gold_answer_path", "")
         title_to_id: dict[str, int] = {}
         if gold_answer_path:
             ga_path = Path(gold_answer_path)
             if not ga_path.exists():
-                raise FileNotFoundError(f"Gold answer 文件不存在: {gold_answer_path}")
+                raise FileNotFoundError(f"Gold answer file not found: {gold_answer_path}")
             with open(ga_path, encoding="utf-8") as f:
                 gold_records = json.load(f)
             for gr in gold_records:
@@ -203,12 +202,12 @@ class LLMPredRunner:
                 if title:
                     title_to_id[title.lower()] = gr.get("id", -1)
 
-        # 限制样本数
+        # Limit sample count
         max_samples = self.config.task_config.get("max_samples")
         if max_samples is not None:
             records = records[:max_samples]
 
-        # 打乱顺序
+        # Shuffle order
         if self.config.task_config.get("shuffle", False):
             random.shuffle(records)
 
@@ -218,7 +217,7 @@ class LLMPredRunner:
             if title_to_id:
                 task_id = title_to_id.get(title.lower())
                 if task_id is None:
-                    logger.warning(f"无法匹配 title '{title}'，跳过该记录")
+                    logger.warning(f"Cannot match title '{title}', skipping record")
                     continue
             else:
                 task_id = i + 1
@@ -231,28 +230,28 @@ class LLMPredRunner:
         return tasks
 
     def _load_prompt(self, prompt_file: str) -> str:
-        """加载 prompt 文件。"""
+        """Load prompt file."""
         path = Path(prompt_file)
         if not path.exists():
-            logger.warning(f"Prompt 文件不存在: {prompt_file}")
+            logger.warning(f"Prompt file not found: {prompt_file}")
             return ""
 
         content = path.read_text(encoding="utf-8")
 
-        # 删除前两行（注释行 + 空行）
+        # Remove first two lines (comment line + blank line)
         lines = content.split("\n")
         if len(lines) > 2:
             content = "\n".join(lines[2:])
         else:
             logger.warning(
-                f"Prompt 文件 '{prompt_file}' 仅有 {len(lines)} 行，"
-                f"预期至少 3 行，使用原始内容。"
+                f"Prompt file '{prompt_file}' has only {len(lines)} lines, "
+                f"expected at least 3. Using raw content."
             )
 
         return content
 
     async def run(self) -> list[LLMOutput]:
-        """执行推理。"""
+        """Execute inference."""
         await self.setup()
 
         tasks = self.load_tasks()
@@ -274,12 +273,12 @@ class LLMPredRunner:
         return outputs
 
     async def _execute_task(self, task: dict[str, Any]) -> LLMOutput:
-        """执行单个任务。"""
+        """Execute a single task."""
         task_id = task["task_id"]
         start_time = time.time()
 
         try:
-            # 构建消息
+            # Build messages
             messages: list[dict[str, str]] = []
 
             record = task["record"]
@@ -293,7 +292,7 @@ class LLMPredRunner:
             if prompt:
                 messages.append({"prompt": prompt})
 
-            # 调用 LLM
+            # Call LLM
             setup = self.config.setup_config
             gold_answer_path = self.config.task_config.get("gold_answer_path")
             result = await self.llm.chat(
@@ -321,7 +320,7 @@ class LLMPredRunner:
 
         except Exception as e:
             latency = time.time() - start_time
-            logger.error(f"[{task_id}] 推理失败: {e}")
+            logger.error(f"[{task_id}] Inference failed: {e}")
             logger.info(f"[{task_id}] cost: $0.0000, time: {latency:.2f}s (error)")
 
             return LLMOutput(
@@ -336,7 +335,7 @@ class LLMPredRunner:
 
     @staticmethod
     def save_outputs(outputs: list[LLMOutput], path: str | Path) -> None:
-        """保存输出到 JSONL 文件。"""
+        """Save outputs to JSONL file."""
         out_path = Path(path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -344,11 +343,11 @@ class LLMPredRunner:
             for o in outputs:
                 f.write(json.dumps(o.to_dict(), ensure_ascii=False) + "\n")
 
-        logger.info(f"结果已保存: {path}")
+        logger.info(f"Results saved: {path}")
 
     @staticmethod
     def load_outputs(path: str | Path) -> list[LLMOutput]:
-        """从 JSONL 文件加载输出。"""
+        """Load outputs from JSONL file."""
         outputs = []
         with open(path, encoding="utf-8") as f:
             for line in f:
