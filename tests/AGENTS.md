@@ -16,11 +16,6 @@ Async-first test suite. All evaluator tests are async, using centralized fixture
 | `test_rouge_scorer.py` | ROUGEScorer | Scorer tests |
 | `test_em_eval_utils.py` | normalize_text, compute_exact_match | String utils |
 | `test_bleu_eval_utils.py` | BLEU evaluation | Algorithm tests |
-| `test_cider_eval_utils.py` | CIDEr evaluation | Algorithm tests |
-| `test_meteor_eval_utils.py` | METEOR evaluation | Algorithm tests |
-| `test_perplexity_eval_utils.py` | Perplexity evaluation | Algorithm tests |
-| `test_edit_distance_utils.py` | Edit distance, WER | Algorithm tests |
-| `test_jaccard_similarity_utils.py` | Jaccard, Dice | Algorithm tests |
 | `test_hungarian_algorithm.py` | Hungarian matching | Algorithm tests |
 | `test_sentence_similarity.py` | Sentence similarity | Algorithm tests |
 | `test_bert_score_eval.py` | BERTScore evaluator | Network-dependent |
@@ -28,8 +23,9 @@ Async-first test suite. All evaluator tests are async, using centralized fixture
 | `test_composite_scorer.py` | Composite scorer | Scoring tests |
 | `test_llm_judge.py` | LLM judge | Integration tests |
 | `test_model_registry.py` | Model registry | Registry tests |
-| `test_quick_llm_selector.py` | QuickLLMSelector | Unit + CLI + async |
 | `test_integration.py` | End-to-end pipeline | Factory, lens design, summarization, retrieval, model comparison |
+
+Note: Tests for deleted modules (cider, meteor, perplexity, edit_distance, jaccard, quick_llm_selector) remain as regression coverage.
 
 ## CONVENTIONS
 - **Async by default**: `@pytest.mark.asyncio` + `async def test_*()` for evaluators.

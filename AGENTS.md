@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-05-23
-**Commit:** a02e906
+**Commit:** 24f7c61
 **Branch:** main
 
 ## OVERVIEW
@@ -10,10 +10,10 @@ Optis Benchmark — open-source evaluation framework for LLM-based agents in opt
 ## STRUCTURE
 ```
 OpticsBenchmark/
-├── configs/          # YAML configs: agents/, tasks/, evaluations/, system/
+├── configs/          # YAML configs: llm/, evaluations/, system/
 ├── docs/             # Chinese-language design docs
-├── prompts/          # LLM prompt templates: system/, templates/
-├── src/              # Core package: main.py, core/, evaluators/, algorithm/, llm/, environments/, utils/, tools/
+├── prompts/          # LLM prompt templates: system/, templates/, task-specific dirs
+├── src/              # Core package: llm_pred.py, eval.py, core/, evaluators/, algorithm/, llm/, environments/, utils/
 ├── dataset/          # Evaluation datasets (paper_info_extract, info_extraction)
 ├── tests/            # pytest suite (20 test files, async-first)
 ├── utils/            # Standalone utility scripts
@@ -23,15 +23,14 @@ OpticsBenchmark/
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| CLI entry point | `src/main.py` | argparse → `optis` command |
+| CLI entry point | `src/llm_pred.py` | argparse → `optis` command |
 | Evaluators & scorers | `src/evaluators/` | 4 evaluator types + 5 scorers |
-| LLM abstraction | `src/llm/` | 8 model classes, 7 provider classes |
-| Algorithm modules | `src/algorithm/` | 12 pure-math evaluation modules |
+| LLM abstraction | `src/llm/` | 10 model classes, 7 provider classes |
+| Algorithm modules | `src/algorithm/` | 8 pure-math evaluation modules |
 | Async runner | `src/core/runner.py` | Semaphore-based concurrency (259 lines) |
 | Zemax integration | `src/environments/zos_env.py` | ZOS-API stub (PythonNET) |
 | Local env | `src/environments/base_env.py` | Shell execution sandbox |
 | Config loading | `src/utils/parser.py` | JSONL/YAML/env-var expansion |
-| Interactive LLM test | `src/tools/quick_llm_selector.py` | CLI provider comparison |
 | Test fixtures | `tests/conftest.py` | 15 fixtures, async event loop |
 | System config | `configs/system/template.yaml` | Parallel, sandbox, rate-limit, security |
 
@@ -52,7 +51,8 @@ OpticsBenchmark/
 - Dependencies in 3 sources (pyproject.toml, requirements.txt, environment.yml) with drift.
 - ZOS-API integration is stub-only (ZOSAPIEnvironment methods return placeholder data).
 - `configs/system/template.yaml` is a minimal template with most settings commented out.
-- `src/core/runner.py` and `src/tools/quick_llm_selector.py` have TODO markers for migration to `src.llm` abstraction.
+- `pyproject.toml` references `src.main:main` but the actual entry point is `src/llm_pred.py`.
+- `src/core/runner.py` has TODO markers for migration to `src.llm` abstraction.
 
 ## COMMANDS
 ```bash
@@ -61,5 +61,5 @@ uv run pytest tests/             # Run tests (verbose, short traceback)
 uv run pytest --cov=src          # With coverage
 uv run ruff check .              # Lint
 uv run mypy src/                 # Type check (lenient mode)
-uv run python src/main.py -a configs/agents/openai/gpt-4.yaml -t paper_info_extract  # Run eval
+uv run python src/llm_pred.py -a configs/llm/GPT_OpenAI.yaml -t paper_info_extract  # Run eval
 ```

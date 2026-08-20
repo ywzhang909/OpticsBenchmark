@@ -13,9 +13,9 @@ Thank you for your interest in contributing to Optis Benchmark! This document pr
 7. [Testing](#testing)
 8. [Submitting Changes](#submitting-changes)
 
-## 📜 Code of Conduct
+## Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code.
 
 ## 🚀 Getting Started
 
@@ -30,8 +30,8 @@ This project and everyone participating in it is governed by our [Code of Conduc
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/your-username/optis_benchmark.git
-   cd optis_benchmark
+   git clone https://github.com/ywzhang909/OpticsBenchmark.git
+   cd OpticsBenchmark
    ```
 
 3. Create a virtual environment:
@@ -181,29 +181,17 @@ Create a JSONL file with task instances:
 
 ### 2. Create Task Configuration
 
-Create `configs/tasks/your_task.yaml`:
+Add a `task` section to an existing LLM config file (`configs/llm/*.yaml`):
 
 ```yaml
 task:
   id: "your_task"
   name: "Your Task Name"
   description: "Description of the task"
-  category: "your_category"
-  difficulty: 2
-
-dataset:
-  path: "dataset/processed/your_task.jsonl"
-  num_samples: 50
-
-evaluation:
-  scoring_method: "metric_based"
-  metrics:
-    - name: "accuracy"
-      type: "numeric"
-  success_criteria:
-    - metric: "accuracy"
-      operator: ">="
-      value: 0.8
+  dataset_path: "dataset/processed/your_task.json"
+  prompt_file: "prompts/your_task/zero-shot_v1.0.txt"
+  max_samples: 50
+  shuffle: false
 ```
 
 ### 3. Add Prompt Template

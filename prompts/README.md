@@ -28,7 +28,7 @@ prompts/
 
 ## System Prompts (`system/`)
 
-Define the agent's role, expertise, work principles, and output format. They are referenced by `system_prompt_file` in LLM configs (`configs/llm/*.yaml`) and task configs (`configs/tasks/*.yaml`).
+Define the agent's role, expertise, work principles, and output format. They are referenced by `system_prompt_file` in LLM configs (`configs/llm/*.yaml`).
 
 ### `optical_agent.txt` — Optical Design Agent
 
@@ -143,4 +143,4 @@ cat prompts/paper_info_extract/zero-shot_v1.0.txt
 1. Place new system prompts in `prompts/system/`
 2. Place new task templates in `prompts/templates/` using Handlebars syntax
 3. Place zero-shot/variant prompts in task-specific subdirectories
-4. Reference the prompt paths in `configs/tasks/*.yaml` (`system_file`, `template_file`, `task_file`)
+4. Reference the prompt paths in `configs/llm/*.yaml` (`system_prompt_file`, `prompt_file`)

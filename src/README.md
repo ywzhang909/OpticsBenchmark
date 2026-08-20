@@ -81,10 +81,6 @@ src/
 │   ├── __init__.py
 │   └── result.py              # EvaluationResult + AggregatedResults dataclasses
 │
-├── tools/                     # CLI utilities
-│   ├── __init__.py
-│   └── quick_llm_selector.py  # Interactive LLM provider comparison tool
-│
 └── utils/                     # Infrastructure utilities
     ├── __init__.py
     ├── logger.py              # loguru-based singleton logger
@@ -259,12 +255,6 @@ class AggregatedResults:
 
 ---
 
-### `tools/` — CLI Utilities
-
-| Module | Key Class | Description |
-|--------|-----------|-------------|
-| `quick_llm_selector.py` | `QuickLLMSelector` | Discover YAML configs from `configs/llm/`, test multi-provider prompts, compare side-by-side. Runnable: `python -m src.tools.quick_llm_selector` |
-
 ---
 
 ## CLI Entry Points
@@ -280,9 +270,6 @@ uv run python src/eval.py \
   -i results/agent_outputs.jsonl \
   -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \
   -e configs/evaluations/paper_info_extract.yaml
-
-# Interactive LLM provider comparison
-uv run python -m src.tools.quick_llm_selector
 
 # Generate HTML report from results
 uv run python src/utils/generate_report.py results/eval_results.json --format html
@@ -302,7 +289,6 @@ eval.py  ──► core/runner ──► evaluators/factory ──► evaluators
 
 llm_pred.py ──► llm/* ──► providers/*
 environments/base_env.py  ◄── environments/zos_env.py
-tools/quick_llm_selector  ──► configs/llm/ (discovery)
 module/result.py          ◄── used by evaluators + eval.py
 ```
 
@@ -312,5 +298,5 @@ module/result.py          ◄── used by evaluators + eval.py
 
 - `ZOSAPIEnvironment` high-level methods return placeholder data; real integration requires PythonNET + Zemax OpticStudio.
 - `utils/general.py` contains standalone utility functions.
-- `src/core/runner.py` and `src/tools/quick_llm_selector.py` have TODO markers for migration to `src.llm` abstraction.
+- `src/core/runner.py` has TODO markers for migration to `src.llm` abstraction.
 - `pyproject.toml` references `src.main:main` but the actual entry point is `src/llm_pred.py`.

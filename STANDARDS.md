@@ -266,23 +266,27 @@ class MyClass:
 ### 4.1 YAML 配置结构
 
 ```yaml
-# configs/agents/openai/gpt-4.yaml
+# configs/llm/GPT_OpenAI.yaml
 
 # =============================================================================
-# Agent Configuration
+# LLM Configuration
 # =============================================================================
 
-agent:
-  name: "optis-gpt4"
-  version: "1.0.0"
-  description: "GPT-4 Optical Design Agent"
+llm:
+  provider:
+    type: "openai"
+    api_key: "${OPENAI_API_KEY}"
+  model:
+    type: "gpt"
+    name: "gpt-4o"
+  setup:
+    temperature: 0.0
+    max_tokens: 4096
+    top_p: 1.0
 
-model:
-  provider: "openai"          # openai, anthropic, groq
-  name: "gpt-4-turbo"
-  api_key: "${OPENAI_API_KEY}"  # 使用环境变量
-  temperature: 0.0
-  max_tokens: 4096
+task:
+  dataset_path: "dataset/paper_info_extract/dataset_json/dataset_v1.json"
+  prompt_file: "prompts/paper_info_extract/zero-shot_v1.0.txt"
 
 execution:
   timeout: 300
@@ -462,11 +466,15 @@ mtf = contrast_in / contrast_out
 
 ```
 tests/
-├── test_runner.py          # 对应 src/core/runner.py
-├── test_evaluator.py       # 对应 src/evaluators/
-├── test_runner.py          # 对应 src/core/runner.py
-└── integration/
-    └── test_full_pipeline.py
+├── test_evaluator_base.py      # BaseEvaluator tests
+├── test_citation_evaluator.py  # CitationEvaluator tests
+├── test_rouge_eval_utils.py    # ROUGE evaluation utilities
+├── test_em_eval_utils.py       # Exact match utilities
+├── test_bleu_eval_utils.py     # BLEU evaluation
+├── test_hungarian_algorithm.py # Hungarian matching
+├── test_sentence_similarity.py # Sentence similarity
+├── test_bert_score_eval.py     # BERTScore evaluator
+└── ...
 ```
 
 ### 7.2 测试函数命名
@@ -497,7 +505,7 @@ class TestLLMModel:
     def llm(self):
         """测试 fixture"""
         from src.llm import create_llm
-        return create_llm("configs/llm/gpt_openai.yaml")
+        return create_llm("configs/llm/GPT_OpenAI.yaml")
     
     async def test_chat(self, llm):
         """测试聊天功能"""
@@ -537,4 +545,4 @@ class TestLLMModel:
 
 ---
 
-*最后更新: 2024-XX-XX*
+*最后更新: 2026-08-19*

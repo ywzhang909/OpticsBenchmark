@@ -20,12 +20,11 @@ Optis Benchmark is a modular, extensible evaluation framework designed to assess
 - **Optics-focused environments** — Zemax OpticStudio ZOS-API integration for ray tracing, lens design, tolerance analysis
 - **Multi-Provider Support** — Compatible with OpenAI, Anthropic, Google Gemini, Moonshot (Kimi), Zhipu (GLM), Mistral, Groq, Ollama, AWS Bedrock, and Together AI
 - **Structured output support** — JSON schema generation from gold-answer files for OpenAI Responses API
-- **Multi-dimensional evaluation** — 7 metric modules: Exact Match, ROUGE, BLEU, BERTScore, Sentence Similarity, Edit Distance, Citation F1
+- **Multi-dimensional evaluation** — 6 metric modules: Exact Match, ROUGE, BLEU, BERTScore, Sentence Similarity, Citation F1
 - **Composite scoring** — PluginEval-inspired weighted scoring with LLM judge and anti-pattern penalties
-- **Configuration-driven** — YAML-based configuration for LLMs and tasks; switching LLMs or tasks (across 8 task types) requires no code changes
+- **Configuration-driven** — YAML-based configuration for LLMs and tasks; switching LLMs or tasks requires no code changes
 - **Parallel execution** — Async concurrency with semaphore-based task control
 - **Report generation** — Automatic HTML/Markdown reports with statistics and model comparison
-- **Quick LLM selector** — Interactive CLI tool for comparing providers without writing code
 
 ---
 
@@ -144,9 +143,8 @@ OpticsBenchmark/
 │   └── README.md
 ├── src/                           # Core source package
 │   ├── __init__.py
-│   ├── main.py                    # Phase 1: Agent output generator (CLI: optis)
+│   ├── llm_pred.py               # Phase 1: Agent output generator (CLI: optis)
 │   ├── eval.py                    # Phase 2: Evaluation engine
-│   ├── llm_pred.py               # LLM prediction runner
 │   ├── core/
 │   │   ├── config.py             # Shared TaskConfig dataclass
 │   │   ├── llm_judge.py          # LLM-as-judge with anchored rubrics
@@ -201,8 +199,6 @@ OpticsBenchmark/
 │   │   ├── parser.py             # YAML/JSONL/config parser with env-var expansion
 │   │   ├── generate_report.py    # HTML/Markdown report generator
 │   │   └── general.py            # Standalone utilities (_dict_to_response_format)
-│   └── tools/
-│       └── quick_llm_selector.py # Interactive CLI tool for testing/comparing providers
 ├── dataset/                       # Evaluation datasets
 │   ├── paper_info_extract/       # 15 PDF papers + JSON dataset/gold-answer files
 │   ├── info_extraction/          # AO paper analysis files (274 texts)
@@ -244,7 +240,6 @@ OpticsBenchmark/
 | Alibaba Qwen (3.5/3.7) | `configs/llm/qwen_openai.yaml` | `openai` (compatible) |
 | Meta Llama (4 Scout) | `configs/llm/llama_openai.yaml` | `openai` (Together AI) |
 | Mistral | `configs/llm/mistral_official.yaml` | `mistralai` |
-| Groq | `configs/llm/groq_openai.yaml` | `groq` |
 | Ollama (local) | via `src/llm/models/OllamaLLM.py` | `httpx` |
 | AWS Bedrock | via `src/llm/providers/BedrockProvider.py` | `boto3` |
 | Together AI | via `src/llm/providers/TogetherAIProvider.py` | `openai` (compatible) |
@@ -404,29 +399,6 @@ Arguments:
   --system-config PATH       System config path (default: configs/system/template.yaml)
   --log-level LEVEL          Logging level (default: INFO)
   --log-file PATH            Log file path
-```
-
----
-
-## Quick LLM Selector
-
-Test and compare LLM models interactively without writing code:
-
-```bash
-# List available providers
-python -m src.tools.quick_llm_selector --list
-
-# Interactive mode
-python -m src.tools.quick_llm_selector
-
-# Test a single provider
-python -m src.tools.quick_llm_selector --provider gpt-4 --prompt "Explain optical refraction"
-
-# Compare multiple providers
-python -m src.tools.quick_llm_selector --compare gpt-4 claude-3 gemini --prompt "What is a convex lens?"
-
-# Output as JSON
-python -m src.tools.quick_llm_selector --provider gpt-4 --prompt "Hello" --format json
 ```
 
 ---

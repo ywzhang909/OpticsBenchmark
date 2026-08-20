@@ -102,9 +102,7 @@ Implements smoothing (method 1 from Chen & Cherry 2014): when a precision would 
 
 ---
 
-## bleu_eval_utils.py
-
-**BERTScore — computes semantic similarity using contextual embeddings from BERT.**
+## bertScore_eval_utils.py
 
 ### Principle
 Encodes both prediction and reference with a pre-trained BERT model, then computes cosine similarity between token embeddings, greedily matching tokens to maximize similarity. The final score is an aggregate (F1) of precision and recall over token alignments.
