@@ -32,31 +32,45 @@ def ensure_nltk_resources() -> None:
                     pass
 
 
-def compute_rouge(pred_answer: str, gold_answer: str, metrics: list[str] | None = None) -> dict:
+def compute_rouge(pred_answer: str, gold_answer: str | list[str], metrics: list[str] | None = None) -> dict | float:
     """Main function for rouge scoring.
-    If two references are provided,
-    the best score is chosen for each instance.
+    If multiple references are provided,
+    the best ROUGE-L F-score is chosen.
     Args:
         pred_answer: predicted text
         gold_answer: reference text (string or list of strings)
         metrics: list of evaluation metrics, e.g. ["rouge1", "rouge2", "rougeL"]
     Returns:
-        dictionary of rouge scores with keys like rouge_1_precision, rouge_1_recall, rouge_1_f_score, etc.
+        If gold_answer is a string, returns a dict of rouge scores.
+        If gold_answer is a list, returns the best ROUGE-L F-score as a float.
     """
-    # Ensure required NLTK resources are available
     try:
         ensure_nltk_resources()
     except Exception:
         pass
 
-    # document evaluation
-    h = normalize_text(pred_answer)
-    g = normalize_text(gold_answer)
+    if metrics is None:
+        metrics = ["rouge1", "rouge2", "rougeL"]
 
+    h = normalize_text(pred_answer)
+
+    if isinstance(gold_answer, list):
+        best_score = 0.0
+        for ref in gold_answer:
+            g = normalize_text(ref)
+            scores = _rouge_calculation(h, g, metrics)
+            f_score = scores.get("rouge_l_f_score", 0.0)
+            if f_score > best_score:
+                best_score = f_score
+        return best_score
+
+    g = normalize_text(gold_answer)
     return _rouge_calculation(h, g, metrics)
 
 
 def _rouge_calculation(hypothesis: str, reference: str, metrics: list[str] | None = None) -> dict:
+    if metrics is None:
+        metrics = ["rouge1", "rouge2", "rougeL"]
     scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
     label_map = {"rouge1": "rouge_1", "rouge2": "rouge_2", "rougeL": "rouge_l"}
     result = {}

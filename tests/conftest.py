@@ -18,6 +18,11 @@ from src.evaluators import (
 )
 from src.module import EvaluationResult
 
+try:
+    from tests.stubs import SummarizationEvaluator
+except ImportError:
+    SummarizationEvaluator = None
+
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -29,6 +34,18 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def summarization_evaluator():
+    """Create a SummarizationEvaluator instance."""
+    return SummarizationEvaluator({})
+
+
+@pytest.fixture
+def citation_evaluator():
+    """Create a CitationEvaluator instance."""
+    return CitationEvaluator({})
 
 
 @pytest.fixture

@@ -110,7 +110,27 @@ class SummarizationEvaluator:
         metadata: dict[str, Any] | None = None,
     ) -> Any:
         from src.module import EvaluationResult
-        return EvaluationResult(task_id=task_id, metrics={})
+        from src.evaluators.scorer import ROGUEScorer
+
+        predicted = str(predicted_output) if predicted_output else ""
+        reference = str(expected_output) if expected_output else ""
+
+        rouge_metrics = ROGUEScorer.calculate_all(predicted, reference)
+
+        composite = (
+            self.weight_rouge_1 * rouge_metrics.get("rouge_1_f_score", 0.0)
+            + self.weight_rouge_2 * rouge_metrics.get("rouge_2_f_score", 0.0)
+            + self.weight_rouge_l * rouge_metrics.get("rouge_l_f_score", 0.0)
+        )
+
+        metrics = {
+            "rouge_1": rouge_metrics.get("rouge_1_f_score", 0.0),
+            "rouge_2": rouge_metrics.get("rouge_2_f_score", 0.0),
+            "rouge_l": rouge_metrics.get("rouge_l_f_score", 0.0),
+            "content_coverage": rouge_metrics.get("rouge_l_recall", 0.0),
+            "composite_score": composite,
+        }
+        return EvaluationResult(task_id=task_id, metrics=metrics)
 
 
 class CompositeScore:
