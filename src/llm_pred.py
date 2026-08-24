@@ -53,7 +53,6 @@ Examples:
         "-c",
         "--config",
         type=str,
-        # required=True,
         default="configs/llm/qwen_openai.yaml",
         help="LLM config file path (YAML)",
     )

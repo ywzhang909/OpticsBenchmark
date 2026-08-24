@@ -69,7 +69,8 @@ def generate_html_report(results: dict[str, Any], output_path: str | Path) -> No
         }}
 
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+                sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 2rem;
@@ -329,7 +330,10 @@ def generate_markdown_report(results: dict[str, Any], output_path: str | Path) -
 """
 
     for metric_name, values in metrics.items():
-        md += f"| {metric_name} | {values.get('mean', 0):.4f} | {values.get('min', 0):.4f} | {values.get('max', 0):.4f} | {values.get('std', 0):.4f} |\n"
+        md += (
+            f"| {metric_name} | {values.get('mean', 0):.4f} | {values.get('min', 0):.4f} "
+            f"| {values.get('max', 0):.4f} | {values.get('std', 0):.4f} |\n"
+        )
 
     md += f"""
 ---
@@ -346,7 +350,14 @@ def generate_markdown_report(results: dict[str, Any], output_path: str | Path) -
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate reports from Optis Benchmark results")
+    """命令行入口：从结果文件生成 HTML/Markdown 报告。
+
+    解析命令行参数后加载结果并按指定格式输出报告，
+    未指定输出路径时默认写入结果文件同目录下的 report.html / report.md。
+    """
+    parser = argparse.ArgumentParser(
+        description="Generate reports from Optis Benchmark results"
+    )
     parser.add_argument(
         "results",
         type=str,

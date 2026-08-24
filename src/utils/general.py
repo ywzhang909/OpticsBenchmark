@@ -1,4 +1,11 @@
+"""
+Utils General - 通用工具函数
+
+提供 LLM 结构化输出的 schema 推导等通用辅助功能。
+"""
+
 from typing import Any
+
 
 def _dict_to_response_format(
     d: dict[str, Any], strict: bool = True

@@ -40,10 +40,12 @@ def parse_args() -> argparse.Namespace:
         epilog="""
 Examples:
   # Evaluate agent outputs with eval config and gold answers
-  python src/eval.py -i results/agent_outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml
+  python src/eval.py -i results/agent_outputs.jsonl \\
+      -g dataset/gold.json -e configs/eval/lens_design.yaml
 
   # Evaluate with custom output path
-  python src/eval.py -i results/outputs.jsonl -g dataset/gold.json -e configs/eval/lens_design.yaml -o results/eval_results.json
+  python src/eval.py -i results/outputs.jsonl -g dataset/gold.json \\
+      -e configs/eval/lens_design.yaml -o results/eval_results.json
         """,
     )
 
@@ -52,7 +54,6 @@ Examples:
         "-i",
         "--input",
         type=str,
-        # required=True,
         default="self_test/dataset/paper_info_extract/test_v1.jsonl",
         help="Path to agent outputs JSONL file (from Phase 1)",
     )
@@ -60,7 +61,6 @@ Examples:
         "-e",
         "--eval-config",
         type=str,
-        # required=True,
         default="configs/evaluations/paper_info_extract.yaml",
         help="Path to evaluation configuration file (YAML)",
     )
@@ -68,7 +68,6 @@ Examples:
         "-g",
         "--gold",
         type=str,
-        # required=True,
         default="dataset/paper_info_extract/dataset_json/gold_answer_v1.json",
         help="Path to gold standard answer dataset file (JSON)",
     )
@@ -115,9 +114,9 @@ def load_system_config(system_config_path: str) -> dict:
 
 
 def _load_gold_data(gold_path: str) -> dict[str, Any]:
-    """Load gold standard answers from JSON file and build task_id -> data map.
+    """Load gold standard answers from JSON file and build id -> data map.
 
-    Expected JSON format: [{"task_id": "...", "data": {...}}, ...]
+    Expected JSON format: [{"id": "...", "data": {...}}, ...]
     """
     path = Path(gold_path)
     if not path.exists():
@@ -135,7 +134,7 @@ def _load_gold_data(gold_path: str) -> dict[str, Any]:
     for item in raw:
         tid = item.get("id")
         if not tid:
-            logger.warning(f"Skipping gold item without task_id: {item}")
+            logger.warning(f"Skipping gold item without id: {item}")
             continue
         gold_map[tid] = item.get("data")
 
@@ -220,8 +219,15 @@ async def run_evaluation(
                     per_evaluator_results[name].append(result)
                     progress.set_postfix({"done": len(per_evaluator_results[name])})
                     # 输出每个任务的详细日志
-                    metrics_str = ", ".join(f"{k}: {v:.4f}" for k, v in result.metrics.items()) if result.metrics else "no metrics"
-                    logger.info(f"  Task {ao.task_id} completed ({result.execution_time:.2f}s) - {metrics_str}")
+                    metrics_str = (
+                        ", ".join(f"{k}: {v:.4f}" for k, v in result.metrics.items())
+                        if result.metrics
+                        else "no metrics"
+                    )
+                    logger.info(
+                        f"  Task {ao.task_id} completed ({result.execution_time:.2f}s)"
+                        f" - {metrics_str}"
+                    )
             finally:
                 # 无论成功失败，都释放 GPU 显存
                 await ev.teardown()
@@ -262,7 +268,10 @@ async def run_evaluation(
             metrics_str = ", ".join(f"{k}: {v:.4f}" for k, v in agg.metrics_summary.items())
             if len(metrics_str) > 25:
                 metrics_str = metrics_str[:22] + "..."
-            row = f"| {name:<14} | {agg.total_tasks:>5} | {metrics_str:<25} | {agg.avg_execution_time:>6.1f}s |"
+            row = (
+                f"| {name:<14} | {agg.total_tasks:>5} | {metrics_str:<25} "
+                f"| {agg.avg_execution_time:>6.1f}s |"
+            )
             logger.info(row)
 
         logger.info(separator)

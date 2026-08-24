@@ -65,7 +65,7 @@ def setup_logger(
     if console:
         _logger.add(
             sys.stderr,
-            format= format or _CONSOLE_FMT,
+            format=format or _CONSOLE_FMT,
             level=level,
             colorize=True,
         )
