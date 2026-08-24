@@ -1,3 +1,9 @@
+"""
+Optis Benchmark - Base Evaluator
+
+Defines the BaseEvaluator interface shared by all evaluators.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -14,7 +20,7 @@ class BaseEvaluator(ABC):
     against expected outputs or ground truth.
     """
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         """Initialize evaluator with configuration."""
         self.config = config
 
@@ -45,6 +51,7 @@ class BaseEvaluator(ABC):
             EvaluationResult with score and details
         """
         pass
+
     @abstractmethod
     async def aggregate(
         self,

@@ -1,10 +1,20 @@
+"""
+Optis Benchmark - Citation Evaluator
+
+Evaluates citation quality of agent outputs using an NLI-based
+citation recall / precision / F1 scorer.
+"""
+
 from __future__ import annotations
 
-import json
 import time
 from typing import Any
 
-from src.algorithm.citation_eval_utils import _get_citation_model, _get_citation_tokenizer, unload_citation_model
+from src.algorithm.citation_eval_utils import (
+    _get_citation_model,
+    _get_citation_tokenizer,
+    unload_citation_model,
+)
 from src.module import AggregatedResults, EvaluationResult
 from src.utils import logger
 
@@ -13,6 +23,8 @@ from .scorer import CitationScorer
 
 
 class CitationEvaluator(BaseEvaluator):
+    """Evaluator that scores citation quality via NLI-based F1."""
+
     async def setup(self) -> None:
         """预加载 Citation NLI 模型。"""
         _get_citation_model()
@@ -28,6 +40,7 @@ class CitationEvaluator(BaseEvaluator):
         predicted_output: Any,
         expected_output: Any,
     ) -> EvaluationResult:
+        """Evaluate citation F1 for a single prediction."""
         start_time = time.time()
 
         try:
@@ -52,6 +65,7 @@ class CitationEvaluator(BaseEvaluator):
         self,
         results: list[EvaluationResult],
     ) -> AggregatedResults:
+        """Aggregate citation evaluation results."""
         total = len(results)
         return AggregatedResults(
             total_tasks=total,
@@ -129,5 +143,3 @@ class CitationEvaluator(BaseEvaluator):
                     partial += 1
                     break
         return (len(exact_matches) + partial) / len(reference)
-
-

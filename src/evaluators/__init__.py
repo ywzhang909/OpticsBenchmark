@@ -1,3 +1,9 @@
+"""
+Optis Benchmark - Evaluators Module
+
+Exports evaluator classes, scorers, and factory helpers.
+"""
+
 from .base import BaseEvaluator
 from .bert_score_evaluator import BertScoreEvaluator
 from .citation_evaluator import CitationEvaluator
@@ -7,7 +13,7 @@ from .helpers import (
     _get_sentence_embedder,
     _try_parse_json,
     normalize_dict_key,
-    sentenceMatch,
+    sentence_match,
     unload_sentence_embedder,
 )
 from .rouge_evaluator import RougeEvaluator
@@ -23,6 +29,6 @@ __all__ = [
     "_get_sentence_embedder",
     "_try_parse_json",
     "normalize_dict_key",
-    "sentenceMatch",
+    "sentence_match",
     "unload_sentence_embedder",
 ]

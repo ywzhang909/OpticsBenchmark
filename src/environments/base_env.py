@@ -24,7 +24,7 @@ class EnvironmentConfig:
     memory_limit: str = "4GB"
     workspace: Path = Path("/tmp/optis_workspace")
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure workspace is a Path."""
         if isinstance(self.workspace, str):
             self.workspace = Path(self.workspace)
@@ -50,7 +50,7 @@ class BaseEnvironment(ABC):
     integration with specialized software.
     """
 
-    def __init__(self, config: EnvironmentConfig):
+    def __init__(self, config: EnvironmentConfig) -> None:
         """Initialize the environment with configuration."""
         self.config = config
         self.workspace = config.workspace

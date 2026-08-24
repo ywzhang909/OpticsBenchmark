@@ -1,3 +1,10 @@
+"""
+Optis Benchmark - BertScore Evaluator
+
+Evaluates text generation quality using BERTScore, with Hungarian
+sentence matching for structured (dict) outputs.
+"""
+
 from __future__ import annotations
 
 import time
@@ -12,7 +19,7 @@ from .helpers import (
     _get_sentence_embedder,
     _try_parse_json,
     normalize_dict_key,
-    sentenceMatch,
+    sentence_match,
     unload_sentence_embedder,
 )
 from .scorer import BERTScoreScorer
@@ -69,13 +76,19 @@ class BertScoreEvaluator(BaseEvaluator):
                     gold_values = reference.get(entry_name)
                     if pred_values is None or gold_values is None:
                         continue
-                    if not isinstance(pred_values, (str, list)) or not isinstance(gold_values, (str, list)):
+                    if not isinstance(pred_values, (str, list)) or not isinstance(
+                        gold_values, (str, list)
+                    ):
                         continue
                     if not isinstance(pred_values, list):
                         pred_values = [pred_values]
                     if not isinstance(gold_values, list):
                         gold_values = [gold_values]
-                    assignments = sentenceMatch(pred_values, gold_values, embedder=_get_sentence_embedder(match_model))
+                    assignments = sentence_match(
+                        pred_values,
+                        gold_values,
+                        embedder=_get_sentence_embedder(match_model),
+                    )
                     for pred_idx, gold_idx in assignments:
                         all_preds.append(pred_values[pred_idx])
                         all_golds.append(gold_values[gold_idx])

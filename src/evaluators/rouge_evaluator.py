@@ -1,3 +1,10 @@
+"""
+Optis Benchmark - Rouge Evaluator
+
+Evaluates text generation quality using ROUGE metrics, with Hungarian
+sentence matching for structured (dict) outputs.
+"""
+
 from __future__ import annotations
 
 import time
@@ -11,7 +18,7 @@ from .helpers import (
     _get_sentence_embedder,
     _try_parse_json,
     normalize_dict_key,
-    sentenceMatch,
+    sentence_match,
     unload_sentence_embedder,
 )
 from .scorer import ROGUEScorer
@@ -62,21 +69,30 @@ class RougeEvaluator(BaseEvaluator):
                     gold_values = reference.get(entry_name)
                     if pred_values is None or gold_values is None:
                         continue
-                    if not isinstance(pred_values, (str, list)) or not isinstance(gold_values, (str, list)):
+                    if not isinstance(pred_values, (str, list)) or not isinstance(
+                        gold_values, (str, list)
+                    ):
                         continue
                     if not isinstance(pred_values, list):
                         pred_values = [pred_values]
                     if not isinstance(gold_values, list):
                         gold_values = [gold_values]
-                    assignments = sentenceMatch(pred_values, gold_values, embedder=_get_sentence_embedder(match_model))
+                    assignments = sentence_match(
+                        pred_values,
+                        gold_values,
+                        embedder=_get_sentence_embedder(match_model),
+                    )
                     for pred_idx, gold_idx in assignments:
-                        rouge_metric = ROGUEScorer.calculate_all(pred_values[pred_idx], gold_values[gold_idx], self.config.get("metrics", None))
+                        rouge_metric = ROGUEScorer.calculate_all(
+                            pred_values[pred_idx],
+                            gold_values[gold_idx],
+                            self.config.get("metrics", None),
+                        )
                         for metric_name, score in rouge_metric.items():
                             all_rouge_metrics.setdefault(metric_name, []).append(score)
 
                 metrics = {
-                    name: sum(scores) / len(scores)
-                    for name, scores in all_rouge_metrics.items()
+                    name: sum(scores) / len(scores) for name, scores in all_rouge_metrics.items()
                 }
 
             elif isinstance(predicted, str) and isinstance(reference, str):

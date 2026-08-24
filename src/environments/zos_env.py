@@ -55,8 +55,6 @@ class ZOSAPIEnvironment(BaseEnvironment):
 
     async def setup(self) -> None:
         """Set up the ZOS-API environment."""
-        time.time()
-
         try:
             # Try to load PythonNET
             try:
@@ -378,7 +376,9 @@ class ZOSAPIEnvironment(BaseEnvironment):
             {
                 "type": "function",
                 "name": "get_system_data",
-                "description": "Get current OpticStudio system data (wavelengths, fields, surfaces)",
+                "description": (
+                    "Get current OpticStudio system data (wavelengths, fields, surfaces)"
+                ),
                 "parameters": {"type": "object", "properties": {}},
             },
             {

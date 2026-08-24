@@ -1,3 +1,10 @@
+"""
+Optis Benchmark - Evaluator Factory
+
+Creates evaluator instances from evaluation configuration and orders
+them by configured priority.
+"""
+
 from __future__ import annotations
 
 from typing import Any

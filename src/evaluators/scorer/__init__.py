@@ -1,3 +1,9 @@
+"""
+Optis Benchmark - Scorers Module
+
+Exports metric scorer classes used by evaluators.
+"""
+
 from .bert_score_scorer import BERTScoreScorer
 from .bleu_scorer import BLEUScorer
 from .citation_scorer import CitationScorer

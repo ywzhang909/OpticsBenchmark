@@ -1,3 +1,9 @@
+"""
+Optis Benchmark - Exact Match Evaluator
+
+Evaluates predictions by comparing parsed JSON entries for exact match.
+"""
+
 from __future__ import annotations
 
 import time
