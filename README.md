@@ -18,7 +18,7 @@ Optis Benchmark is a modular, extensible evaluation framework designed to assess
 ### Key Features
 
 - **Optics-focused environments** — Zemax OpticStudio ZOS-API integration for ray tracing, lens design, tolerance analysis
-- **Multi-Provider Support** — Compatible with OpenAI, Anthropic, Google Gemini, Moonshot (Kimi), Zhipu (GLM), Mistral, Groq, Ollama, AWS Bedrock, and Together AI
+- **Multi-Provider Support** — Compatible with OpenAI, Anthropic, Google Gemini, Moonshot (Kimi), Zhipu (GLM), Mistral, Ollama, AWS Bedrock, and Together AI
 - **Structured output support** — JSON schema generation from gold-answer files for OpenAI Responses API
 - **Multi-dimensional evaluation** — 6 metric modules: Exact Match, ROUGE, BLEU, BERTScore, Sentence Similarity, Citation F1
 - **Composite scoring** — PluginEval-inspired weighted scoring with LLM judge and anti-pattern penalties
@@ -75,7 +75,6 @@ ZHIPUAI_API_KEY=your-zhipuai-key
 QWEN_API_KEY=your-qwen-key
 DEEPSEEK_API_KEY=your-deepseek-key
 MISTRAL_API_KEY=your-mistral-key
-GROQ_API_KEY=your-groq-key
 TOGETHER_API_KEY=your-together-key
 AWS_ACCESS_KEY_ID=your-aws-key
 AWS_SECRET_ACCESS_KEY=your-aws-secret
@@ -292,8 +291,6 @@ See [`configs/README.md`](configs/README.md) for detailed field documentation.
 | Ollama (local) | via `src/llm/models/ollama_llm.py` | `httpx` |
 | AWS Bedrock | via `src/llm/providers/bedrock_provider.py` | `boto3` |
 | Together AI | via `src/llm/providers/together_ai_provider.py` | `openai` (compatible) |
-
-> **Note:** Groq is not currently supported — it is not registered in the provider/LLM maps (`src/llm/__init__.py`).
 
 Per-provider features:
 - **OpenAI**: Chat Completions API + Responses API (selectable via `api_method`); structured output via `response_format`
