@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import random
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,6 +27,7 @@ class TaskInstance:
     task_id: str
     prompt: str
     metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class RunnerConfig:

@@ -75,7 +75,9 @@ DEFAULT_RUBRICS: list[Rubric] = [
         criteria=[
             RubricCriterion(1.0, "Excellent", "All optical metrics meet or exceed targets"),
             RubricCriterion(0.75, "Good", "Most optical metrics meet targets, minor deviations"),
-            RubricCriterion(0.5, "Fair", "Some metrics meet targets, significant deviations in others"),
+            RubricCriterion(
+                0.5, "Fair", "Some metrics meet targets, significant deviations in others"
+            ),
             RubricCriterion(0.25, "Poor", "Few metrics meet targets, major errors"),
             RubricCriterion(0.0, "Fail", "No metrics meet targets or output is empty"),
         ],
@@ -93,7 +95,9 @@ DEFAULT_RUBRICS: list[Rubric] = [
     Rubric(
         dimension="output_completeness",
         criteria=[
-            RubricCriterion(1.0, "Complete", "All requested fields present with substantive content"),
+            RubricCriterion(
+                1.0, "Complete", "All requested fields present with substantive content"
+            ),
             RubricCriterion(0.75, "Mostly", "Most fields present, some minor omissions"),
             RubricCriterion(0.5, "Partial", "Several fields missing or placeholder content"),
             RubricCriterion(0.25, "Incomplete", "Most fields missing or trivial content"),
@@ -103,7 +107,9 @@ DEFAULT_RUBRICS: list[Rubric] = [
     Rubric(
         dimension="citation_accuracy",
         criteria=[
-            RubricCriterion(1.0, "Accurate", "All citations are real, relevant, and correctly attributed"),
+            RubricCriterion(
+                1.0, "Accurate", "All citations are real, relevant, and correctly attributed"
+            ),
             RubricCriterion(0.75, "Mostly", "Minor citation errors, mostly correct"),
             RubricCriterion(0.5, "Mixed", "Some real citations mixed with questionable ones"),
             RubricCriterion(0.25, "Poor", "Most citations are incorrect or hallucinated"),
@@ -113,7 +119,9 @@ DEFAULT_RUBRICS: list[Rubric] = [
     Rubric(
         dimension="reasoning_quality",
         criteria=[
-            RubricCriterion(1.0, "Excellent", "Clear, logical, well-structured reasoning with evidence"),
+            RubricCriterion(
+                1.0, "Excellent", "Clear, logical, well-structured reasoning with evidence"
+            ),
             RubricCriterion(0.75, "Good", "Mostly clear reasoning, minor gaps"),
             RubricCriterion(0.5, "Fair", "Some reasoning present but with logical gaps"),
             RubricCriterion(0.25, "Poor", "Minimal reasoning, largely unsupported claims"),
@@ -123,7 +131,9 @@ DEFAULT_RUBRICS: list[Rubric] = [
     Rubric(
         dimension="robustness",
         criteria=[
-            RubricCriterion(1.0, "Robust", "Handles all edge cases and boundary conditions correctly"),
+            RubricCriterion(
+                1.0, "Robust", "Handles all edge cases and boundary conditions correctly"
+            ),
             RubricCriterion(0.75, "Good", "Handles common edge cases, some gaps"),
             RubricCriterion(0.5, "Fair", "Basic cases work, edge cases fail"),
             RubricCriterion(0.25, "Fragile", "Fails on most non-standard inputs"),
@@ -166,7 +176,8 @@ class JudgePromptBuilder:
         sections = [
             "# Evaluation Judge",
             "",
-            "You are an expert evaluator. Score the agent's output below on the specified dimensions.",
+            "You are an expert evaluator. Score the agent's "
+            "output below on the specified dimensions.",
             "",
             "## Task",
             task_description,
@@ -189,7 +200,7 @@ class JudgePromptBuilder:
         sections.extend(
             [
                 "## Instructions",
-                f"- Score each dimension on a scale of 0.0 to 1.0",
+                "- Score each dimension on a scale of 0.0 to 1.0",
                 f"- Dimensions to score: {', '.join(dim_names)}",
                 "- Provide a brief justification for each score (1–2 sentences)",
                 "- Return ONLY valid JSON with this exact structure:",
@@ -319,7 +330,10 @@ class LLMJudge:
 
         if self._llm is None:
             return JudgeResult(
-                error="No LLM callable configured. Use llm_callable parameter or set up via create_judge_from_config().",
+                error=(
+                    "No LLM callable configured. Use llm_callable parameter "
+                    "or set up via create_judge_from_config()."
+                ),
             )
 
         try:
