@@ -76,7 +76,10 @@ class TestJudgePromptBuilder:
         assert "Return ONLY valid JSON" in prompt
 
     def test_parse_response_plain_json(self):
-        raw = '{"dimension_scores": {"optical_accuracy": 0.8}, "justifications": {"optical_accuracy": "Good"}}'
+        raw = (
+            '{"dimension_scores": {"optical_accuracy": 0.8}, '
+            '"justifications": {"optical_accuracy": "Good"}}'
+        )
         result = JudgePromptBuilder.parse_response(raw)
         assert abs(result.dimension_scores["optical_accuracy"] - 0.8) < 1e-6
         assert result.justifications["optical_accuracy"] == "Good"
@@ -130,7 +133,10 @@ class TestLLMJudge:
     @pytest.mark.asyncio
     async def test_evaluate_with_mock_llm(self):
         async def mock_llm(prompt: str) -> str:
-            return '{"dimension_scores": {"optical_accuracy": 0.9}, "justifications": {"optical_accuracy": "Good job"}}'
+            return (
+                '{"dimension_scores": {"optical_accuracy": 0.9}, '
+                '"justifications": {"optical_accuracy": "Good job"}}'
+            )
 
         judge = LLMJudge(llm_callable=mock_llm)
         result = await judge.evaluate(

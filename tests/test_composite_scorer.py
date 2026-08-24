@@ -6,15 +6,11 @@ Inspired by Vercel Labs benchmark-agents / PluginEval evaluation methodology.
 
 from __future__ import annotations
 
-import pytest
-
 try:
     from src.core.composite_scorer import (
         AntiPattern,
         CompositeScoreConfig,
         CompositeScorer,
-        CoverageReport,
-        DimensionCoverage,
         DimensionScore,
         ScoreReport,
         ScoringDimension,
@@ -26,8 +22,6 @@ except ImportError:
         AntiPattern,
         CompositeScoreConfig,
         CompositeScorer,
-        CoverageReport,
-        DimensionCoverage,
         DimensionScore,
         ScoreReport,
         ScoringDimension,
@@ -203,7 +197,9 @@ class TestCompositeScorer:
                 final_composite=score,
                 grade=scorer._to_grade(score),
             )
-            assert report.grade == expected_grade, f"score {score} → {report.grade} ≠ {expected_grade}"
+            assert report.grade == expected_grade, (
+                f"score {score} → {report.grade} ≠ {expected_grade}"
+            )
 
     def test_report_structure(self):
         scorer = CompositeScorer()
@@ -262,7 +258,10 @@ class TestCoverageReport:
         scorer = CompositeScorer()
         dims = {d.name: 1.0 for d in scorer.config.dimensions}
         r1 = scorer.score(static_scores=dims)  # no judge
-        r2 = scorer.score(static_scores=dims, judge_scores={d.name: 1.0 for d in scorer.config.dimensions})
+        r2 = scorer.score(
+            static_scores=dims,
+            judge_scores={d.name: 1.0 for d in scorer.config.dimensions},
+        )
         cover = build_coverage_report([r1, r2])
         # Only r2 has judge scores
         assert cover.tasks_with_judge_layer == 8  # one report × 8 dims

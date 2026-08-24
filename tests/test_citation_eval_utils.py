@@ -169,7 +169,7 @@ class TestCitationModuleImports:
     def test_imports_available(self):
         """Verify the module and function names exist."""
         sys.path.insert(0, SCRIPTS_DIR)
-        from utils import citation_eval_utils as ceu
+        from algorithm import citation_eval_utils as ceu
 
         assert hasattr(ceu, "compute_citation_f1")
         assert hasattr(ceu, "get_max_memory")

@@ -5,9 +5,9 @@ Stubs for symbols that no longer exist in the refactored codebase
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # =============================================================================
 # Stubs for symbols formerly in src.core.evaluator
@@ -19,6 +19,26 @@ class MetricBasedEvaluator:
     def __init__(self, config: dict[str, Any]):
         self.config = config
 
+    def _extract_metrics_config(self) -> tuple[list[str], list[dict[str, Any]]]:
+        """Collect metric names and success criteria from config."""
+        names: list[str] = []
+        for m in self.config.get("metrics", []):
+            if isinstance(m, dict):
+                name = m.get("name", "")
+            elif isinstance(m, str):
+                name = m
+            else:
+                continue
+            if name and name not in names:
+                names.append(name)
+
+        criteria = [c for c in self.config.get("success_criteria", []) if isinstance(c, dict)]
+        for c in criteria:
+            name = c.get("metric", "")
+            if name and name not in names:
+                names.append(name)
+        return names, criteria
+
     async def evaluate(
         self,
         task_id: str,
@@ -26,14 +46,53 @@ class MetricBasedEvaluator:
         expected_output: Any,
         metadata: dict[str, Any] | None = None,
     ) -> Any:
+        """Evaluate numeric metrics against configured success criteria.
+
+        Missing metrics default to ``0.0``; invalid JSON input is treated
+        as an empty prediction instead of raising.
+        """
         from src.module import EvaluationResult
-        return EvaluationResult(task_id=task_id, metrics={})
+
+        predicted = predicted_output
+        if isinstance(predicted, str):
+            try:
+                predicted = json.loads(predicted)
+            except json.JSONDecodeError:
+                predicted = {}
+        if not isinstance(predicted, dict):
+            predicted = {}
+
+        names, criteria = self._extract_metrics_config()
+        metrics: dict[str, float] = {name: float(predicted.get(name, 0.0)) for name in names}
+
+        all_met = True
+        for c in criteria:
+            value = metrics.get(c.get("metric", ""), 0.0)
+            if not self._compare(value, c.get("operator", ">="), float(c.get("value", 0.0))):
+                all_met = False
+                break
+        metrics["all_criteria_met"] = 1.0 if all_met else 0.0
+
+        return EvaluationResult(task_id=task_id, metrics=metrics)
 
     async def aggregate(self, results: list) -> Any:
+        """Average metrics across results."""
         from src.module import AggregatedResults
+
+        totals: dict[str, float] = {}
+        counts: dict[str, int] = {}
+        exec_times: list[float] = []
+        for r in results:
+            exec_times.append(float(getattr(r, "execution_time", 0.0)))
+            for k, v in getattr(r, "metrics", {}).items():
+                totals[k] = totals.get(k, 0.0) + float(v)
+                counts[k] = counts.get(k, 0) + 1
+
         return AggregatedResults(
             total_tasks=len(results),
-            metrics_summary={},
+            metrics_summary={k: totals[k] / counts[k] for k in totals},
+            avg_execution_time=sum(exec_times) / len(exec_times) if exec_times else 0.0,
+            per_task_results=list(results),
         )
 
     @staticmethod
@@ -53,46 +112,6 @@ class MetricBasedEvaluator:
         return False
 
 
-class PartialMatchEvaluator:
-    """Stub — was in old src.core.evaluator."""
-
-    def __init__(self, config: dict[str, Any]):
-        self.config = config
-        self.threshold = config.get("threshold", 0.8)
-
-    async def evaluate(
-        self,
-        task_id: str,
-        predicted_output: Any,
-        expected_output: Any,
-        metadata: dict[str, Any] | None = None,
-    ) -> Any:
-        from src.module import EvaluationResult
-        return EvaluationResult(task_id=task_id, metrics={})
-
-    def _string_similarity(self, s1: str, s2: str) -> float:
-        if not s1 and not s2:
-            return 1.0
-        if not s1 or not s2:
-            return 0.0
-        tokens1 = set(s1.lower().split())
-        tokens2 = set(s2.lower().split())
-        if not tokens1 and not tokens2:
-            return 1.0
-        intersection = tokens1 & tokens2
-        union = tokens1 | tokens2
-        return len(intersection) / len(union)
-
-    def _dict_similarity(self, d1: dict, d2: dict) -> float:
-        if not d1 and not d2:
-            return 1.0
-        if not d1 or not d2:
-            return 0.0
-        all_keys = set(d1) | set(d2)
-        matches = sum(1 for k in all_keys if d1.get(k) == d2.get(k))
-        return matches / len(all_keys)
-
-
 class SummarizationEvaluator:
     """Stub — replaced by RougeEvaluator in src.evaluators.rouge_evaluator."""
 
@@ -109,8 +128,8 @@ class SummarizationEvaluator:
         expected_output: Any,
         metadata: dict[str, Any] | None = None,
     ) -> Any:
-        from src.module import EvaluationResult
         from src.evaluators.scorer import ROGUEScorer
+        from src.module import EvaluationResult
 
         predicted = str(predicted_output) if predicted_output else ""
         reference = str(expected_output) if expected_output else ""
@@ -138,44 +157,40 @@ class CompositeScore:
 
     @staticmethod
     def calculate(results: list) -> dict[str, float]:
-        return {"composite_score": 0.0}
+        values = [float(v) for r in results for v in getattr(r, "metrics", {}).values()]
+        mean = sum(values) / len(values) if values else 0.0
+        return {"composite_score": mean}
 
 
 class ResultAnalyzer:
     """Stub — was in old src.core.evaluator."""
 
     @staticmethod
+    def _mean_metric_value(results: list) -> float:
+        values = [float(v) for r in results for v in getattr(r, "metrics", {}).values()]
+        return sum(values) / len(values) if values else 0.0
+
+    @staticmethod
     def compute_statistics(results: list) -> dict[str, Any]:
         return {
             "num_tasks": len(results),
-            "mean_score": 0.0,
+            "mean_score": ResultAnalyzer._mean_metric_value(results),
         }
 
     @staticmethod
     def compare_models(
         a: list, b: list, a_name: str, b_name: str
     ) -> Any:
+        mean_a = ResultAnalyzer._mean_metric_value(a)
+        mean_b = ResultAnalyzer._mean_metric_value(b)
+
         @dataclass
         class _Comparison:
             mean_a: float = 0.0
             mean_b: float = 0.0
             winner: str = ""
-        return _Comparison()
 
-
-class ErrorAnalyzer:
-    """Stub — was in old src.core.evaluator."""
-    pass
-
-
-class EvaluationQA:
-    """Stub — was in old src.core.evaluator."""
-    pass
-
-
-class ReportGenerator:
-    """Stub — was in old src.core.evaluator or separate module."""
-    pass
+        return _Comparison(mean_a=mean_a, mean_b=mean_b, winner="A" if mean_a >= mean_b else "B")
 
 
 # =============================================================================
@@ -320,7 +335,12 @@ class CompositeScoreConfig:
     def to_dict(self) -> dict[str, Any]:
         return {
             "dimensions": [
-                {"name": d.name, "weight": d.weight, "description": d.description, "rubric": d.rubric}
+                {
+                    "name": d.name,
+                    "weight": d.weight,
+                    "description": d.description,
+                    "rubric": d.rubric,
+                }
                 for d in self.dimensions
             ],
             "anti_patterns": [

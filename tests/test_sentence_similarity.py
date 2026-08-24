@@ -5,6 +5,7 @@ Tests for _mean_pooling, SentenceEmbedder, and compute_similarity_matrix.
 Heavy model-dependent tests are skipped when torch/transformers are missing.
 """
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -20,15 +21,14 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-try:
-    import sentencepiece  # needed for most HF tokenizers
-
-    SENTENCEPIECE_AVAILABLE = True
-except ImportError:
-    SENTENCEPIECE_AVAILABLE = False
+# Needed by most HF tokenizers — check availability without importing
+SENTENCEPIECE_AVAILABLE = importlib.util.find_spec("sentencepiece") is not None
 
 try:
-    from algorithm.sentence_similarity_utils import SentenceEmbedder, _mean_pooling, compute_similarity_matrix
+    from algorithm.sentence_similarity_utils import (
+        _mean_pooling,
+        compute_similarity_matrix,
+    )
 
     SENTENCE_SIM_AVAILABLE = True
 except (ImportError, OSError):

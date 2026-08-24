@@ -6,7 +6,14 @@ End-to-end integration tests for the evaluation system.
 
 import pytest
 
-from src.evaluators import CitationEvaluator, ExactMatchEvaluator, create_evaluator
+from src.evaluators import (
+    BertScoreEvaluator,
+    CitationEvaluator,
+    ExactMatchEvaluator,
+    RougeEvaluator,
+    create_evaluator,
+    sort_evaluators_by_priority,
+)
 from src.module import EvaluationResult
 
 try:
@@ -17,66 +24,91 @@ try:
         SummarizationEvaluator,
     )
 except ImportError:
-    from tests.stubs import CompositeScore, MetricBasedEvaluator, ResultAnalyzer, SummarizationEvaluator
+    from tests.stubs import (
+        CompositeScore,
+        MetricBasedEvaluator,
+        ResultAnalyzer,
+        SummarizationEvaluator,
+    )
 
 
 class TestEvaluatorFactory:
     """Tests for evaluator factory function."""
 
-    def test_create_metric_based_evaluator(self):
-        """Test creating metric-based evaluator."""
-        config = {"scoring_method": "metric_based"}
-
-        evaluator = create_evaluator(config)
-
-        assert isinstance(evaluator, MetricBasedEvaluator)
-
     def test_create_exact_match_evaluator(self):
         """Test creating exact match evaluator."""
-        config = {"scoring_method": "exact_match"}
+        config = {"eval_metrics": {"exact_match": {}}}
 
-        evaluator = create_evaluator(config)
+        evaluators = create_evaluator(config)
 
-        assert isinstance(evaluator, ExactMatchEvaluator)
+        assert len(evaluators) == 1
+        assert evaluators[0][0] == "exact_match"
+        assert isinstance(evaluators[0][1], ExactMatchEvaluator)
 
-    def test_create_summarization_evaluator(self):
-        """Test creating summarization evaluator."""
-        config = {"scoring_method": "summarization"}
+    def test_create_rouge_evaluator(self):
+        """Test creating rouge evaluator."""
+        config = {"eval_metrics": {"rouge": {}}}
 
-        evaluator = create_evaluator(config)
+        evaluators = create_evaluator(config)
 
-        assert isinstance(evaluator, SummarizationEvaluator)
+        assert len(evaluators) == 1
+        assert evaluators[0][0] == "rouge"
+        assert isinstance(evaluators[0][1], RougeEvaluator)
+
+    def test_create_bert_score_evaluator(self):
+        """Test creating bert score evaluator."""
+        config = {"eval_metrics": {"bert_score": {}}}
+
+        evaluators = create_evaluator(config)
+
+        assert len(evaluators) == 1
+        assert evaluators[0][0] == "bert_score"
+        assert isinstance(evaluators[0][1], BertScoreEvaluator)
 
     def test_create_citation_evaluator(self):
         """Test creating citation evaluator."""
-        config = {"scoring_method": "citation"}
+        config = {"eval_metrics": {"citation": {}}}
 
-        evaluator = create_evaluator(config)
+        evaluators = create_evaluator(config)
 
-        assert isinstance(evaluator, CitationEvaluator)
+        assert len(evaluators) == 1
+        assert evaluators[0][0] == "citation"
+        assert isinstance(evaluators[0][1], CitationEvaluator)
 
-    def test_create_rouge_alias(self):
-        """Test that 'rouge' is accepted as alias for summarization."""
-        config = {"scoring_method": "rouge"}
+    def test_create_multiple_evaluators_preserve_order(self):
+        """Test creating several evaluators preserves configuration order."""
+        config = {"eval_metrics": {"citation": {}, "rouge": {}, "exact_match": {}}}
 
-        evaluator = create_evaluator(config)
+        evaluators = create_evaluator(config)
 
-        assert isinstance(evaluator, SummarizationEvaluator)
+        assert [name for name, _ in evaluators] == ["citation", "rouge", "exact_match"]
 
-    def test_create_retrieval_alias(self):
-        """Test that 'retrieval' is accepted as alias for citation."""
-        config = {"scoring_method": "retrieval"}
+    def test_sort_evaluators_by_priority(self):
+        """Test evaluator ordering by configured priority."""
+        evaluators = create_evaluator({"eval_metrics": {"rouge": {}, "citation": {}}})
+        config = {
+            "eval_metrics": {
+                "citation": {"priority": 1},
+                "rouge": {"priority": 2},
+            }
+        }
 
-        evaluator = create_evaluator(config)
+        ordered = sort_evaluators_by_priority(evaluators, config)
 
-        assert isinstance(evaluator, CitationEvaluator)
+        assert [name for name, _ in ordered] == ["citation", "rouge"]
 
     def test_create_invalid_scoring_method(self):
-        """Test that invalid scoring method raises error."""
-        config = {"scoring_method": "invalid_method"}
+        """Test that unknown evaluator types are skipped with a warning."""
+        config = {"eval_metrics": {"invalid_method": {}}}
 
-        with pytest.raises(ValueError, match="Unknown scoring method"):
-            create_evaluator(config)
+        evaluators = create_evaluator(config)
+
+        assert evaluators == []
+
+    def test_empty_eval_metrics_returns_empty_list(self):
+        """Test that missing or empty eval_metrics returns an empty list."""
+        assert create_evaluator({}) == []
+        assert create_evaluator({"eval_metrics": ""}) == []
 
 
 class TestEndToEndLensDesign:
@@ -124,13 +156,20 @@ class TestEndToEndLensDesign:
             result = await evaluator.evaluate(task_id, predicted, expected)
             results.append(result)
 
+        # lens_001 (mtf=0.92 >= 0.8, spot=0.005 <= 0.01) and
+        # lens_003 (mtf=0.88, spot=0.008) meet criteria; lens_002 fails both
+        assert results[0].metrics["all_criteria_met"] == 1.0
+        assert results[1].metrics["all_criteria_met"] == 0.0
+        assert results[2].metrics["all_criteria_met"] == 1.0
+
         # Aggregate results
         aggregated = await evaluator.aggregate(results)
 
         # Verify results
         assert aggregated.total_tasks == 3
-        assert aggregated.successful_tasks == 2  # lens_001 and lens_003 pass criteria
-        assert aggregated.avg_score > 0.5
+        assert aggregated.metrics_summary["all_criteria_met"] == pytest.approx(2 / 3)
+        assert "mtf" in aggregated.metrics_summary
+        assert aggregated.metrics_summary["mtf"] == pytest.approx((0.92 + 0.75 + 0.88) / 3)
 
         # Check composite score
         composite = CompositeScore.calculate(results)
@@ -155,13 +194,16 @@ class TestEndToEndSummarization:
         summaries = [
             (
                 "sum_001",
-                "Deep learning has revolutionized optical design. Neural networks can optimize lens parameters faster than traditional methods.",
-                "Deep learning techniques have transformed optical design. AI can optimize lens parameters more efficiently than traditional approaches.",
+                "Deep learning has revolutionized optical design. Neural networks can "
+                "optimize lens parameters faster than traditional methods.",
+                "Deep learning techniques have transformed optical design. AI can optimize "
+                "lens parameters more efficiently than traditional approaches.",
             ),
             (
                 "sum_002",
                 "Machine learning helps with optical system optimization.",
-                "Machine learning assists in optimizing optical systems through iterative refinement and automated parameter tuning.",
+                "Machine learning assists in optimizing optical systems through iterative "
+                "refinement and automated parameter tuning.",
             ),
         ]
 
@@ -248,10 +290,8 @@ class TestEndToEndModelComparison:
         model_a_results = [
             EvaluationResult(
                 task_id=f"task_{i}",
-                success=True,
-                score=0.85 + (i % 3) * 0.05,
+                metrics={"score": 0.85 + (i % 3) * 0.05},
                 execution_time=10.0 + i,
-                cost=0.05 + i * 0.01,
             )
             for i in range(5)
         ]
@@ -259,10 +299,8 @@ class TestEndToEndModelComparison:
         model_b_results = [
             EvaluationResult(
                 task_id=f"task_{i}",
-                success=True,
-                score=0.80 + (i % 3) * 0.03,
+                metrics={"score": 0.80 + (i % 3) * 0.03},
                 execution_time=12.0 + i,
-                cost=0.04 + i * 0.01,
             )
             for i in range(5)
         ]
@@ -311,8 +349,10 @@ class TestErrorHandling:
             expected_output='{"score": 100}',
         )
 
-        assert result.success is False
-        assert result.error is not None
+        # Invalid JSON is treated as an empty prediction — no crash,
+        # metric falls back to its default value of 0.0
+        assert result.task_id == "test"
+        assert result.metrics["score"] == 0.0
 
     @pytest.mark.asyncio
     async def test_missing_metrics_handling(self):
@@ -336,6 +376,7 @@ class TestErrorHandling:
         # Should still produce a result with partial evaluation
         assert "mtf" in result.metrics
         assert "missing_metric" in result.metrics  # Added with default value
+        assert result.metrics["missing_metric"] == 0.0
 
     @pytest.mark.asyncio
     async def test_empty_string_handling(self):
@@ -353,5 +394,4 @@ class TestErrorHandling:
         )
 
         # Should handle gracefully with low score
-        assert result.score >= 0
-        assert result.error is None
+        assert result.metrics.get("composite_score", 0.0) >= 0

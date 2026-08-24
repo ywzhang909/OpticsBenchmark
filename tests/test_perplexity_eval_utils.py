@@ -5,6 +5,7 @@ Tests for compute_perplexity from scripts/utils/perplexity_eval_utils.
 Requires torch and transformers.
 """
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -12,13 +13,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-try:
-    import torch
-    import transformers
-
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
+TORCH_AVAILABLE = all(
+    importlib.util.find_spec(m) is not None for m in ("torch", "transformers")
+)
 
 try:
     from algorithm.perplexity_eval_utils import compute_perplexity

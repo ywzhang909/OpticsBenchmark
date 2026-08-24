@@ -11,10 +11,8 @@ from typing import Any
 import pytest
 
 from src.evaluators import (
-    BertScoreEvaluator,
     CitationEvaluator,
     ExactMatchEvaluator,
-    RougeEvaluator,
 )
 from src.module import EvaluationResult
 
@@ -46,6 +44,12 @@ def summarization_evaluator():
 def citation_evaluator():
     """Create a CitationEvaluator instance."""
     return CitationEvaluator({})
+
+
+@pytest.fixture
+def exact_evaluator() -> ExactMatchEvaluator:
+    """Create an ExactMatchEvaluator instance."""
+    return ExactMatchEvaluator({})
 
 
 @pytest.fixture
