@@ -30,6 +30,10 @@ except ImportError:
     )
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class TestCompositeScoreConfig:
     """Configuration construction and serialisation."""
 

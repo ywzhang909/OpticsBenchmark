@@ -12,6 +12,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+
+# =============================================================================
+# Constants
+# =============================================================================
+
 try:
     from algorithm.cider_eval_utils import compute_cider
 
@@ -19,6 +24,10 @@ try:
 except (ImportError, OSError):
     CIDER_AVAILABLE = False
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 @pytest.mark.skipif(not CIDER_AVAILABLE, reason="cider_eval_utils not available")
 class TestComputeCider:

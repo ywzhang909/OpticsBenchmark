@@ -41,6 +41,10 @@ _GEMINI_PRICES: dict[str, tuple[float, float]] = {
 _DEFAULT_PRICE: tuple[float, float] = (1.25, 5.00)
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class GeminiLLM(BaseLLM):
     """Google Gemini 模型，支持 GoogleProvider（Interactions API）。"""
 

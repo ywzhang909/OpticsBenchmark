@@ -11,6 +11,10 @@ from typing import Any
 
 from src.module import AggregatedResults, EvaluationResult
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class BaseEvaluator(ABC):
     """

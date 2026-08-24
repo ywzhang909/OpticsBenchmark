@@ -13,6 +13,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from algorithm.model_registry import ModelRegistry
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TestModelRegistry:
     """Tests for ModelRegistry class."""

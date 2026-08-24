@@ -43,6 +43,10 @@ _CLAUDE_PRICES: dict[str, tuple[float, float, float, float]] = {
 _DEFAULT_PRICE: tuple[float, float, float, float] = (3.0, 15.0, 3.75, 0.30)
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class ClaudeLLM(BaseLLM):
     """Anthropic Claude 模型，支持 AnthropicProvider（beta Messages API）。"""
 

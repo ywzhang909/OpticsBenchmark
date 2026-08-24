@@ -51,6 +51,10 @@ _LLAMA_PRICES: dict[str, tuple[float, float]] = {
 _DEFAULT_PRICE: tuple[float, float] = (0.18, 0.59)
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class LlamaLLM(BaseLLM):
     """Llama 模型，支持 TogetherAIProvider 和 OpenAIProvider。"""
 

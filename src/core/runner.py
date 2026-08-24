@@ -19,6 +19,10 @@ from typing import Any
 from src.core.config import TaskConfig
 from src.utils import logger
 
+# =============================================================================
+# Data Classes
+# =============================================================================
+
 
 @dataclass
 class TaskInstance:
@@ -59,6 +63,10 @@ class RunnerConfig:
             **kwargs,
         )
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 class AgentRunner:
     """Main runner that coordinates agent execution across task instances.

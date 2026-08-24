@@ -25,6 +25,12 @@ EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
 }
 
 # 评估器按 GPU 开销分类
+
+
+# =============================================================================
+# Constants
+# =============================================================================
+
 GPU_INTENSIVE_EVALUATORS = {"citation", "bert_score"}
 GPU_LIGHT_EVALUATORS = {"rouge"}
 CPU_ONLY_EVALUATORS = {"exact_match"}

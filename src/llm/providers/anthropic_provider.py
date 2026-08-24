@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from anthropic import AsyncAnthropic
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class AnthropicProvider:
     """封装 Anthropic AsyncAnthropic SDK，提供异步调用支持。"""

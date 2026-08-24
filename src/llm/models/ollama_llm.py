@@ -12,6 +12,10 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.ollama_provider import OllamaProvider
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class OllamaLLM(BaseLLM):
     """本地 Ollama 模型，支持 OllamaProvider。"""

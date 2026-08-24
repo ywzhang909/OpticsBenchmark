@@ -8,6 +8,10 @@ from __future__ import annotations
 
 import httpx
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TogetherAIProvider:
     """封装 Together AI httpx.AsyncClient，提供异步调用支持。"""

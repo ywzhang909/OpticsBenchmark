@@ -14,6 +14,10 @@ except ImportError:
     from tests.stubs import SummarizationEvaluator
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class TestROGUEScorer:
     """Tests for ROUGE scorer implementation."""
 

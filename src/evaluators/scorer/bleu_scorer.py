@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from src.algorithm.bleu_eval_utils import compute_bleu
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class BLEUScorer:
     """Scorer that computes BLEU for a single prediction."""

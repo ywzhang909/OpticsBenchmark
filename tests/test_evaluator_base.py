@@ -12,7 +12,7 @@ from src.evaluators import ExactMatchEvaluator
 from src.module import EvaluationResult
 
 # =============================================================================
-# ExactMatchEvaluator Tests
+# Classes
 # =============================================================================
 
 

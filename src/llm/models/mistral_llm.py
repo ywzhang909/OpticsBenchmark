@@ -44,6 +44,10 @@ _MISTRAL_PRICES: dict[str, tuple[float, float]] = {
 _DEFAULT_PRICE: tuple[float, float] = (1.50, 7.50)
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class MistralLLM(BaseLLM):
     """Mistral 模型，支持 MistralProvider（官方 SDK）。"""
 

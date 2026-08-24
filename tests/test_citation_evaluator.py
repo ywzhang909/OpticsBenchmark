@@ -9,6 +9,10 @@ import pytest
 
 from src.evaluators import CitationEvaluator
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TestCitationEvaluator:
     """Tests for CitationEvaluator helper methods."""

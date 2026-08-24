@@ -8,6 +8,10 @@ from __future__ import annotations
 
 import httpx
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class OllamaProvider:
     """封装 Ollama HTTP API，通过 httpx.AsyncClient 实现异步调用。"""

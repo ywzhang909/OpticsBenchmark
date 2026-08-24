@@ -12,6 +12,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+
+# =============================================================================
+# Constants
+# =============================================================================
+
 try:
     from algorithm.bert_score_eval_utils import compute_bert_score
 
@@ -19,6 +24,10 @@ try:
 except (ImportError, OSError):
     BERTSCORE_AVAILABLE = False
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 @pytest.mark.skipif(not BERTSCORE_AVAILABLE, reason="bert_score_eval_utils not available")
 class TestComputeBertScore:

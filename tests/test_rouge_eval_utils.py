@@ -21,6 +21,10 @@ def rouge_module():
     return compute_rouge
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class TestComputeRouge:
     """Tests for compute_rouge function."""
 

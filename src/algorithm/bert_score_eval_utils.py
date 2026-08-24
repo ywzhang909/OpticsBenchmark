@@ -13,6 +13,10 @@ from bert_score import BERTScorer
 
 from src.algorithm.model_registry import model_registry
 
+# =============================================================================
+# Constants
+# =============================================================================
+
 _BERT_SCORER_PREFIX = "bert_scorer"
 
 

@@ -13,6 +13,10 @@ from pathlib import Path
 import loguru
 from loguru import logger as _logger
 
+# =============================================================================
+# Constants
+# =============================================================================
+
 _CONSOLE_FMT = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
     "<level>{level: <4}</level> | "

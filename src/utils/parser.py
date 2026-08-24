@@ -16,6 +16,10 @@ from typing import Any
 
 import yaml
 
+# =============================================================================
+# Data Classes
+# =============================================================================
+
 
 @dataclass
 class ParsedLens:
@@ -28,6 +32,10 @@ class ParsedLens:
     aperture: dict[str, Any]
     metadata: dict[str, Any]
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 class JSONLParser:
     """Parser for JSON Lines format."""

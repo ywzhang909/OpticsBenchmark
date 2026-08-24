@@ -14,6 +14,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+
+# =============================================================================
+# Constants
+# =============================================================================
+
 try:
     import torch
 
@@ -34,6 +39,10 @@ try:
 except (ImportError, OSError):
     SENTENCE_SIM_AVAILABLE = False
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="torch not available")
 class TestMeanPooling:

@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from src.algorithm.bert_score_eval_utils import compute_bert_score, compute_bert_score_batch
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class BERTScoreScorer:
     """Scorer that computes BERTScore precision / recall / F1."""

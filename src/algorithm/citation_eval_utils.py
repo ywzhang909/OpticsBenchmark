@@ -20,6 +20,10 @@ from transformers import (
 from src.algorithm.model_registry import model_registry
 from src.utils.logger import logger
 
+# =============================================================================
+# Constants
+# =============================================================================
+
 OSU_AUTOAIS_MODEL = "osunlp/attrscore-flan-t5-xl"
 _CITATION_NLI_KEY = f"citation_nli:{OSU_AUTOAIS_MODEL}"
 _CITATION_TOKENIZER_KEY = f"citation_nli_tokenizer:{OSU_AUTOAIS_MODEL}"

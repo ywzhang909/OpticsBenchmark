@@ -8,6 +8,10 @@ from typing import Any
 
 from src.algorithm.rouge_eval_utils import compute_rouge
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class ROGUEScorer:
     """Scorer that computes ROUGE metrics."""

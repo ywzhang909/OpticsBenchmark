@@ -14,6 +14,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "algorithm"
 
 from hungarian_algorithm_utils import hungarian_match
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TestHungarianMatch:
     """Tests for hungarian_match function."""

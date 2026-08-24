@@ -13,6 +13,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+
+# =============================================================================
+# Constants
+# =============================================================================
+
 TORCH_AVAILABLE = all(
     importlib.util.find_spec(m) is not None for m in ("torch", "transformers")
 )
@@ -24,6 +29,10 @@ try:
 except (ImportError, OSError):
     PERPLEXITY_AVAILABLE = False
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 @pytest.mark.skipif(
     not PERPLEXITY_AVAILABLE or not TORCH_AVAILABLE,

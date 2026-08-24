@@ -13,6 +13,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from algorithm.bleu_eval_utils import compute_bleu
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TestComputeBleu:
     """Tests for compute_bleu function."""

@@ -40,6 +40,10 @@ _KIMI_PRICES: dict[str, tuple[float, float]] = {
 _DEFAULT_PRICE: tuple[float, float] = (0.60, 2.40)
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class KimiLLM(BaseLLM):
     """Kimi (Moonshot AI) 模型，支持 OpenAIProvider。"""
 

@@ -23,6 +23,10 @@ from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils.general import _dict_to_response_format
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class GlmLLM(BaseLLM):
     """智谱 GLM 模型，支持 OpenAIProvider（OpenAI SDK 兼容）。"""

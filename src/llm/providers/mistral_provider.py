@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from mistralai.client import Mistral
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class MistralProvider:
     """封装 Mistral AI 官方 SDK，提供异步调用支持。"""

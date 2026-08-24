@@ -21,6 +21,10 @@ from src.utils import logger
 from .base import BaseEvaluator
 from .scorer import CitationScorer
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class CitationEvaluator(BaseEvaluator):
     """Evaluator that scores citation quality via NLI-based F1."""

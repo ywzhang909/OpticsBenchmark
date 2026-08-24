@@ -10,6 +10,10 @@ from typing import Any
 
 from google import genai
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class GoogleProvider:
     """封装 Google GenAI Client，通过 client.aio 实现异步调用。"""

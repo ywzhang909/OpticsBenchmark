@@ -15,6 +15,10 @@ from typing import Any
 
 from src.utils import logger
 
+# =============================================================================
+# Constants
+# =============================================================================
+
 try:
     import torch
 
@@ -22,6 +26,10 @@ try:
 except ImportError:
     _CUDA_AVAILABLE = False
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 class ModelRegistry:
     """Thread-safe singleton registry for managing GPU model loading, caching, and unloading.

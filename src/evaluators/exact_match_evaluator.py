@@ -17,6 +17,10 @@ from .base import BaseEvaluator
 from .helpers import _try_parse_json, normalize_dict_key, normalize_text
 from .scorer import ExactMatchScorer
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class ExactMatchEvaluator(BaseEvaluator):
     """Evaluator that checks for exact matches across JSON entries."""

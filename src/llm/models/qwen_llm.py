@@ -15,6 +15,10 @@ from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class QwenLLM(BaseLLM):
     """通义千问模型，支持 OpenAIProvider。"""

@@ -35,6 +35,10 @@ def _mean_pooling(embeddings, attention_mask):
     return (embeddings * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-9)
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class SentenceEmbedder:
     """Transformer-based sentence embedder.
 

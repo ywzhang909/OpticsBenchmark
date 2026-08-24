@@ -11,6 +11,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from algorithm.em_eval_utils import compute_exact_match, normalize_text, record_doi_punctuation
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TestNormalizeText:
     """Tests for normalize_text function."""

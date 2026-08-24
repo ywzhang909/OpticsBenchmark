@@ -10,8 +10,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # =============================================================================
-# Stubs for symbols formerly in src.core.evaluator
+# Classes
 # =============================================================================
+
 
 class MetricBasedEvaluator:
     """Stub — replaced by src.evaluators.* evaluators."""
@@ -194,7 +195,7 @@ class ResultAnalyzer:
 
 
 # =============================================================================
-# Stubs for symbols formerly in src.core.composite_scorer
+# Data Classes
 # =============================================================================
 
 @dataclass
@@ -276,6 +277,10 @@ class VerificationCatch:
     message: str = ""
     score_impact: float = 0.0
 
+
+# =============================================================================
+# Constants
+# =============================================================================
 
 _DEFAULT_DIMENSIONS = [
     ScoringDimension(name="optical_accuracy", weight=0.15, description="", rubric=""),

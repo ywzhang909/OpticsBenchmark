@@ -15,6 +15,10 @@ from pathlib import Path
 
 import pytest
 
+# =============================================================================
+# Constants
+# =============================================================================
+
 SCRIPTS_DIR = str(Path(__file__).resolve().parents[1] / "src")
 
 
@@ -26,6 +30,10 @@ def citation_utils():
 
     return remove_citations, extract_citations
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 class TestRemoveCitations:
     """Tests for remove_citations function."""

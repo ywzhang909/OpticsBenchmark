@@ -24,6 +24,10 @@ from .helpers import (
 )
 from .scorer import BERTScoreScorer
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class BertScoreEvaluator(BaseEvaluator):
     """

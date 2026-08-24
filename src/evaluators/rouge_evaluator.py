@@ -23,6 +23,10 @@ from .helpers import (
 )
 from .scorer import ROGUEScorer
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class RougeEvaluator(BaseEvaluator):
     """

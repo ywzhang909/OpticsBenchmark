@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from openai import AsyncOpenAI
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class OpenAIProvider:
     """封装 OpenAI AsyncOpenAI SDK，提供异步调用支持。"""

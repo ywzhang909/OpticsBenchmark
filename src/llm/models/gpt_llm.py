@@ -51,6 +51,10 @@ def _supports_responses(model_name: str) -> bool:
     return True
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class GPTLLM(BaseLLM):
     """OpenAI GPT 模型，支持 OpenAIProvider。"""
 

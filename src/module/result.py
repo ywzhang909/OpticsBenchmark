@@ -10,6 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# =============================================================================
+# Data Classes
+# =============================================================================
+
 
 @dataclass
 class EvaluationResult:

@@ -19,6 +19,10 @@ from src.core.llm_judge import (
     create_judge_from_config,
 )
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class TestRubric:
     """Rubric construction and formatting."""

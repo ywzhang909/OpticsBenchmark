@@ -6,6 +6,10 @@ from __future__ import annotations
 
 from src.algorithm.citation_eval_utils import compute_citation_f1
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 
 class CitationScorer:
     """Scorer that computes NLI-based citation recall / precision / F1."""

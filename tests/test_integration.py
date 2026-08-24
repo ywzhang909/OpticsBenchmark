@@ -32,6 +32,10 @@ except ImportError:
     )
 
 
+# =============================================================================
+# Classes
+# =============================================================================
+
 class TestEvaluatorFactory:
     """Tests for evaluator factory function."""
 

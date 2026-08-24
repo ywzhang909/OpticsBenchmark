@@ -15,6 +15,10 @@ from typing import Any
 
 from .base_env import BaseEnvironment, EnvironmentConfig, EnvironmentResponse
 
+# =============================================================================
+# Data Classes
+# =============================================================================
+
 
 @dataclass
 class ZOSConnectionConfig:
@@ -24,6 +28,10 @@ class ZOSConnectionConfig:
     timeout: int = 60
     zemax_path: str | None = None
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 class ZOSAPIEnvironment(BaseEnvironment):
     """

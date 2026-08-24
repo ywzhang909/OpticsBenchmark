@@ -13,6 +13,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+# =============================================================================
+# Data Classes
+# =============================================================================
+
 
 @dataclass
 class EnvironmentConfig:
@@ -40,6 +44,10 @@ class EnvironmentResponse:
     metadata: dict[str, Any] = field(default_factory=dict)
     execution_time: float = 0.0
 
+
+# =============================================================================
+# Classes
+# =============================================================================
 
 class BaseEnvironment(ABC):
     """
