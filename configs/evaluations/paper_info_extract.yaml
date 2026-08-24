@@ -2,9 +2,9 @@
 # Evaluation Configuration Template
 # Optis Benchmark — Evaluation Engine Configuration
 #
-# Used by: src/eval.py --eval-config configs/evaluations/template.yaml
+# Used by: src/eval.py --eval-config configs/evaluations/paper_info_extract.yaml
 #
-# The factory function create_evaluator() in src/core/evaluator.py reads
+# The factory function create_evaluator() in src/evaluators/factory.py reads
 # the "eval_metrics" top-level key, which is a dict mapping evaluator type
 # names to their individual sub-configs.
 #

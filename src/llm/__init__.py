@@ -20,6 +20,7 @@ _PROVIDER_MAP: dict[str, str] = {
     "openai": "src.llm.providers.openai_provider:OpenAIProvider",
     "anthropic": "src.llm.providers.anthropic_provider:AnthropicProvider",
     "google": "src.llm.providers.google_provider:GoogleProvider",
+    "mistral": "src.llm.providers.mistral_provider:MistralProvider",
     "ollama": "src.llm.providers.ollama_provider:OllamaProvider",
     "bedrock": "src.llm.providers.bedrock_provider:BedrockProvider",
     "together": "src.llm.providers.together_ai_provider:TogetherAIProvider",

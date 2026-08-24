@@ -1,24 +1,26 @@
+# =============================================================================
 # Optis Benchmark - System Configuration Template
-# Copy this file to customize for your environment.
+# =============================================================================
+#
+# Used by: src/eval.py --system-config configs/system/template.yaml
+#
+# Only the "logging" section is currently consumed by the code
+# (see load_system_config() in src/eval.py). Copy this file and adjust
+# the values to customize logging behavior for your environment.
 
+# =============================================================================
+# Logging Configuration
+# =============================================================================
 logging:
+  # Log level: "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL"
   level: "INFO"
+
+  # Whether to print logs to the console
   console: true
+
+  # Optional settings (uncomment to override defaults):
   # file: "logs/eval.log"
   # format: "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
   # rotation: "100 MB"
   # retention: "30 days"
   # compression: "zip"
-
-# parallel:
-#   max_concurrency: 4
-
-# sandbox:
-#   enabled: false
-#   timeout: 300
-
-# rate_limit:
-#   requests_per_minute: 60
-
-# security:
-#   allow_env_var_expansion: true

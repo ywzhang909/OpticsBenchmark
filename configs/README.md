@@ -24,7 +24,7 @@ configs/
 │   ├── paper_info_extract.yaml
 │   └── template.yaml
 ├── system/
-│   └── template.yaml          # Global settings template: logging, parallel, sandbox, rate-limit
+│   └── template.yaml          # Global settings template (logging)
 └── README.md                  # This file
 ```
 
@@ -38,11 +38,12 @@ Each YAML file defines a complete LLM provider configuration with model, generat
 
 | Field | Description |
 |-------|-------------|
-| `model.provider` | Provider type (`openai`, `anthropic`, `google`, `kimi`, `glm`, `mistral`, `groq`, `bedrock`, `ollama`, `together`) |
-| `model.name` | Model identifier (e.g. `gpt-4o`, `claude-3-5-sonnet-20241022`) |
-| `model.api_key` | `${ENV_VAR}` placeholder for API key |
-| `model.base_url` | API endpoint URL (for compatible providers) |
-| `model.setup` | Generation parameters (temperature, max_tokens, top_p, etc.) |
+| `llm.provider.type` | Provider type (`openai`, `anthropic`, `google`, `mistral`, `bedrock`, `ollama`, `together`) |
+| `llm.provider.api_key` | `${ENV_VAR}` placeholder for API key |
+| `llm.provider.base_url` | API endpoint URL (for compatible providers) |
+| `llm.model.type` | Model class key in `_LLM_MAP` (determines which LLM implementation to use) |
+| `llm.model.name` | Model identifier (e.g. `gpt-4o`, `claude-3-5-sonnet-20241022`) |
+| `llm.setup` | Generation parameters (temperature, max_tokens, top_p, etc.) |
 | `tools` | Enabled capabilities (web_search, file_search, etc.) |
 
 ### Provider-Specific Features
@@ -55,7 +56,6 @@ Each YAML file defines a complete LLM provider configuration with model, generat
 | `kimi` | K3 uses `reasoning_effort`, K2.x uses `thinking`, moonshot-v1-* skips both |
 | `glm` | OpenAI SDK compatible, web_search/file_search/tool_search support |
 | `mistral` | Official `mistralai` SDK, web search support |
-| `groq` | Fast inference, short timeout |
 | `bedrock` | AWS region & credentials |
 | `ollama` | Local endpoint, custom model names |
 | `together` | Together AI API (OpenAI-compatible) |
@@ -64,10 +64,13 @@ Each YAML file defines a complete LLM provider configuration with model, generat
 
 ```yaml
 # configs/llm/GPT_OpenAI.yaml
-model:
-  provider: "openai"
-  name: "gpt-4o"
-  api_key: "${OPENAI_API_KEY}"
+llm:
+  provider:
+    type: "openai"
+    api_key: "${OPENAI_API_KEY}"
+  model:
+    type: "gpt"
+    name: "gpt-4o"
   setup:
     temperature: 0.0
     max_tokens: 4096
@@ -154,15 +157,9 @@ Global runtime settings for the benchmark runner.
 
 | Section | Key Settings |
 |---------|-------------|
-| `logging` | Level (DEBUG–CRITICAL), file path, rotation (100 MB), retention (30 days), compression (zip) |
-| `parallel` | `max_workers` (4), `batch_size` (1), `retry_attempts` (3), `retry_delay` (5s) |
-| `sandbox` | `timeout` (300s), `max_steps` (50), `memory_limit` (4GB); Docker & local backends |
-| `rate_limit` | Global (60 rpm, 1000 rph); per-provider limits (OpenAI 500, Anthropic 50, Groq 100) |
-| `evaluation` | Intermediate & final result directories, metrics to compute |
-| `export` | Format (jsonl/json/csv), compression, metadata inclusion |
-| `security` | File ops, network, subprocess permissions; max file size |
-| `development` | Debug mode, API tracing, mock API |
-| `paths` | Dataset, prompts, scripts, docs, website directories |
+| `logging` | Level (`DEBUG`–`CRITICAL`), console output, optional file path, format, rotation (default 100 MB), retention (default 30 days), compression (zip) |
+
+Only `logging` is currently consumed by the code (see `load_system_config()` in `src/eval.py`); additional sections are planned but not yet implemented.
 
 ---
 
@@ -179,4 +176,4 @@ uv run python src/llm_pred.py \
 
 ## Known Issues
 
-- `system/template.yaml` is a minimal template with most settings commented out — not a full config.
+- `system/template.yaml` only defines the `logging` section; additional runtime settings are planned but not yet implemented.

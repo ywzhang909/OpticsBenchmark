@@ -16,7 +16,7 @@ llm:
   # ── Provider Configuration ──────────────────────────────────────────────────
   provider:
     # Provider type, corresponds to a key in _PROVIDER_MAP
-    # Options: "openai" | "anthropic" | "google" | "groq" | "ollama" | "bedrock" | "together"
+    # Options: "openai" | "anthropic" | "google" | "ollama" | "bedrock" | "together"
     type: "openai"
 
     # API key, read from environment variable using ${ENV_VAR} syntax
@@ -28,7 +28,7 @@ llm:
   # ── Model Configuration ──────────────────────────────────────────────────────
   model:
     # Model type, corresponds to a key in _LLM_MAP, determines which LLM class to use
-    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "groq" | "ollama" | "glm" | "kimi"
+    # Options: "gpt" | "qwen" | "deepseek" | "llama" | "mistral" | "gemini" | "claude" | "ollama" | "glm" | "kimi"
     type: "deepseek"
 
     # Model name, passed as the model parameter to the API

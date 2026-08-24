@@ -4,7 +4,7 @@
 #
 # Used by: src/eval.py --eval-config configs/evaluations/template.yaml
 #
-# The factory function create_evaluator() in src/core/evaluator.py reads
+# The factory function create_evaluator() in src/evaluators/factory.py reads
 # the "eval_metrics" top-level key, which is a dict mapping evaluator type
 # names to their individual sub-configs.
 #
@@ -16,9 +16,6 @@
 #   rouge         — ROUGE-1/2/L precision/recall/F1 for text fields
 #   bert_score    — BERTScore precision/recall/F1 using transformer embeddings
 #   citation      — Precision, recall, F1 for citation/retrieval tasks
-#
-# Composite scoring (dimensions, anti-patterns, LLM judge):
-#   See configs/eval_scoring.yaml and src/core/composite_scorer.py
 # =============================================================================
 
 # ---------------------------------------------------------------------------
