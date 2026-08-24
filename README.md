@@ -181,24 +181,24 @@ OpticsBenchmark/
 │   │   ├── __init__.py                    # Provider/LLM registry + factory functions
 │   │   ├── base.py                        # BaseLLM ABC
 │   │   ├── models/                        # Model-specific LLM implementations
-│   │   │   ├── ClaudeLLM.py               # Anthropic Claude (official SDK)
-│   │   │   ├── DeepSeekLLM.py             # DeepSeek (OpenAI-compatible)
-│   │   │   ├── GeminiLLM.py               # Google Gemini (Interactions API)
-│   │   │   ├── GlmLLM.py                  # Zhipu GLM (OpenAI SDK)
-│   │   │   ├── GPTLLM.py                  # OpenAI GPT (Chat Completions + Responses)
-│   │   │   ├── KimiLLM.py                 # Moonshot Kimi (OpenAI-compatible)
-│   │   │   ├── LlamaLLM.py                # Meta Llama (Together AI + OpenAI SDK)
-│   │   │   ├── MistralLLM.py              # Mistral (official mistralai SDK)
-│   │   │   ├── OllamaLLM.py               # Ollama (local)
-│   │   │   └── QwenLLM.py                 # Alibaba Qwen (OpenAI-compatible)
+│   │   │   ├── claude_llm.py               # Anthropic Claude (official SDK)
+│   │   │   ├── deepseek_llm.py             # DeepSeek (OpenAI-compatible)
+│   │   │   ├── gemini_llm.py               # Google Gemini (Interactions API)
+│   │   │   ├── glm_llm.py                  # Zhipu GLM (OpenAI SDK)
+│   │   │   ├── gpt_llm.py                  # OpenAI GPT (Chat Completions + Responses)
+│   │   │   ├── kimi_llm.py                 # Moonshot Kimi (OpenAI-compatible)
+│   │   │   ├── llama_llm.py                # Meta Llama (Together AI + OpenAI SDK)
+│   │   │   ├── mistral_llm.py              # Mistral (official mistralai SDK)
+│   │   │   ├── ollama_llm.py               # Ollama (local)
+│   │   │   └── qwen_llm.py                 # Alibaba Qwen (OpenAI-compatible)
 │   │   └── providers/                     # Provider-specific API clients
-│   │       ├── AnthropicProvider.py        # Async Anthropic SDK wrapper
-│   │       ├── BedrockProvider.py          # Async AWS Bedrock boto3 wrapper
-│   │       ├── GoogleProvider.py           # Async Google GenAI client wrapper
-│   │       ├── MistralProvider.py          # Async Mistral SDK wrapper
-│   │       ├── OllamaProvider.py           # Async Ollama HTTP API wrapper
-│   │       ├── OpenAIProvider.py           # Async OpenAI-compatible SDK wrapper
-│   │       └── TogetherAIProvider.py       # Async Together AI HTTP API wrapper
+│   │       ├── anthropic_provider.py        # Async Anthropic SDK wrapper
+│   │       ├── bedrock_provider.py          # Async AWS Bedrock boto3 wrapper
+│   │       ├── google_provider.py           # Async Google GenAI client wrapper
+│   │       ├── mistral_provider.py          # Async Mistral SDK wrapper
+│   │       ├── ollama_provider.py           # Async Ollama HTTP API wrapper
+│   │       ├── openai_provider.py           # Async OpenAI-compatible SDK wrapper
+│   │       └── together_ai_provider.py       # Async Together AI HTTP API wrapper
 │   ├── environments/
 │   │   ├── base_env.py                    # BaseEnvironment ABC + LocalEnvironment
 │   │   └── zos_env.py                     # Zemax ZOS-API integration (stub)
@@ -289,11 +289,11 @@ See [`configs/README.md`](configs/README.md) for detailed field documentation.
 | Alibaba Qwen (3.5/3.7) | `configs/llm/qwen_openai.yaml` | `openai` (compatible) |
 | Meta Llama (4 Scout) | `configs/llm/llama_openai.yaml` | `openai` (Together AI) |
 | Mistral | `configs/llm/mistral_official.yaml` | `mistralai` |
-| Ollama (local) | via `src/llm/models/OllamaLLM.py` | `httpx` |
-| AWS Bedrock | via `src/llm/providers/BedrockProvider.py` | `boto3` |
-| Together AI | via `src/llm/providers/TogetherAIProvider.py` | `openai` (compatible) |
+| Ollama (local) | via `src/llm/models/ollama_llm.py` | `httpx` |
+| AWS Bedrock | via `src/llm/providers/bedrock_provider.py` | `boto3` |
+| Together AI | via `src/llm/providers/together_ai_provider.py` | `openai` (compatible) |
 
-> **Note:** Groq is registered in the provider/LLM maps (`src/llm/__init__.py`) but `GroqProvider.py` and `GroqLLM.py` have not been implemented yet.
+> **Note:** Groq is not currently supported — it is not registered in the provider/LLM maps (`src/llm/__init__.py`).
 
 Per-provider features:
 - **OpenAI**: Chat Completions API + Responses API (selectable via `api_method`); structured output via `response_format`

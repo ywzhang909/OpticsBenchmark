@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
-from src.llm.providers.OpenAIProvider import OpenAIProvider
+from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils.general import _dict_to_response_format
 
 
@@ -36,6 +36,24 @@ class GlmLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """发送聊天请求。
+
+        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            provider: Provider 实例（须为 OpenAIProvider）
+            **kwargs: 额外参数:
+                - setup: API 调用参数字典（temperature、max_tokens 等）
+                - gold_answer_path: gold answer JSON 路径，用于结构化输出
+                - 其他透传给底层 API 的参数
+
+        Returns:
+            {"content": str, "usage": dict, "cost": float, "latency": float}
+
+        Raises:
+            ValueError: provider 类型不受支持时
+        """
         if not isinstance(provider, OpenAIProvider):
             raise ValueError(
                 f"GlmLLM 不支持 provider: {type(provider).__name__}，"
@@ -234,5 +252,6 @@ class GlmLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
+        """关闭 Provider 连接。"""
         if isinstance(provider, OpenAIProvider):
             await provider.close()

@@ -10,17 +10,16 @@ from __future__ import annotations
 from typing import Any
 
 _MODEL_CLASSES: dict[str, str] = {
-    "QwenLLM": "src.llm.models.QwenLLM",
-    "DeepSeekLLM": "src.llm.models.DeepSeekLLM",
-    "LlamaLLM": "src.llm.models.LlamaLLM",
-    "MistralLLM": "src.llm.models.MistralLLM",
-    "GeminiLLM": "src.llm.models.GeminiLLM",
-    "ClaudeLLM": "src.llm.models.ClaudeLLM",
-    "GroqLLM": "src.llm.models.GroqLLM",
-    "OllamaLLM": "src.llm.models.OllamaLLM",
-    "GlmLLM": "src.llm.models.GlmLLM",
-    "GPTLLM": "src.llm.models.GPTLLM",
-    "KimiLLM": "src.llm.models.KimiLLM",
+    "QwenLLM": "src.llm.models.qwen_llm",
+    "DeepSeekLLM": "src.llm.models.deepseek_llm",
+    "LlamaLLM": "src.llm.models.llama_llm",
+    "MistralLLM": "src.llm.models.mistral_llm",
+    "GeminiLLM": "src.llm.models.gemini_llm",
+    "ClaudeLLM": "src.llm.models.claude_llm",
+    "OllamaLLM": "src.llm.models.ollama_llm",
+    "GlmLLM": "src.llm.models.glm_llm",
+    "GPTLLM": "src.llm.models.gpt_llm",
+    "KimiLLM": "src.llm.models.kimi_llm",
 }
 
 __all__ = list(_MODEL_CLASSES.keys())

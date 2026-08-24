@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
-from src.llm.providers.GoogleProvider import GoogleProvider
+from src.llm.providers.google_provider import GoogleProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
@@ -53,6 +53,24 @@ class GeminiLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """发送聊天请求。
+
+        根据 provider 类型分发到对应实现，仅支持 GoogleProvider。
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            provider: Provider 实例（须为 GoogleProvider）
+            **kwargs: 额外参数:
+                - setup: API 调用参数字典（temperature、max_tokens 等）
+                - gold_answer_path: gold answer JSON 路径，用于结构化输出
+                - 其他透传给底层 API 的参数
+
+        Returns:
+            {"content": str, "usage": dict, "cost": float, "latency": float}
+
+        Raises:
+            ValueError: provider 类型不受支持时
+        """
         if isinstance(provider, GoogleProvider):
             return await self._chat_google(messages, provider, **kwargs)
         raise ValueError(
@@ -103,9 +121,9 @@ class GeminiLLM(BaseLLM):
                 request_kwargs["response_format"] = None
             else:
                 request_kwargs["response_format"] = {
-                    "type" : "text",
-                    "mime_type" : "application/json",
-                    "schema" : schema,
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": schema,
                 }
                 request_kwargs["response_mime_type"] = "application/json"
 
@@ -209,7 +227,6 @@ class GeminiLLM(BaseLLM):
             "mime_type": media_type,
         }
 
-
     def _build_structured_output(
         self, gold_answer_path: str | None
     ) -> dict[str, Any] | None:
@@ -245,6 +262,6 @@ class GeminiLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
+        """关闭 Provider 连接。"""
         if isinstance(provider, GoogleProvider):
             await provider.close()
-

@@ -10,41 +10,41 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.llm.base import BaseLLM, build_response_format
+
 # ---------------------------------------------------------------------------
 # Provider / LLM 类型映射（延迟导入）
 # ---------------------------------------------------------------------------
 
 _PROVIDER_MAP: dict[str, str] = {
-    "openai": "src.llm.providers.OpenAIProvider",
-    "anthropic": "src.llm.providers.AnthropicProvider",
-    "google": "src.llm.providers.GoogleProvider",
-    "groq": "src.llm.providers.GroqProvider",
-    "ollama": "src.llm.providers.OllamaProvider",
-    "bedrock": "src.llm.providers.BedrockProvider",
-    "together": "src.llm.providers.TogetherAIProvider",
+    "openai": "src.llm.providers.openai_provider:OpenAIProvider",
+    "anthropic": "src.llm.providers.anthropic_provider:AnthropicProvider",
+    "google": "src.llm.providers.google_provider:GoogleProvider",
+    "ollama": "src.llm.providers.ollama_provider:OllamaProvider",
+    "bedrock": "src.llm.providers.bedrock_provider:BedrockProvider",
+    "together": "src.llm.providers.together_ai_provider:TogetherAIProvider",
 }
 
 _LLM_MAP: dict[str, str] = {
-    "qwen": "src.llm.models.QwenLLM",
-    "deepseek": "src.llm.models.DeepSeekLLM",
-    "llama": "src.llm.models.LlamaLLM",
-    "mistral": "src.llm.models.MistralLLM",
-    "gemini": "src.llm.models.GeminiLLM",
-    "claude": "src.llm.models.ClaudeLLM",
-    "groq": "src.llm.models.GroqLLM",
-    "ollama": "src.llm.models.OllamaLLM",
-    "glm": "src.llm.models.GlmLLM",
-    "gpt": "src.llm.models.GPTLLM",
-    "kimi": "src.llm.models.KimiLLM",
+    "qwen": "src.llm.models.qwen_llm:QwenLLM",
+    "deepseek": "src.llm.models.deepseek_llm:DeepSeekLLM",
+    "llama": "src.llm.models.llama_llm:LlamaLLM",
+    "mistral": "src.llm.models.mistral_llm:MistralLLM",
+    "gemini": "src.llm.models.gemini_llm:GeminiLLM",
+    "claude": "src.llm.models.claude_llm:ClaudeLLM",
+    "ollama": "src.llm.models.ollama_llm:OllamaLLM",
+    "glm": "src.llm.models.glm_llm:GlmLLM",
+    "gpt": "src.llm.models.gpt_llm:GPTLLM",
+    "kimi": "src.llm.models.kimi_llm:KimiLLM",
 }
 
 
-def _lazy_import(dotted_path: str) -> Any:
-    """按需导入：'src.llm.providers.OpenAIProvider' -> OpenAIProvider 类。"""
+def _lazy_import(target: str) -> Any:
+    """按需导入：'src.llm.providers.openai_provider:OpenAIProvider' -> 类对象。"""
     import importlib
 
-    _, _, class_name = dotted_path.rpartition(".")
-    mod = importlib.import_module(dotted_path)
+    module_path, _, class_name = target.partition(":")
+    mod = importlib.import_module(module_path)
     return getattr(mod, class_name)
 
 

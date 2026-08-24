@@ -6,13 +6,13 @@ QwenLLM - 通义千问模型调用类
 
 from __future__ import annotations
 
-import time
 import base64
+import time
 from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
-from src.llm.providers.OpenAIProvider import OpenAIProvider
+from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
 
 
@@ -31,6 +31,23 @@ class QwenLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """发送聊天请求。
+
+        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            provider: Provider 实例（须为 OpenAIProvider）
+            **kwargs: 额外参数:
+                - setup: API 调用参数字典（temperature、max_tokens 等）
+                - 其他透传给底层 API 的参数
+
+        Returns:
+            {"content": str, "usage": dict, "cost": float, "latency": float}
+
+        Raises:
+            ValueError: provider 类型不受支持时
+        """
         if isinstance(provider, OpenAIProvider):
             return await self._chat_openai(messages, provider, **kwargs)
         raise ValueError(
@@ -62,7 +79,7 @@ class QwenLLM(BaseLLM):
                     with open(value, "rb") as f:
                         pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
                     user_content.append({
-                        "type": "file", 
+                        "type": "file",
                         "file": {
                             "file_data": f"data:application/pdf;base64,{pdf_base64}",
                             "file_name": Path(value).name,
@@ -116,7 +133,9 @@ class QwenLLM(BaseLLM):
                 tools.append({
                     "type": "mcp",
                     "server_label": tools_config["mcp_server"].get("server_label", None),
-                    "server_description": tools_config["mcp_server"].get("server_description", None),
+                    "server_description": tools_config["mcp_server"].get(
+                        "server_description", None
+                    ),
                     "server_url": tools_config["mcp_server"].get("server_url", None),
                     "require_approval": tools_config["mcp_server"].get("require_approval", None),
                 })
@@ -196,5 +215,6 @@ class QwenLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
+        """关闭 Provider 连接。"""
         if isinstance(provider, OpenAIProvider):
             await provider.close()

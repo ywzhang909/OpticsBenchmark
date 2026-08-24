@@ -53,24 +53,24 @@ src/
 │   ├── __init__.py
 │   ├── base.py               # BaseLLM ABC
 │   ├── models/               # Model-specific LLM implementations
-│   │   ├── ClaudeLLM.py      # Anthropic Claude (official SDK)
-│   │   ├── DeepSeekLLM.py    # DeepSeek (OpenAI-compatible)
-│   │   ├── GeminiLLM.py      # Google Gemini (Interactions API)
-│   │   ├── GlmLLM.py         # Zhipu GLM (OpenAI SDK)
-│   │   ├── GPTLLM.py         # OpenAI GPT (Chat Completions + Responses)
-│   │   ├── KimiLLM.py        # Moonshot Kimi (OpenAI-compatible)
-│   │   ├── LlamaLLM.py       # Meta Llama (Together AI + OpenAI SDK)
-│   │   ├── MistralLLM.py     # Mistral (official mistralai SDK)
-│   │   ├── OllamaLLM.py      # Ollama (local)
-│   │   └── QwenLLM.py        # Alibaba Qwen (OpenAI-compatible)
+│   │   ├── claude_llm.py      # Anthropic Claude (official SDK)
+│   │   ├── deepseek_llm.py    # DeepSeek (OpenAI-compatible)
+│   │   ├── gemini_llm.py      # Google Gemini (Interactions API)
+│   │   ├── glm_llm.py         # Zhipu GLM (OpenAI SDK)
+│   │   ├── gpt_llm.py         # OpenAI GPT (Chat Completions + Responses)
+│   │   ├── kimi_llm.py        # Moonshot Kimi (OpenAI-compatible)
+│   │   ├── llama_llm.py       # Meta Llama (Together AI + OpenAI SDK)
+│   │   ├── mistral_llm.py     # Mistral (official mistralai SDK)
+│   │   ├── ollama_llm.py      # Ollama (local)
+│   │   └── qwen_llm.py        # Alibaba Qwen (OpenAI-compatible)
 │   └── providers/            # Provider-specific API clients
-│       ├── AnthropicProvider.py
-│       ├── BedrockProvider.py
-│       ├── GoogleProvider.py
-│       ├── MistralProvider.py
-│       ├── OllamaProvider.py
-│       ├── OpenAIProvider.py
-│       └── TogetherAIProvider.py
+│       ├── anthropic_provider.py
+│       ├── bedrock_provider.py
+│       ├── google_provider.py
+│       ├── mistral_provider.py
+│       ├── ollama_provider.py
+│       ├── openai_provider.py
+│       └── together_ai_provider.py
 │
 ├── environments/              # Execution sandboxes
 │   ├── __init__.py
@@ -205,23 +205,23 @@ Model-specific implementations, each wrapping an official or compatible SDK.
 | Module | Key Symbols | Description |
 |--------|-------------|-------------|
 | `base.py` | `BaseLLM` (ABC), `Message`, `LLMOutput`, `LLMConfig` | Base LLM interface, data models |
-| `models/ClaudeLLM.py` | `ClaudeLLM` | Anthropic Claude via `anthropic` SDK |
-| `models/DeepSeekLLM.py` | `DeepSeekLLM` | DeepSeek via OpenAI-compatible API |
-| `models/GeminiLLM.py` | `GeminiLLM` | Google Gemini via Interactions API |
-| `models/GlmLLM.py` | `GlmLLM` | Zhipu GLM via OpenAI SDK |
-| `models/GPTLLM.py` | `GPTLLM` | OpenAI GPT (Chat Completions + Responses) |
-| `models/KimiLLM.py` | `KimiLLM` | Moonshot Kimi via OpenAI-compatible API |
-| `models/LlamaLLM.py` | `LlamaLLM` | Meta Llama via Together AI or OpenAI SDK |
-| `models/MistralLLM.py` | `MistralLLM` | Mistral via official `mistralai` SDK |
-| `models/OllamaLLM.py` | `OllamaLLM` | Ollama local inference via httpx |
-| `models/QwenLLM.py` | `QwenLLM` | Alibaba Qwen via OpenAI-compatible API |
-| `providers/AnthropicProvider.py` | `AnthropicProvider` | Wraps `anthropic.AsyncAnthropic` |
-| `providers/BedrockProvider.py` | `BedrockProvider` | Wraps `boto3` Bedrock Runtime |
-| `providers/GoogleProvider.py` | `GoogleProvider` | Wraps `google.genai.Client` |
-| `providers/MistralProvider.py` | `MistralProvider` | Wraps `mistralai.Mistral` |
-| `providers/OllamaProvider.py` | `OllamaProvider` | Wraps httpx for Ollama API |
-| `providers/OpenAIProvider.py` | `OpenAIProvider` | Wraps `openai.AsyncOpenAI` |
-| `providers/TogetherAIProvider.py` | `TogetherAIProvider` | Wraps httpx for Together AI API |
+| `models/claude_llm.py` | `ClaudeLLM` | Anthropic Claude via `anthropic` SDK |
+| `models/deepseek_llm.py` | `DeepSeekLLM` | DeepSeek via OpenAI-compatible API |
+| `models/gemini_llm.py` | `GeminiLLM` | Google Gemini via Interactions API |
+| `models/glm_llm.py` | `GlmLLM` | Zhipu GLM via OpenAI SDK |
+| `models/gpt_llm.py` | `GPTLLM` | OpenAI GPT (Chat Completions + Responses) |
+| `models/kimi_llm.py` | `KimiLLM` | Moonshot Kimi via OpenAI-compatible API |
+| `models/llama_llm.py` | `LlamaLLM` | Meta Llama via Together AI or OpenAI SDK |
+| `models/mistral_llm.py` | `MistralLLM` | Mistral via official `mistralai` SDK |
+| `models/ollama_llm.py` | `OllamaLLM` | Ollama local inference via httpx |
+| `models/qwen_llm.py` | `QwenLLM` | Alibaba Qwen via OpenAI-compatible API |
+| `providers/anthropic_provider.py` | `AnthropicProvider` | Wraps `anthropic.AsyncAnthropic` |
+| `providers/bedrock_provider.py` | `BedrockProvider` | Wraps `boto3` Bedrock Runtime |
+| `providers/google_provider.py` | `GoogleProvider` | Wraps `google.genai.Client` |
+| `providers/mistral_provider.py` | `MistralProvider` | Wraps `mistralai.Mistral` |
+| `providers/ollama_provider.py` | `OllamaProvider` | Wraps httpx for Ollama API |
+| `providers/openai_provider.py` | `OpenAIProvider` | Wraps `openai.AsyncOpenAI` |
+| `providers/together_ai_provider.py` | `TogetherAIProvider` | Wraps httpx for Together AI API |
 
 ---
 

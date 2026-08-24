@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
-from src.llm.providers.MistralProvider import MistralProvider
+from src.llm.providers.mistral_provider import MistralProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
@@ -56,6 +56,24 @@ class MistralLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """发送聊天请求。
+
+        根据 provider 类型分发到对应实现，仅支持 MistralProvider。
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            provider: Provider 实例（须为 MistralProvider）
+            **kwargs: 额外参数:
+                - setup: API 调用参数字典（temperature、max_tokens 等）
+                - gold_answer_path: gold answer JSON 路径，用于结构化输出
+                - 其他透传给底层 API 的参数
+
+        Returns:
+            {"content": str, "usage": dict, "cost": float, "latency": float}
+
+        Raises:
+            ValueError: provider 类型不受支持时
+        """
         if isinstance(provider, MistralProvider):
             return await self._chat_mistral(messages, provider, **kwargs)
         raise ValueError(
@@ -180,7 +198,7 @@ class MistralLLM(BaseLLM):
                 elif key == "location":
                     file_path = Path(value)
                     file_object = await provider.client.files.upload(
-                        file = {
+                        file={
                             "file_name": file_path.name,
                             "content": open(file_path, "rb")
                         }
@@ -254,5 +272,6 @@ class MistralLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
+        """关闭 Provider 连接。"""
         if isinstance(provider, MistralProvider):
             await provider.close()

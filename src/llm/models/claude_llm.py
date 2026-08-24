@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
-from src.llm.providers.AnthropicProvider import AnthropicProvider
+from src.llm.providers.anthropic_provider import AnthropicProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
@@ -55,6 +55,24 @@ class ClaudeLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """发送聊天请求。
+
+        根据 provider 类型分发到对应实现，仅支持 AnthropicProvider。
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            provider: Provider 实例（须为 AnthropicProvider）
+            **kwargs: 额外参数:
+                - setup: API 调用参数字典（temperature、max_tokens 等）
+                - gold_answer_path: gold answer JSON 路径，用于结构化输出
+                - 其他透传给底层 API 的参数
+
+        Returns:
+            {"content": str, "usage": dict, "cost": float, "latency": float}
+
+        Raises:
+            ValueError: provider 类型不受支持时
+        """
         if isinstance(provider, AnthropicProvider):
             return await self._chat_anthropic(messages, provider, **kwargs)
         raise ValueError(
@@ -122,8 +140,7 @@ class ClaudeLLM(BaseLLM):
             built = self._build_tools(tools_config)
             if built.get("tools"):
                 request_kwargs["tools"] = built["tools"]
-            request_kwargs["tool_choice"] = setup.get("tool_choice","auto")
-
+            request_kwargs["tool_choice"] = setup.get("tool_choice", "auto")
 
         try:
             response = await provider.client.beta.messages.create(**request_kwargs)
@@ -215,9 +232,6 @@ class ClaudeLLM(BaseLLM):
         file_path = Path(path)
         if not file_path.exists():
             raise FileNotFoundError(f"Document file not found: {path}")
-
-        # Use the full filename (including extension) as the document title
-        title = file_path.name
 
         # Determine MIME type; default to application/pdf for Claude document blocks
         media_type = mimetypes.guess_type(file_path.name)[0] or "application/pdf"
@@ -358,5 +372,6 @@ class ClaudeLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
+        """关闭 Provider 连接。"""
         if isinstance(provider, AnthropicProvider):
             await provider.close()

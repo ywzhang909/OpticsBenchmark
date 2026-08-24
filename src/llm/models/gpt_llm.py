@@ -18,13 +18,13 @@ input/output_tokens。
 
 from __future__ import annotations
 
-import time
 import json
+import time
 from pathlib import Path
 from typing import Any
 
 from src.llm.base import BaseLLM
-from src.llm.providers.OpenAIProvider import OpenAIProvider
+from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
@@ -63,6 +63,24 @@ class GPTLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """发送聊天请求。
+
+        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            provider: Provider 实例（须为 OpenAIProvider）
+            **kwargs: 额外参数:
+                - setup: API 调用参数字典（temperature、max_tokens 等）
+                - gold_answer_path: gold answer JSON 路径，用于结构化输出
+                - 其他透传给底层 API 的参数
+
+        Returns:
+            {"content": str, "usage": dict, "cost": float, "latency": float}
+
+        Raises:
+            ValueError: provider 类型不受支持时
+        """
         if not isinstance(provider, OpenAIProvider):
             raise ValueError(
                 f"GPTLLM 不支持 provider: {type(provider).__name__}，仅支持 OpenAIProvider"
@@ -74,7 +92,7 @@ class GPTLLM(BaseLLM):
             response_format = self._build_structured_output(gold_answer_path)
             if response_format:
                 setup["text_format"] = response_format
-                
+
         api_method = setup.get("api_method", "chat_completions")
 
         if api_method not in _VALID_API_METHODS:
@@ -110,7 +128,7 @@ class GPTLLM(BaseLLM):
                 if key == "prompt":
                     content = {"type": "text", "text": value}
                     if self.prompt_cache_key:
-                        content["prompt_cache_breakpoint"] = {"mode":"explicit"}
+                        content["prompt_cache_breakpoint"] = {"mode": "explicit"}
                     user_content.insert(0, content)
                 elif key == "location":
                     file_object = await provider.client.files.create(
@@ -197,7 +215,7 @@ class GPTLLM(BaseLLM):
                 if key == "prompt":
                     content = {"type": "input_text", "text": value}
                     if self.prompt_cache_key:
-                        content["prompt_cache_breakpoint"] = {"mode":"explicit"}
+                        content["prompt_cache_breakpoint"] = {"mode": "explicit"}
                     user_content.insert(0, content)
                 elif key == "location":
                     file_object = await provider.client.files.create(
@@ -360,5 +378,6 @@ class GPTLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
+        """关闭 Provider 连接。"""
         if isinstance(provider, OpenAIProvider):
             await provider.close()

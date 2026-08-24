@@ -10,13 +10,12 @@ from __future__ import annotations
 from typing import Any
 
 _PROVIDER_CLASSES: dict[str, str] = {
-    "OpenAIProvider": "src.llm.providers.OpenAIProvider",
-    "AnthropicProvider": "src.llm.providers.AnthropicProvider",
-    "GoogleProvider": "src.llm.providers.GoogleProvider",
-    "GroqProvider": "src.llm.providers.GroqProvider",
-    "OllamaProvider": "src.llm.providers.OllamaProvider",
-    "BedrockProvider": "src.llm.providers.BedrockProvider",
-    "TogetherAIProvider": "src.llm.providers.TogetherAIProvider",
+    "OpenAIProvider": "src.llm.providers.openai_provider",
+    "AnthropicProvider": "src.llm.providers.anthropic_provider",
+    "GoogleProvider": "src.llm.providers.google_provider",
+    "OllamaProvider": "src.llm.providers.ollama_provider",
+    "BedrockProvider": "src.llm.providers.bedrock_provider",
+    "TogetherAIProvider": "src.llm.providers.together_ai_provider",
 }
 
 __all__ = list(_PROVIDER_CLASSES.keys())
