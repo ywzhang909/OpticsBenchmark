@@ -525,6 +525,61 @@ uv run pytest tests/ --ignore=tests/test_bert_score_eval.py
 
 ---
 
+## Fine-tuning (OpenAI)
+
+Optis Benchmark includes a two-stage fine-tuning pipeline for OpenAI models, allowing you to train and evaluate model performance on your own optical science data.
+
+### Workflow
+
+```bash
+# Stage A: Convert benchmark data to OpenAI fine-tuning JSONL format
+python utils/build_finetune_dataset.py \
+  -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \
+  -p prompts/paper_info_extract/zero-shot_v1.0.txt \
+  -d dataset/paper_info_extract/dataset_json/dataset_v1.json \
+  -o results/finetune/train.jsonl --val-ratio 0.2
+
+# Stage B: Run fine-tuning job
+# Create job and monitor until completion
+python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --wait
+
+# Or: create job without blocking
+python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml
+
+# Check job status
+python src/finetune.py --status ftjob-abc123
+
+# List recent jobs
+python src/finetune.py --list
+
+# Export training event logs (step/loss/lr)
+python src/finetune.py --events ftjob-abc123 -o results/finetune/events.json
+
+# Cancel a running job
+python src/finetune.py --cancel ftjob-abc123
+
+# Dry-run: validate config and data files without making API calls
+python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --dry-run
+```
+
+### Using the Fine-tuned Model
+
+After the job succeeds, the `ft:` model name is saved to `results/finetune/job_status.json`. Copy this model name into `configs/llm/GPT_OpenAI.yaml` as `llm.model.name`, then re-run the evaluation pipeline:
+
+```bash
+# Run inference with the fine-tuned model
+python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml
+
+# Evaluate and compare with baseline
+python src/eval.py -i results/llm_outputs.jsonl \
+  -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \
+  -e configs/evaluations/paper_info_extract.yaml
+```
+
+For details, see [docs/fine_tuning.md](docs/fine_tuning.md).
+
+---
+
 ## Dependencies
 
 **Core**: `openai`, `anthropic`, `google-genai`, `mistralai`, `pydantic`, `pyyaml`, `python-dotenv`, `pandas`, `numpy`, `scipy`, `loguru`, `tqdm`, `httpx`, `aiohttp`, `bert-score`, `rouge-score`, `sentencepiece`, `tiktoken`, `pypdf2`, `python-docx`, `accelerate`, `protobuf`

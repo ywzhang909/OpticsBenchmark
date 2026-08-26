@@ -52,6 +52,7 @@ dependencies = [
     "protobuf>=7.35.1",
     "google-genai>=1.0.0",
     "mistralai>=2.9.3",
+    "dashscope>=1.20.0",
 ]
 
 [project.optional-dependencies]

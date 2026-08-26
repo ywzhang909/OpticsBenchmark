@@ -1,0 +1,23 @@
+# Fine-tuning config for testing src/finetune.py code paths
+llm:
+  provider:
+    type: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+
+fine_tuning:
+  training_file: "dataset/fine_tune/paper_info_extract/test.jsonl"
+  validation_file: null
+  base_model: "gpt-4o-mini-2024-07-18"
+  method: "supervised"
+  suffix: "optis-test"
+  seed: null
+  hyperparameters:
+    n_epochs: 3
+    batch_size: "auto"
+    learning_rate_multiplier: "auto"
+
+execution:
+  poll_interval: 30
+  poll_timeout: 3600
+  status_output_path: "results/finetune/status.json"

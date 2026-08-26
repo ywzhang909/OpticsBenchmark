@@ -24,6 +24,7 @@ _PROVIDER_MAP: dict[str, str] = {
     "ollama": "src.llm.providers.ollama_provider:OllamaProvider",
     "bedrock": "src.llm.providers.bedrock_provider:BedrockProvider",
     "together": "src.llm.providers.together_ai_provider:TogetherAIProvider",
+    "dashscope": "src.llm.providers.dashscope_provider:DashScopeProvider",
 }
 
 _LLM_MAP: dict[str, str] = {

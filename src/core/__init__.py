@@ -4,6 +4,7 @@ Optis Benchmark - Core Module
 This module exports the main classes and functions for the benchmark.
 """
 
+from .finetune_runner import FineTuneJobStatus, FineTuneRunner, FineTuneRunnerConfig
 from .llm_judge import DEFAULT_RUBRICS, JudgePromptBuilder, JudgeResult, LLMJudge, Rubric
 from .llm_runner import LLMOutput, LLMPredRunner, LLMRunnerConfig
 from .runner import (
@@ -24,6 +25,10 @@ __all__ = [
     "LLMOutput",
     "LLMRunnerConfig",
     "LLMPredRunner",
+    # Fine-tune Runner
+    "FineTuneJobStatus",
+    "FineTuneRunner",
+    "FineTuneRunnerConfig",
     # Runner
     "AgentRunner",
     "RunnerConfig",

@@ -1,0 +1,22 @@
+llm:
+  provider:
+    type: "dashscope"
+    api_key: "${QWEN_API_KEY}"
+    base_url: "https://ws-aj78yn2iu5pmdg27.cn-beijing.maas.aliyuncs.com/api/v1"
+
+fine_tuning:
+  training_file: "dataset/fine_tune/paper_info_extract/test.jsonl"
+  base_model: "qwen3.7-plus-2026-05-26"
+  method: "supervised"
+  training_type: "sft"
+  suffix: "optis-dashscope"
+  hyperparameters:
+    n_epochs: 2
+    batch_size: 128
+    max_length: 8192
+    learning_rate: "1.6e-5"
+
+execution:
+  poll_interval: 60
+  poll_timeout: 86400
+  status_output_path: "results/finetune/job_status.json"

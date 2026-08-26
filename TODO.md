@@ -41,6 +41,7 @@
 - [x] LLM Judge 评测实现
 - [x] 结构化输出支持 (OpenAI Responses API)
 - [x] 报告生成器 (HTML/Markdown)
+- [x] Fine-tuning 支持 (OpenAI API) — 数据转换 / 任务管理 / 状态监控
 - [ ] 完善 ZOS-API 环境
   - [ ] 镜头加载/保存
   - [ ] MTF 分析
