@@ -355,9 +355,7 @@ def main():
     解析命令行参数后加载结果并按指定格式输出报告，
     未指定输出路径时默认写入结果文件同目录下的 report.html / report.md。
     """
-    parser = argparse.ArgumentParser(
-        description="Generate reports from Optis Benchmark results"
-    )
+    parser = argparse.ArgumentParser(description="Generate reports from Optis Benchmark results")
     parser.add_argument(
         "results",
         type=str,

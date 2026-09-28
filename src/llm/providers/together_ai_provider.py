@@ -1,12 +1,12 @@
 """
-TogetherAI Provider - 封装 Together AI HTTP API
+TogetherAI Provider - 封装 Together AI 官方 Python SDK
 
-通过 httpx.AsyncClient 实现异步调用。
+通过 together.AsyncTogether 实现异步调用。
 """
 
 from __future__ import annotations
 
-import httpx
+from together import AsyncTogether
 
 # =============================================================================
 # Classes
@@ -14,12 +14,13 @@ import httpx
 
 
 class TogetherAIProvider:
-    """封装 Together AI httpx.AsyncClient，提供异步调用支持。"""
+    """封装 Together AI 官方 SDK（AsyncTogether），提供异步调用支持。"""
 
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.together.xyz",
+        base_url: str = "https://api.together.ai/v1",
+        timeout: float = 120.0,
     ):
         """
         初始化 Together AI Provider。
@@ -27,21 +28,19 @@ class TogetherAIProvider:
         Args:
             api_key: Together AI API 密钥
             base_url: API 端点地址
+            timeout: 请求超时秒数
         """
-        self._client = httpx.AsyncClient(
+        self._client = AsyncTogether(
+            api_key=api_key,
             base_url=base_url,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=120.0,
+            timeout=timeout,
         )
 
     @property
-    def client(self):
-        """返回 httpx.AsyncClient 实例。"""
+    def client(self) -> AsyncTogether:
+        """返回 Together 官方 SDK 异步客户端实例。"""
         return self._client
 
     async def close(self) -> None:
-        """关闭 HTTP 客户端连接。"""
-        await self._client.aclose()
+        """关闭官方 SDK 客户端连接。"""
+        await self._client.close()

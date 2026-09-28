@@ -1,19 +1,21 @@
 """
-ClaudeLLM - Anthropic Claude 模型调用类
+ClaudeLLM - Anthropic Claude model call class
 
-支持通过 AnthropicProvider 调用 Anthropic Messages API（beta 端点）。
-使用 provider.client.beta.messages.create，以支持 mcp_servers、
-output_config、speed 等 beta/新特性（参考官方 beta/messages/create 文档）。
+Calls the Anthropic Messages API (beta endpoint) through AnthropicProvider.
+Uses provider.client.beta.messages.create to support mcp_servers,
+output_config, speed and other beta/new features
+(see the official beta/messages/create docs).
 
-setup 采用统一扁平参数：
+setup uses unified flat parameters:
   - max_tokens / max_completion_tokens → max_tokens
   - response_format: true              → output_config.format (json_schema)
-  - thinking                            → 扩展思考（type/budget_tokens/display）
+  - thinking                            → extended thinking (type/budget_tokens/display)
   - tools.mcp_server                    → mcp_servers
   - tools.web_search / web_fetch / tool_search / custom → tools
   - effort / task_budget                → output_config
-结构化输出：与 GPTLLM 一致，从 gold_answer_path 推断 JSON Schema。
-响应解析：拼接 text 块为 content，thinking 块单独放入返回的 thinking 字段。
+Structured output: same as GPTLLM, the JSON Schema is inferred from gold_answer_path.
+Response parsing: text blocks are concatenated into content, thinking blocks go
+into the returned thinking field.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from src.llm.providers.anthropic_provider import AnthropicProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
-# 每百万 token 价格（input, output, cache_write, cache_read）
+# Price per million tokens (input, output, cache_write, cache_read)
 _CLAUDE_PRICES: dict[str, tuple[float, float, float, float]] = {
     "claude-opus-4": (15.0, 75.0, 18.75, 1.50),
     "claude-sonnet-4": (3.0, 15.0, 3.75, 0.30),
@@ -48,7 +50,7 @@ _DEFAULT_PRICE: tuple[float, float, float, float] = (3.0, 15.0, 3.75, 0.30)
 # =============================================================================
 
 class ClaudeLLM(BaseLLM):
-    """Anthropic Claude 模型，支持 AnthropicProvider（beta Messages API）。"""
+    """Anthropic Claude model, supports AnthropicProvider (beta Messages API)."""
 
     def __init__(self, model_name: str = "claude-3-5-sonnet-20241022"):
         super().__init__(model_name)
@@ -59,29 +61,30 @@ class ClaudeLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 AnthropicProvider。
+        Dispatch to the matching implementation based on the provider type;
+        only AnthropicProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 AnthropicProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: Message list [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an AnthropicProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: Path to the gold answer JSON, for structured output
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: If the provider type is not supported
         """
         if isinstance(provider, AnthropicProvider):
             return await self._chat_anthropic(messages, provider, **kwargs)
         raise ValueError(
-            f"ClaudeLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 AnthropicProvider"
+            f"ClaudeLLM does not support provider: {type(provider).__name__}, "
+            f"only AnthropicProvider is supported"
         )
 
     async def _chat_anthropic(

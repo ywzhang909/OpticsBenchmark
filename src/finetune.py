@@ -2,28 +2,28 @@
 """
 Optis Benchmark - Fine-tune Job Management Entry Point
 
-管理 OpenAI 微调任务的 CLI 工具。
+CLI tool for managing OpenAI fine-tuning jobs.
 
-用法：
-    # 创建任务并等待至完成（--wait）
+Usage:
+    # Create a job and wait for completion (--wait)
     python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --wait
 
-    # 仅创建任务，打印 job id
+    # Create a job only, print job id
     python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml
 
-    # 校验配置与数据文件（不触网）
+    # Validate config and data files (no network calls)
     python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --dry-run
 
-    # 查看任务状态
+    # Check job status
     python src/finetune.py --status ftjob-abc123
 
-    # 列出最近的微调任务
+    # List recent fine-tuning jobs
     python src/finetune.py --list
 
-    # 导出任务事件日志
+    # Export job events log
     python src/finetune.py --events ftjob-abc123 -o results/finetune/events.json
 
-    # 取消任务
+    # Cancel a job
     python src/finetune.py --cancel ftjob-abc123
 """
 
@@ -54,7 +54,7 @@ from src.utils import logger, setup_logger  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
-    """解析命令行参数。"""
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Optis Benchmark - Fine-tune Job Management",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -80,7 +80,7 @@ Examples:
         "--config",
         type=str,
         # default=None,
-        default="configs/fine_tuning/qwen_dashscope.yaml",
+        default="configs/fine_tuning/ministral_mistral.yaml",
         help="Fine-tune config YAML file path",
     )
     group.add_argument(
@@ -153,16 +153,16 @@ async def task_create(
     dry_run: bool = False,
     output_override: str | None = None,
 ) -> int:
-    """创建微调任务。
+    """Create a fine-tuning job.
 
     Args:
-        config_path: 配置文件路径
-        wait: 是否等待任务完成
-        dry_run: 仅校验不执行
-        output_override: 覆盖 status_output_path
+        config_path: Config file path
+        wait: Whether to wait for job completion
+        dry_run: Validate only, do not execute
+        output_override: Override status_output_path
 
     Returns:
-        退出码
+        Exit code
     """
     config = FineTuneRunnerConfig.from_yaml(config_path)
     if output_override:
@@ -222,15 +222,15 @@ async def task_query_status(
     job_id: str,
     output_override: str | None = None,
 ) -> int:
-    """查询任务状态。
+    """Query job status.
 
     Args:
-        config_path: 可选配置文件（用于获取 provider 凭证）
-        job_id: 任务 ID
-        output_override: 未使用
+        config_path: Optional config file (used for provider credentials)
+        job_id: Job ID
+        output_override: Unused
 
     Returns:
-        退出码
+        Exit code
     """
     config = await _load_provider_config(config_path)
     runner = FineTuneRunner(config)
@@ -247,14 +247,14 @@ async def task_query_status(
 
 
 async def task_list(config_path: str | None, limit: int = 10) -> int:
-    """列出最近的微调任务。
+    """List recent fine-tuning jobs.
 
     Args:
-        config_path: 可选配置文件（用于获取 provider 凭证）
-        limit: 返回条数上限
+        config_path: Optional config file (used for provider credentials)
+        limit: Maximum number of entries to return
 
     Returns:
-        退出码
+        Exit code
     """
     config = await _load_provider_config(config_path)
     runner = FineTuneRunner(config)
@@ -270,14 +270,14 @@ async def task_list(config_path: str | None, limit: int = 10) -> int:
 
 
 async def task_cancel(config_path: str | None, job_id: str) -> int:
-    """取消任务。
+    """Cancel a job.
 
     Args:
-        config_path: 可选配置文件（用于获取 provider 凭证）
-        job_id: 任务 ID
+        config_path: Optional config file (used for provider credentials)
+        job_id: Job ID
 
     Returns:
-        退出码
+        Exit code
     """
     config = await _load_provider_config(config_path)
     runner = FineTuneRunner(config)
@@ -299,16 +299,16 @@ async def task_events(
     output_path: str | None,
     limit: int = 100,
 ) -> int:
-    """导出任务事件日志。
+    """Export job events log.
 
     Args:
-        config_path: 可选配置文件（用于获取 provider 凭证）
-        job_id: 任务 ID
-        output_path: 输出文件路径
-        limit: 事件条数上限
+        config_path: Optional config file (used for provider credentials)
+        job_id: Job ID
+        output_path: Output file path
+        limit: Maximum number of events
 
     Returns:
-        退出码
+        Exit code
     """
     import json as json_mod
 
@@ -340,18 +340,18 @@ async def task_events(
 
 
 async def _load_provider_config(config_path: str | None) -> FineTuneRunnerConfig:
-    """从配置文件加载 provider 凭证，或从状态文件回退。
+    """Load provider credentials from a config file, or fall back to a status file.
 
     Args:
-        config_path: YAML 配置文件路径；为 None 时尝试从默认状态文件回退
+        config_path: YAML config file path; when None, tries to fall back to the default status file
 
     Returns:
-        FineTuneRunnerConfig（provider_config 必须可用）
+        FineTuneRunnerConfig (provider_config must be available)
     """
     if config_path:
         return FineTuneRunnerConfig.from_yaml(config_path)
 
-    # 回退：从状态文件推断
+    # Fallback: infer from the status file
     status_path = "results/finetune/job_status.json"
     raise FileNotFoundError(
         f"Provider config not found. Provide -c <config.yaml> or set up GPT_API_KEY. "
@@ -360,7 +360,7 @@ async def _load_provider_config(config_path: str | None) -> FineTuneRunnerConfig
 
 
 def _print_status(status: FineTuneJobStatus) -> None:
-    """美观打印任务状态。"""
+    """Print job status nicely."""
     logger.info("=" * 60)
     logger.info(f"Job ID          : {status.job_id}")
     logger.info(f"Status          : {status.status}")

@@ -1,1 +1,1 @@
-# Evaluation utility modules — imported individually via `from utils.<module> import <func>`
+# Evaluation utility modules — imported individually via `from src.algorithm.<module> import <func>`

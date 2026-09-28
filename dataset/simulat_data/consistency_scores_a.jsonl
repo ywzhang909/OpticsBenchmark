@@ -1,0 +1,12 @@
+{"id": 1, "output_model": "gpt-4o", "context": "薄透镜近轴成像公式为 1/f = 1/s1 + 1/s2，焦距由两面曲率半径与折射率共同决定。", "judge_model": "gpt-4o", "score": 1.4}
+{"id": 2, "output_model": "qwen2.5-72b-instruct", "context": "光栅衍射方程 d(sinθ_m − sinθ_i) = mλ，光栅线数越高可分辨的最小角距离越小。", "judge_model": "gpt-4o", "score": 1.68}
+{"id": 3, "output_model": "llama-3.3-70b-instruct", "context": "瑞利判据指出两个点像的艾里斑重叠到峰值强度 84% 时不可分辨，据此得到衍射极限。", "judge_model": "gpt-4o", "score": 2.31}
+{"id": 4, "output_model": "gpt-4o", "context": "调制传递函数 MTF 描述系统对不同空间频率对比度的传递能力，其截止频率对应可分辨极限。", "judge_model": "gpt-4o", "score": 2.55}
+{"id": 5, "output_model": "deepseek-v3", "context": "数值孔径 NA = n·sinθ 直接决定成像系统的分辨率下限，增大 NA 需要更大折射率或更大孔径角。", "judge_model": "gpt-4o", "score": 2.2}
+{"id": 6, "output_model": "qwen2.5-72b-instruct", "context": "同一透镜对不同波长焦点不同即色差，阿贝数越低色差越明显，消色差需组合不同色散玻璃。", "judge_model": "gpt-4o", "score": 2.28}
+{"id": 7, "output_model": "llama-3.3-70b-instruct", "context": "波像差可用 Zernike 多项式展开，RMS 波像差是评价波前质量的常用指标，与 Strehl 比直接相关。", "judge_model": "gpt-4o", "score": 2.48}
+{"id": 8, "output_model": "gemini-2.0-flash", "context": "非球面面形精度通常用面形误差的均方根与峰谷值衡量，直接影响聚焦光斑的弥散程度。", "judge_model": "gpt-4o", "score": 2.43}
+{"id": 9, "output_model": "gpt-4o", "context": "相干成像依赖相位信息，两束光的相位差体现为干涉条纹的明暗，条纹对比度反映振幅是否相等。", "judge_model": "gpt-4o", "score": 2.61}
+{"id": 10, "output_model": "deepseek-v3", "context": "偏振态由四个 Stokes 参数完全描述，交叉偏振片组合可有效抑制表面反射与杂散光。", "judge_model": "gpt-4o", "score": 2.76}
+{"id": 11, "output_model": "qwen2.5-72b-instruct", "context": "像差校正需在球差、彗差、像散、场曲与畸变之间折中，残余像差决定弥散斑的形状与大小。", "judge_model": "gpt-4o", "score": 3.44}
+{"id": 12, "output_model": "llama-3.3-70b-instruct", "context": "突破 NA 与波长限制的途径包括超分辨荧光成像与计算成像，本质是以先验信息换取更高空间频率。", "judge_model": "gpt-4o", "score": 3.95}

@@ -1,11 +1,11 @@
 """
-KimiLLM - Kimi (Moonshot AI) 模型调用类
+KimiLLM - Kimi (Moonshot AI) model class
 
-支持通过 OpenAIProvider 进行 OpenAI 兼容 API 调用。
-Kimi API 完全兼容 OpenAI Chat Completions API。
+Supports OpenAI-compatible API calls through OpenAIProvider.
+The Kimi API is fully compatible with the OpenAI Chat Completions API.
 base_url: https://api.moonshot.ai/v1
 
-参考文档:
+Reference docs:
 - API Overview: https://platform.kimi.ai/docs/api/overview
 - Chat Completions: https://platform.kimi.ai/docs/api/chat
 - K3 Quickstart: https://platform.kimi.ai/docs/guide/kimi-k3-quickstart
@@ -45,7 +45,7 @@ _DEFAULT_PRICE: tuple[float, float] = (0.60, 2.40)
 # =============================================================================
 
 class KimiLLM(BaseLLM):
-    """Kimi (Moonshot AI) 模型，支持 OpenAIProvider。"""
+    """Kimi (Moonshot AI) model, supports OpenAIProvider."""
 
     _USE_MAX_TOKENS_HOSTS: set[str] = set()
 
@@ -58,23 +58,24 @@ class KimiLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+        Dispatch to the implementation matching the provider type; only
+        OpenAIProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 OpenAIProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: List of messages [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an OpenAIProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: gold answer JSON path, used for structured output
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: When the provider type is not supported
         """
         if isinstance(provider, OpenAIProvider):
             return await self._chat_openai(messages, provider, **kwargs)

@@ -53,6 +53,7 @@ dependencies = [
     "google-genai>=1.0.0",
     "mistralai>=2.9.3",
     "dashscope>=1.20.0",
+    "together",
 ]
 
 [project.optional-dependencies]

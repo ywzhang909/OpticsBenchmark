@@ -41,8 +41,8 @@ groq>=0.4.0
 # AWS Bedrock
 boto3>=1.34.0
 
-# Together AI
-# Note: Using httpx directly, no separate package needed
+# Together AI (official SDK)
+together>=2.0.0
 
 # -----------------------------------------------------------------------------
 # Testing

@@ -1,7 +1,7 @@
 """
-DeepSeekLLM - DeepSeek 模型调用类
+DeepSeekLLM - DeepSeek model class
 
-支持通过 OpenAIProvider 进行 OpenAI 兼容 API 调用。
+Supports OpenAI-compatible API calls through OpenAIProvider.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from src.llm.providers.openai_provider import OpenAIProvider
 
 
 class DeepSeekLLM(BaseLLM):
-    """DeepSeek 模型，支持 OpenAIProvider。"""
+    """DeepSeek model, supports OpenAIProvider."""
 
     def __init__(self, model_name: str = "deepseek-v4-pro"):
         super().__init__(model_name)
@@ -30,28 +30,29 @@ class DeepSeekLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+        Dispatch to the implementation matching the provider type; only
+        OpenAIProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 OpenAIProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - 其他透传给底层 API 的参数
+            messages: List of messages [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an OpenAIProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: When the provider type is not supported
         """
         if isinstance(provider, OpenAIProvider):
             return await self._chat_openai(messages, provider, **kwargs)
         raise ValueError(
-            f"DeepSeekLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 OpenAIProvider"
+            f"DeepSeekLLM does not support provider: {type(provider).__name__}, "
+            f"only OpenAIProvider is supported"
         )
 
     async def _chat_openai(
@@ -63,7 +64,7 @@ class DeepSeekLLM(BaseLLM):
         start_time = time.time()
         setup = kwargs.get("setup", {})
 
-        # 处理 messages
+        # Process messages
         processed_messages: list[dict[str, str]] = []
         for message in messages:
             for key, value in message.items():
@@ -180,6 +181,6 @@ class DeepSeekLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, OpenAIProvider):
             await provider.close()

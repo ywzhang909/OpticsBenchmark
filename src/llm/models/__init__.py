@@ -1,8 +1,10 @@
 """
-LLM Models - 各模型调用逻辑
+LLM Models - Per-model invocation logic
 
-每个 LLM 模型类封装该模型的调用逻辑，支持通过不同 Provider 进行调用。
-使用延迟导入，缺失可选依赖时不会在模块导入阶段报错。
+Each LLM model class wraps the invocation logic for that model and can be
+called through different providers.
+Lazy imports are used, so missing optional dependencies do not fail at
+module import time.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ __all__ = list(_MODEL_CLASSES.keys())
 
 
 def __getattr__(name: str) -> Any:
-    """延迟导入：访问 src.llm.models.XXX 时才真正导入。"""
+    """Lazy import: only imported when src.llm.models.XXX is accessed."""
     if name in _MODEL_CLASSES:
         import importlib
 

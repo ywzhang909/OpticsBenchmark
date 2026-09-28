@@ -1,0 +1,85 @@
+# =============================================================================
+# Fine-tuning Configuration - Mistral AI Provider (Ministral)
+# Optis Benchmark - Fine-tune Job Management
+# =============================================================================
+#
+# 本文件仅描述"微调任务本身"（发送给 Mistral AI fine-tuning API 的参数与客户端行为）。
+#
+# 工作流（两阶段显式流水线，数据文件是两阶段唯一契约）：
+#   阶段 A：utils/build_finetune_dataset.py 将 gold answer + prompt 转换为
+#           Mistral AI 微调 JSONL 格式（train.jsonl / val.jsonl）
+#   阶段 B：python src/finetune.py -c <本文件> [--wait] 执行微调任务管理
+#
+# 微调完成后，将 status_output_path 中记录的模型名（形如
+# ft:ministral-3b-latest:...）填入 configs/llm/mistral_official.yaml 的
+# model.name 即可复用现有推理/评测管线。
+#
+# 官方文档：
+#   - 微调概览: https://docs.mistral.ai/capabilities/finetuning/
+#   - 文本/视觉微调: https://docs.mistral.ai/resources/deprecated/finetuning/text_vision_finetuning
+
+# =============================================================================
+# LLM Provider Configuration (仅凭证，用于创建 API client)
+# =============================================================================
+llm:
+
+  provider:
+    # Provider 类型，对应 _PROVIDER_MAP 中的 key
+    # 当前微调功能支持 "mistral"
+    type: "mistral"
+
+    # API key，使用 ${ENV_VAR} 语法从环境变量读取（与 mistral_official.yaml 一致）
+    api_key: "${MISTRAL_API_KEY}"
+
+# =============================================================================
+# Fine-tuning Configuration (映射到 client.fine_tuning.jobs.create() 参数)
+# =============================================================================
+fine_tuning:
+
+  # ── 训练数据 ────────────────────────────────────────────────────────────────
+  # 由 utils/build_finetune_dataset.py 预先生成的 JSONL 文件路径
+  training_file: "dataset/fine_tune/paper_info_extract/test.jsonl"
+
+  # 可选验证集 JSONL 路径，null 表示不使用
+  # 验证集用于训练过程中的 loss 评估，不参与权重更新
+  validation_file: null
+
+  # ── 基座模型 ────────────────────────────────────────────────────────────────
+  # 必须为 Mistral AI 支持微调的模型名
+  # 常用: ministral-3b-latest, ministral-8b-latest, mistral-small-latest,
+  #       mistral-large-latest, open-mistral-7b
+  base_model: "ministral-3b-2512"
+
+  # ── 任务参数 ────────────────────────────────────────────────────────────────
+  # 模型名自定义后缀，追加到输出模型名
+  suffix: "optis-mistral"
+
+  # 随机种子，用于提升结果可复现性；null 表示由服务端随机指定
+  seed: null
+
+  # 超参数，使用 Mistral 原生字段（映射为 TrainingParameters）
+  hyperparameters:
+    # 训练步数: 正整数
+    training_steps: 10
+
+    # 学习率
+    learning_rate: 0.0001
+
+    # 权重衰减: 正则化参数，默认 0
+    weight_decay: 0.0
+
+    # 预热步数占比: 0 ~ 1
+    warmup_fraction: 0.1
+
+# =============================================================================
+# Execution Configuration (客户端行为，非 API 参数)
+# =============================================================================
+execution:
+  # --wait 模式的轮询间隔（秒）
+  poll_interval: 30
+
+  # --wait 模式的最长等待时长（秒），超时后退出并保留 job id 供后续查询
+  poll_timeout: 86400
+
+  # 任务状态落盘路径：任务创建后写入 job id，成功后追加 fine_tuned_model 名
+  status_output_path: "results/finetune/job_status_mistral.json"

@@ -70,9 +70,9 @@ class _StubFineTuneRunner(FineTuneRunner):
         return True
 
     async def _create_job(
-        self, training_file_id, model, validation_file_id=None,
-        method="supervised", suffix=None, seed=None, hyperparameters=None,
+        self, job_cfg, training_file_id, validation_file_id=None,
     ) -> dict[str, Any]:
+        model = job_cfg["base_model"]
         return {
             "job_id": "ftjob-test123",
             "status": "queued",
@@ -321,10 +321,10 @@ execution:
         errors = valid_config.validate()
         assert any("suffix" in e for e in errors)
 
-    def test_validate_invalid_method(self, valid_config):
+    def test_validate_ignores_unvalidated_method(self, valid_config):
         valid_config.job_config["method"] = "invalid_method"
         errors = valid_config.validate()
-        assert any("method" in e for e in errors)
+        assert errors == []
 
 
 class TestValidateJsonl:
@@ -397,7 +397,7 @@ class TestCreateJob:
             execution_config={},
         )
         runner = _make_runner(config)
-        with pytest.raises(ValueError, match="invalid method"):
+        with pytest.raises(ValueError, match="training_file"):
             await runner.create_job()
 
     async def test_create_rejects_invalid_jsonl(self, valid_config):
@@ -531,9 +531,9 @@ class TestProviderFactory:
         assert type(provider).__name__ == "BedrockProvider"
 
     def test_unsupported_provider_raises(self):
-        with pytest.raises(ValueError, match="不支持的 Provider 类型"):
+        with pytest.raises(ValueError, match="Unsupported provider type"):
             create_provider({"type": "unsupported"})
 
     def test_missing_type_raises(self):
-        with pytest.raises(ValueError, match="必须包含 'type' 字段"):
+        with pytest.raises(ValueError, match="must contain a 'type' field"):
             create_provider({})

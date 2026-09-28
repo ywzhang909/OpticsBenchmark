@@ -7,9 +7,7 @@ Utils General - 通用工具函数
 from typing import Any
 
 
-def _dict_to_response_format(
-    d: dict[str, Any], strict: bool = True
-) -> dict[str, Any]:
+def _dict_to_response_format(d: dict[str, Any], strict: bool = True) -> dict[str, Any]:
     """Generate a Chat Completions response_format from a Python dict, inferring types."""
 
     def _infer_type(value: Any) -> dict[str, Any]:

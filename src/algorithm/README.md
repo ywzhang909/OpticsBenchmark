@@ -16,6 +16,8 @@ This directory contains evaluation metric implementations used by the Optis Benc
 | [hungarian_algorithm_utils.py](#hungarian_algorithm_utilspy) | Assignment Matching | numpy, scipy | Lightweight |
 | [sentence_similarity_utils.py](#sentence_similarity_utilspy) | Semantic Embeddings | torch, transformers | Heavy |
 | [model_registry.py](#model_registrypy) | Model Registry | none | Lightweight |
+| [consistency.py](#consistencypy) | Judge Agreement | numpy, scipy | Lightweight |
+| [bias.py](#biaspy) | Judge Self-Preference | numpy | Lightweight |
 
 ---
 
@@ -216,6 +218,58 @@ Provides a centralized mapping of model names to their configurations, enabling 
 
 ---
 
+## consistency.py
+
+**Judge Agreement — how much two judges' rankings of the same samples agree.**
+
+### Principle
+Pairs two score lists by `id` (order-independent, intersection only) and computes Pearson's r plus the two-sided p-value over the paired samples in a single `scipy.stats.pearsonr` call. Degenerate inputs are screened *before* that call — fewer than 2 pairs or zero variance on either side would make SciPy raise or return `NaN`, so they are reported as undefined instead (`pearson_r` falls back to `0.0` with `defined=False` and an `undefined_reason`).
+
+### Functions
+- `pearson_correlation(scores_a, scores_b)` — Pearson r for two equal-length score sequences, `None` when undefined.
+- `evaluate_consistency(list_a, list_b)` — Returns `pearson_r`, `pearson_p`, `defined`, `undefined_reason`, `num_pairs`, `num_only_a` / `num_only_b`, `unpaired_ids`, `mean_a` / `mean_b`.
+
+### Applications
+- Comparing two LLM judges or a judge against human scores.
+- Regression-style comparison of two evaluation runs (`python -m src.utils.eval_consistency`).
+
+### Input Records
+Judge score records `{"id", "output_model", "context", "judge_model", "score"}` are paired by `id`, which is unique within a file; only `id` and `score` enter the computation, the remaining keys are metadata and are ignored here. `src/utils/eval_consistency.py` reads those metadata fields to warn when the two files share a judge, or when an id was scored as different `output_model` / `context` on each side.
+
+### Pros & Cons
+| Pros | Cons |
+|------|------|
+| Order-independent pairing by `id` | Only measures linear association |
+| Reports pairing coverage and undefined reasons | Undefined for < 2 pairs or zero variance |
+
+---
+
+## bias.py
+
+**Judge Self-Preference — measures how much a judge inflates scores for its own answers.**
+
+### Principle
+Computes `ErrorRate_SE = y_self / y_other - 1` per sample, where `y_self` is the judge's score for its own model's output and `y_other` is the mean score the same judge gave the other m-1 models for the same sample. Since all outputs of one judge normally share one scale (e.g. 0–3, 0–5), scores are used raw; the metric is a ratio, so it is scale-free.
+
+### Functions
+- `evaluate_judge_bias(records, judge_model)` — Per-sample and aggregate results for one judge: `mean_error_rate_se` / `median_error_rate_se`, plus `mean_y_self` / `mean_y_other` and the `per_sample` breakdown. Samples without the judge's own output, without other models, or with `y_other <= 0` are reported in `undefined_ids` and excluded from the mean; if no sample is valid, `defined` is `False` and `undefined_reason` explains why.
+
+### Applications
+- Auditing LLM-as-judge harnesses before trusting absolute scores.
+- Measuring one judge's self-preference (`python -m src.utils.eval_bias`).
+
+### Input Records
+A single file holds one judge's scores over the whole grid: n samples × m model outputs, `m * n` records `{"id", "output_model", "context", "judge_model", "score"}`. `id` repeats once per model, so the pairing key is `(id, output_model)`; only `id`, `output_model` and `score` enter the computation. The judge must be one of the m scored models, otherwise its own output cannot be identified — `src/utils/eval_bias.py` resolves the judge name from the unique `judge_model` field (overridable with `--judge-model`, which warns on a mismatch) and warns when a sample does not cover all m models, since `y_other` would then average a different model set. A repeated `(id, output_model)` pair keeps its last occurrence.
+
+### Pros & Cons
+| Pros | Cons |
+|------|------|
+| Scale-free ratio, easy to interpret | Needs ≥ 2 scored models to form `y_other` |
+| Raw scores preserve level shifts | Undefined when `y_other` is not positive |
+| One judge per file keeps the grid self-describing | Judge name is not unique to a file: parallel judges need separate files |
+
+---
+
 ## Summary: Choosing the Right Metric
 
 | When to Use | Recommended Metric(s) |
@@ -225,5 +279,7 @@ Provides a centralized mapping of model names to their configurations, enabling 
 | Semantic similarity (paraphrasing) | BERTScore |
 | Multi-sentence alignment | Sentence Similarity + Hungarian |
 | Citation verification | Citation Evaluation |
+| Judge agreement across raters | Consistency (Pearson r) |
+| Judge leniency toward own answers | Bias (ErrorRate_SE) |
 | Need results fast, no GPU | Exact Match, ROUGE, BLEU |
 | Need results accurate, GPU available | BERTScore, Citation Evaluation |

@@ -1,8 +1,10 @@
 # Prompts
 
-**Path:** `prompts/` — LLM prompt templates for Optis Benchmark.
+**Path:** `prompts/` — LLM prompt files for Optis Benchmark.
 
-Two-tier prompt architecture: **system prompts** (agent role definition) and **task prompts** (per-task instruction templates + zero-shot prompts).
+Two-tier prompt architecture for plain LLM inference (no agents): a **system prompt
+template** (generic model-level instructions) plus **task-specific prompts** (per-task
+zero-shot instructions and shared Handlebars templates).
 
 ---
 
@@ -10,10 +12,9 @@ Two-tier prompt architecture: **system prompts** (agent role definition) and **t
 
 ```
 prompts/
-├── system/                        # Agent system prompts (role definition)
-│   ├── optical_agent.txt         # Optical design & engineering agent
-│   └── research_agent.txt        # Academic research & paper analysis agent
-├── templates/                     # Task-specific prompt templates
+├── system/                        # Generic system prompt template
+│   └── templates.txt             # System prompt template with {{placeholders}}
+├── templates/                     # Shared task templates (Handlebars)
 │   └── paper_review.txt          # Paper review task template
 ├── paper_info_extract/            # Paper info extraction task
 │   └── zero-shot_v1.0.txt       # Zero-shot extraction prompt
@@ -26,121 +27,92 @@ prompts/
 
 ---
 
-## System Prompts (`system/`)
+## System Prompt Template (`system/`)
 
-Define the agent's role, expertise, work principles, and output format. They are referenced by `system_prompt_file` in LLM configs (`configs/llm/*.yaml`).
+`prompts/system/templates.txt` is a generic system prompt to be filled in and sent as the
+`system` message. It is derived from the shared structure of the task zero-shot prompts
+(`***TASK***`, `***INPUT***`, `***OUTPUT***`, `***DOCUMENTATION***`) and tells the model to:
 
-### `optical_agent.txt` — Optical Design Agent
+- Follow the user message's structured instructions exactly;
+- Ground every claim in the provided material (no fabrication, no external knowledge);
+- Honor quoting and citation rules;
+- Keep to the required output format and language.
 
-| Aspect | Content |
-|--------|---------|
-| **Role** | Professional optical design engineer |
-| **Expertise** | Lens design & optimization, system performance analysis, tolerance analysis, aberration correction |
-| **Software** | Zemax OpticStudio (ZOS-API), CODE V, ASAP |
-| **Programming** | Python (NumPy, SciPy, matplotlib), data analysis & visualization |
-| **Principles** | Accuracy, completeness, reproducibility, transparency |
-| **Output format** | Structured markdown with design parameters, system configuration table, performance metrics |
-| **Language** | Chinese |
-| **Used by** | `lens_design`, `system_analysis` tasks |
-
-### `research_agent.txt` — Research Agent
-
-| Aspect | Content |
-|--------|---------|
-| **Role** | Academic research & paper analysis specialist |
-| **Expertise** | Paper review, literature retrieval & citation, multi-document summarization, research field overview |
-| **Principles** | Accuracy, comprehensiveness, objectivity, structured output, traceability |
-| **Output format** | Task-specific markdown templates (review scores, citation lists, structured summaries) |
-| **Language** | Chinese |
-| **Used by** | `paper_review`, `paper_retrieval`, `multi_doc_summary`, `research_overview` tasks |
+It uses `{{placeholders}}` (e.g., `{{task_name}}`, `{{task_specification}}`,
+`{{output_language}}`) that are filled in per task. See `prompts/system/README.md`.
 
 ---
 
-## Task Prompt Templates (`templates/`)
+## Task Prompt Files (`paper_info_extract/`, `paper_review/`, `optics_question_answers/`)
 
-Currently contains one task-specific prompt template. Additional templates are planned.
+Each task directory holds a zero-shot prompt file referenced by `task.prompt_file` in the
+LLM configs (`configs/llm/*.yaml`).
 
-| Template | Task | Language |
-|----------|------|----------|
-| `paper_review.txt` | Paper review & critique | Chinese |
+| Task | File | Output |
+|------|------|--------|
+| Paper info extraction | `paper_info_extract/zero-shot_v1.0.txt` | JSON with 13 fields |
+| Paper review | `paper_review/zero-shot_v1.0.txt` | Structured review report |
+| Optics Q&A | `optics_question_answers/zero-shot_v1.0.txt` | Multi-paragraph academic response |
 
-Additional templates are planned: `lens_design.txt`, `system_analysis.txt`, `paper_retrieval.txt`, `multi_doc_summary.txt`, `research_overview.txt`.
-
-### Template Features
-
-- **Variable injection**: `{{focal_length}}`, `{{field_of_view}}`
-- **Conditional blocks**: `{{#if variable}}...{{/if}}`
-- **Iteration**: `{{#each items}}...{{/each}}`
-- **Helper functions**: `{{add @index 1}}` (1-based indexing)
-- **Structured output**: All templates specify exact markdown output format and evaluation criteria
+All zero-shot prompts share the same structure: a two-line header (comment + blank, skipped
+at load time) followed by `***TASK***`, `***INPUT***`, `***OUTPUT***`, and
+`***DOCUMENTATION***` sections.
 
 ---
 
-## Zero-Shot Prompts (`paper_info_extract/`, `paper_review/`)
+## Shared Task Templates (`templates/`)
 
-### `paper_info_extract/zero-shot_v1.0.txt` — Paper Info Extraction
+`prompts/templates/` holds Handlebars-style task templates with variable injection and
+conditional/iteration blocks:
 
-English-language zero-shot prompt for structured information extraction from optical science papers.
+- `paper_review.txt` — paper review template using `{{variables}}`, `{{#if}}`, `{{#each}}`,
+  and `{{add @index 1}}` helpers.
 
-| Aspect | Content |
-|--------|---------|
-| **Task** | Extract 13 fields from optical science papers: Title, Publication Year, DOI, Journal, Ten Keywords, Authors, Corresponding Authors, Affiliations, Abstract, Objectives, Novelty, Methods, Performance Metrics |
-| **Output format** | JSON |
-| **Field rules** | Title/Year/DOI/Journal/Authors/Corresponding Authors/Affiliations/Abstract → direct extraction (must match original text); Keywords/Objectives/Novelty/Methods/Performance Metrics → summarize from full text |
-| **Constraints** | 300 words max per summarized field; no external knowledge; exact quotes required for direct fields |
-
-### `paper_review/zero-shot_v1.0.txt` — Paper Review (Placeholder)
-
-Currently contains only a header; content to be developed.
+Additional templates are planned: `lens_design.txt`, `system_analysis.txt`,
+`paper_retrieval.txt`, `multi_doc_summary.txt`, `research_overview.txt`.
 
 ---
 
 ## Prompt Flow
 
 ```
-Agent config                         Task config
-(system_prompt_file)                 (system_file + template_file)
-         │                                  │
-         ▼                                  ▼
-┌─────────────────┐            ┌──────────────────────────┐
-│ optical_agent   │◄───────────│ paper_info_extract.yaml  │
-│ research_agent  │            │ paper_review.yaml        │
-└─────────────────┘            │ optics_question_answer.yaml│
-                               │   ...                    │
-       ┌───────────────────────┤                          │
-       │                       │ template_file            │
-       ▼                       └──────────────────────────┘
-┌─────────────────┐
-│ paper_review.txt│  ← Handlebars template with {{variables}}
-└─────────────────┘
-       │
-       ▼
-┌─────────────────┐
-│ Final prompt    │  = system_prompt + rendered_template + task_data
-│ sent to LLM     │
-└─────────────────┘
+LLM config (configs/llm/*.yaml)
+        │  task.prompt_file ──────────► task zero-shot prompt (user content, "prompt" key)
+        │  system prompt (optional) ───► system template (filled in, "system" key)
+        ▼
+┌──────────────────────────────┐
+│ LLM request                 │
+│  system = filled template   │
+│  user   = rendered prompt + │
+│           task data         │
+└──────────────────────────────┘
 ```
+
+The two-line header of every prompt file is skipped by `_load_prompt()` in
+`src/core/llm_runner.py`.
 
 ---
 
 ## Usage
 
 ```bash
-# View a system prompt
-cat prompts/system/optical_agent.txt
-
-# View a task template
-cat prompts/templates/lens_design.txt
+# View the system prompt template
+cat prompts/system/templates.txt
 
 # View a zero-shot prompt
 cat prompts/paper_info_extract/zero-shot_v1.0.txt
+
+# View a shared task template
+cat prompts/templates/paper_review.txt
 ```
 
 ---
 
 ## Contributing
 
-1. Place new system prompts in `prompts/system/`
-2. Place new task templates in `prompts/templates/` using Handlebars syntax
-3. Place zero-shot/variant prompts in task-specific subdirectories
-4. Reference the prompt paths in `configs/llm/*.yaml` (`system_prompt_file`, `prompt_file`)
+1. Add or edit generic system-level instructions in `prompts/system/templates.txt`.
+2. Add task-specific zero-shot prompts in the matching task subdirectory, using the
+   `***TASK***` / `***INPUT***` / `***OUTPUT***` / `***DOCUMENTATION***` structure.
+3. Add shared variable-based templates in `prompts/templates/` using Handlebars syntax.
+4. Reference task prompt paths in `configs/llm/*.yaml` via `task.prompt_file`.
+5. Keep the two-line header (comment + blank) so the loader skips it correctly.

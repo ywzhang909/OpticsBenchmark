@@ -55,7 +55,10 @@ fine_tuning:
   base_model: "gpt-4o-mini-2024-07-18"
 
   # ── 任务参数 ────────────────────────────────────────────────────────────────
-  # 微调方法: "supervised" (SFT) | "dpo" (直接偏好优化)
+  # 微调方法: "supervised" (SFT) | "dpo" (直接偏好优化) | "reinforcement" (强化学习)
+  # 留空/删除此字段 = 使用 OpenAI 默认方法（请求体不传 method），日志会提示
+  # 注意: 设置了 method 时，必须同时提供 hyperparameters，否则报错终止。
+  # 当 method = "reinforcement" 时还需提供 grader 配置块（范例见下方注释）。
   method: "supervised"
 
   # 模型名自定义后缀，最多 18 字符（字母/数字/连字符/下划线）
@@ -75,6 +78,17 @@ fine_tuning:
 
     # 学习率倍率: 数值或 "auto"（约在 0.02 ~ 0.2 之间）
     learning_rate_multiplier: "auto"
+
+  # ── 仅当 method = "reinforcement" 时需要 ─────────────────────────────────────
+  # grader: StringCheckGrader 配置（映射到 fine_tuning.jobs.create 的
+  #   method.reinforcement.grader），含以下字段:
+  #   name: "Example string check grader"
+  #   type: "string_check"
+  #   input: "{{item.label}}"
+  #   operation: "eq"
+  #   reference: "{{sample.output_text}}"
+  # 对 supervised / dpo 方法请保持注释状态（留空）。
+  # grader: null
 
 # =============================================================================
 # Execution Configuration (客户端行为，非 API 参数)

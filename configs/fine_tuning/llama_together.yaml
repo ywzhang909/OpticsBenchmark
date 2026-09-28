@@ -1,0 +1,98 @@
+# =============================================================================
+# Fine-tuning Configuration - Together AI Provider (Llama)
+# Optis Benchmark - Fine-tune Job Management
+# =============================================================================
+#
+# 本文件仅描述"微调任务本身"（发送给 Together AI fine-tuning API 的参数与客户端行为）。
+#
+# 工作流（两阶段显式流水线，数据文件是两阶段唯一契约）：
+#   阶段 A：utils/build_finetune_dataset.py 将 gold answer + prompt 转换为
+#           Together AI 微调 JSONL 格式（training_file / validation_file）
+#   阶段 B：python src/finetune.py -c <本文件> [--wait] 执行微调任务管理
+#
+# 微调完成后，将 status_output_path 中记录的模型名（形如
+# together/<base_model>-<suffix>-<job_id>）填入 configs/llm/llama_openai.yaml 的
+# model.name 即可复用现有推理/评测管线。
+#
+# 官方文档：
+#   - 创建任务: https://docs.together.ai/reference/post-fine-tunes
+#   - 微调指南: https://docs.together.ai/docs/fine-tuning/supervised
+
+# =============================================================================
+# LLM Provider Configuration (仅凭证，用于创建 API client)
+# =============================================================================
+llm:
+
+  provider:
+    # Provider 类型，对应 _PROVIDER_MAP 中的 key，微调功能支持 "together"
+    type: "together"
+
+    # API key，使用 ${ENV_VAR} 语法从环境变量读取（与 llama_openai.yaml 一致）
+    api_key: "${TOGETHER_API_KEY}"
+
+    # API 端点地址，使用官方 SDK (together-py) 的默认值 https://api.together.ai/v1。
+    # 注意：必须带 /v1！SDK 以相对路径追加 /fine-tunes、/files。
+    base_url: "https://api.together.ai/v1"
+
+# =============================================================================
+# Fine-tuning Configuration (映射到 POST /v1/fine-tunes 请求体参数)
+# =============================================================================
+fine_tuning:
+
+  # ── 训练数据 ────────────────────────────────────────────────────────────────
+  # 由 utils/build_finetune_dataset.py 预先生成的 JSONL 文件路径
+  training_file: "dataset/fine_tune/paper_info_extract/test.jsonl"
+
+  # 可选验证集 JSONL 路径，null 表示不使用
+  # 验证集用于训练过程中的 loss 评估，不参与权重更新
+  validation_file: null
+
+  # ── 基座模型 ────────────────────────────────────────────────────────────────
+  # 必须为 Together AI 支持微调的模型名
+  # 常用: meta-llama/Meta-Llama-3.1-8B-Instruct-Reference,
+  #       meta-llama/Llama-3.2-3B-Instruct, meta-llama/Llama-3.3-70B-Instruct-Turbo
+  base_model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Reference"
+
+  # ── 任务参数 ────────────────────────────────────────────────────────────────
+  # 微调方法: "supervised" (SFT，默认) | "dpo" (直接偏好优化)
+  # 留空/删除此字段 = supervisised（服务端默认）；仅 dpo 时显式指定 training_method
+  method: "supervised"
+
+  # 模型名自定义后缀，最多 64 字符，追加到输出模型名
+  suffix: "optis-bench"
+
+  # 随机种子（映射为 Together 的 random_seed 字段），用于提升结果可复现性；
+  # null 表示由服务端指定默认值
+  random_seed: null
+
+  # 超参数。Together AI 将其作为请求体顶层字段发送（非嵌套 hyperparameters 对象），
+  # 与官方 SDK fine_tuning.create 的扁平参数一一对应。
+  n_epochs: 3
+
+  # 批大小: 正整数或 "max"
+  batch_size: "max"
+
+  # 学习率: 数值，默认 1e-5
+  learning_rate: 0.00001
+
+  # 预热步数占比: 0 ~ 1
+  warmup_ratio: 0.0
+
+  # 权重衰减: 正则化参数，默认 0
+  weight_decay: 0.0
+
+  # 梯度裁剪最大范数: 设为 0 关闭，默认 1
+  max_grad_norm: 1.0
+
+# =============================================================================
+# Execution Configuration (客户端行为，非 API 参数)
+# =============================================================================
+execution:
+  # --wait 模式的轮询间隔（秒）
+  poll_interval: 60
+
+  # --wait 模式的最长等待时长（秒），超时后退出并保留 job id 供后续查询
+  poll_timeout: 86400
+
+  # 任务状态落盘路径：任务创建后写入 job id，成功后追加 fine_tuned_model 名
+  status_output_path: "results/finetune/job_status_together.json"

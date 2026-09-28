@@ -37,6 +37,7 @@ class ParsedLens:
 # Classes
 # =============================================================================
 
+
 class JSONLParser:
     """Parser for JSON Lines format."""
 

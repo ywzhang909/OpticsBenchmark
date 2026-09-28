@@ -1,33 +1,33 @@
 """
-LlamaLLM - Llama 模型调用类（基于 Together AI）
+LlamaLLM - Llama model class (based on Together AI)
 
-支持两种调用方式：
-  - _chat_together: 通过 TogetherAIProvider（httpx raw HTTP）
-  - _chat_openai:    通过 OpenAIProvider（OpenAI SDK）
+Two invocation modes are supported:
+  - _chat_together: via TogetherAIProvider (httpx raw HTTP)
+  - _chat_openai:    via OpenAIProvider (OpenAI SDK)
 
-Together AI 兼容 OpenAI SDK 的 chat.completions.create。
+Together AI is compatible with the OpenAI SDK chat.completions.create.
 Endpoint: https://api.together.ai/v1
 
-setup 采用统一扁平参数（与 GPTLLM 一致）：
+setup uses unified flat parameters (consistent with GPTLLM):
   - max_tokens / max_completion_tokens → max_tokens
   - response_format: true / gold_answer_path → response_format
-    （json_schema，structured outputs；无 schema 时退回 json_object）
-  - reasoning / reasoning_effort          → 推理开关与强度
+    (json_schema, structured outputs; falls back to json_object without a schema)
+  - reasoning / reasoning_effort          → reasoning switch and strength
   - tools.function_declarations / custom  → function tools
   - tools.tool_choice                     → tool_choice
-  - api_params                            → 覆盖或扩展请求体
+  - api_params                            → override or extend the request body
 
-Together AI 参数兼容性（来自官方文档）：
-  - temperature, top_p, max_tokens: ✅ 完全支持
-  - frequency_penalty, presence_penalty: ✅ 支持
-  - stop, seed, n: ✅ 支持（n 部分模型）
-  - response_format (json_object/json_schema): ✅ 支持
-  - tools, tool_choice: ✅ 支持
-  - logprobs, top_logprobs: ✅ 支持（格式略有不同）
-  - reasoning_effort: ⚠️ 仅 GPT-OSS 模型
-  - logit_bias: ❌ 大部分模型不支持
-  - service_tier, store, metadata: ⚠️ 接受但忽略
-若输入不支持的参数，API 将返回错误并记录日志。
+Together AI parameter compatibility (from the official docs):
+  - temperature, top_p, max_tokens: ✅ fully supported
+  - frequency_penalty, presence_penalty: ✅ supported
+  - stop, seed, n: ✅ supported (n on some models)
+  - response_format (json_object/json_schema): ✅ supported
+  - tools, tool_choice: ✅ supported
+  - logprobs, top_logprobs: ✅ supported (format differs slightly)
+  - reasoning_effort: ⚠️ GPT-OSS models only
+  - logit_bias: ❌ unsupported by most models
+  - service_tier, store, metadata: ⚠️ accepted but ignored
+If an unsupported parameter is provided, the API returns an error and logs it.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ from src.llm.providers.together_ai_provider import TogetherAIProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
-# 每百万 token 价格（input, output），Together AI 计价
+# Price per million tokens (input, output), Together AI pricing
 _LLAMA_PRICES: dict[str, tuple[float, float]] = {
     "meta-llama/Llama-4-Scout-17B-16E-Instruct": (0.18, 0.59),
 }
@@ -56,7 +56,7 @@ _DEFAULT_PRICE: tuple[float, float] = (0.18, 0.59)
 # =============================================================================
 
 class LlamaLLM(BaseLLM):
-    """Llama 模型，支持 TogetherAIProvider 和 OpenAIProvider。"""
+    """Llama model, supports TogetherAIProvider and OpenAIProvider."""
 
     def __init__(self, model_name: str = "meta-llama/Llama-4-Scout-17B-16E-Instruct"):
         super().__init__(model_name)
@@ -67,31 +67,32 @@ class LlamaLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 TogetherAIProvider 或 OpenAIProvider。
+        Dispatch to the implementation matching the provider type; only
+        TogetherAIProvider or OpenAIProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 TogetherAIProvider 或 OpenAIProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: List of messages [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be a TogetherAIProvider or OpenAIProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: gold answer JSON path, used for structured output
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: When the provider type is not supported
         """
         if isinstance(provider, OpenAIProvider):
             return await self._chat_openai(messages, provider, **kwargs)
         if isinstance(provider, TogetherAIProvider):
             return await self._chat_together(messages, provider, **kwargs)
         raise ValueError(
-            f"LlamaLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 OpenAIProvider 或 TogetherAIProvider"
+            f"LlamaLLM does not support provider: {type(provider).__name__}, "
+            f"only OpenAIProvider or TogetherAIProvider is supported"
         )
 
     async def _chat_openai(
@@ -104,7 +105,7 @@ class LlamaLLM(BaseLLM):
         setup = kwargs.get("setup", {})
         gold_answer_path = kwargs.get("gold_answer_path", None)
 
-        processed_messages = await self._process_messages(messages)
+        processed_messages = await self._process_messages(messages, provider)
 
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
@@ -129,7 +130,7 @@ class LlamaLLM(BaseLLM):
             "seed": setup.get("seed", None),
         }
 
-        # response_format 处理
+        # response_format handling
         if gold_answer_path:
             rf = self._build_structured_output(gold_answer_path)
             if rf:
@@ -137,12 +138,12 @@ class LlamaLLM(BaseLLM):
         if setup.get("response_format", False) and "response_format" not in request_kwargs:
             request_kwargs["response_format"] = {"type": "json_object"}
 
-        # tools 处理
+        # tools handling
         tools_config = setup.get("tools", {})
         if tools_config:
             request_kwargs.update(self._build_tools(tools_config, setup))
 
-        # api_params 覆盖
+        # api_params override
         request_kwargs.update(setup.get("api_params", {}))
 
         try:
@@ -182,7 +183,7 @@ class LlamaLLM(BaseLLM):
         setup = kwargs.get("setup", {})
         gold_answer_path = kwargs.get("gold_answer_path", None)
 
-        processed_messages = await self._process_messages(messages)
+        processed_messages = await self._process_messages(messages, provider)
 
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
@@ -232,20 +233,24 @@ class LlamaLLM(BaseLLM):
 
         request_kwargs.update(setup.get("api_params", {}))
 
+        # The official SDK uses Omit semantics; drop None values for v2 validation
+        body = {k: v for k, v in request_kwargs.items() if v is not None}
+
         try:
-            response = await provider.client.post(
-                "/v1/chat/completions", json=request_kwargs
-            )
-            response.raise_for_status()
-            data = response.json()
+            response = await provider.client.chat.completions.create(**body)
 
             latency = time.time() - start_time
 
-            choice = data["choices"][0]
-            message = choice.get("message", {})
-            content = message.get("content") or ""
+            choice = response.choices[0]
+            message = choice.message
+            content = getattr(message, "content", None) or ""
 
-            usage = data.get("usage", {})
+            usage_obj = response.usage
+            usage = {
+                "prompt_tokens": getattr(usage_obj, "prompt_tokens", 0) or 0,
+                "completion_tokens": getattr(usage_obj, "completion_tokens", 0) or 0,
+                "total_tokens": getattr(usage_obj, "total_tokens", 0) or 0,
+            }
             cost = self._calculate_cost(usage)
             self._log_usage(usage, cost, latency)
 
@@ -266,9 +271,14 @@ class LlamaLLM(BaseLLM):
             }
 
     async def _process_messages(
-        self, messages: list[dict[str, str]], provider: OpenAIProvider
+        self, messages: list[dict[str, str]], provider: Any
     ) -> list[dict[str, Any]]:
-        """将扁平消息列表转换为 OpenAI messages 格式。"""
+        """Convert a flat message list into chat completion message format.
+
+        Handle location files by provider type:
+        - OpenAIProvider: upload the file and reference its file_id
+        - TogetherAIProvider: read the file text and inline it into the message
+        """
         processed_messages: list[dict[str, str]] = []
         user_content: list[dict[str, str]] = []
         system_content: list[dict[str, str]] = []
@@ -280,12 +290,17 @@ class LlamaLLM(BaseLLM):
                 elif key == "prompt":
                     user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    file_object = await provider.client.files.create(
-                        file=open(value, "rb"), purpose="user_data"
-                    )
-                    user_content.append(
-                        {"type": "file", "file_id": file_object.id}
-                    )
+                    if isinstance(provider, TogetherAIProvider):
+                        text = self._read_location_text(value)
+                        if text:
+                            user_content.append({"type": "text", "text": text})
+                    elif isinstance(provider, OpenAIProvider):
+                        file_object = await provider.client.files.create(
+                            file=open(value, "rb"), purpose="user_data"
+                        )
+                        user_content.append(
+                            {"type": "file", "file_id": file_object.id}
+                        )
                 elif key == "content" and "role" in message:
                     role = message["role"]
                     if role == "system":
@@ -301,18 +316,19 @@ class LlamaLLM(BaseLLM):
         return processed_messages
 
     @staticmethod
-    def _read_file(path: str) -> str:
-        """读取本地文件内容（文本内联，Together AI 无文件上传 API）。"""
+    def _read_location_text(path: str) -> str:
+        """Read a local file's text (used to inline location files for Together)."""
         file_path = Path(path)
         try:
             return file_path.read_text(encoding="utf-8", errors="ignore")
         except Exception:
+            logger.warning(f"Failed to read location file: {path}")
             return ""
 
     def _build_structured_output(
         self, gold_answer_path: str | None
     ) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 response_format（json_schema）。"""
+        """Build response_format (json_schema) from gold_answer_path."""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -340,7 +356,7 @@ class LlamaLLM(BaseLLM):
 
     @staticmethod
     def _build_tools(tools_config: dict[str, Any]) -> dict[str, Any]:
-        """根据 tools 配置构建 function tools。"""
+        """Build function tools from the tools configuration."""
         tools: list[dict[str, Any]] = []
         declarations = tools_config.get("function_declarations", []) or []
         declarations += tools_config.get("custom", [])
@@ -379,7 +395,7 @@ class LlamaLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, OpenAIProvider):
             await provider.close()
         elif isinstance(provider, TogetherAIProvider):

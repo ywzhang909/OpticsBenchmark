@@ -1,7 +1,7 @@
 """
-OllamaLLM - 本地 Ollama 模型调用类
+OllamaLLM - Local Ollama model class
 
-支持通过 OllamaProvider 进行本地 Ollama HTTP API 调用。
+Supports local Ollama HTTP API calls through OllamaProvider.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from src.llm.providers.ollama_provider import OllamaProvider
 
 
 class OllamaLLM(BaseLLM):
-    """本地 Ollama 模型，支持 OllamaProvider。"""
+    """Local Ollama model, supports OllamaProvider."""
 
     def __init__(self, model_name: str = "llama3.1"):
         super().__init__(model_name)
@@ -29,28 +29,29 @@ class OllamaLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 OllamaProvider。
+        Dispatch to the implementation matching the provider type; only
+        OllamaProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 OllamaProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - 其他透传给底层 API 的参数
+            messages: List of messages [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an OllamaProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: When the provider type is not supported
         """
         if isinstance(provider, OllamaProvider):
             return await self._chat_ollama(messages, provider, **kwargs)
         raise ValueError(
-            f"OllamaLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 OllamaProvider"
+            f"OllamaLLM does not support provider: {type(provider).__name__}, "
+            f"only OllamaProvider is supported"
         )
 
     async def _chat_ollama(
@@ -72,7 +73,7 @@ class OllamaLLM(BaseLLM):
             },
         }
 
-        # Ollama 本地模型不支持 response_format 结构化输出
+        # Local Ollama models do not support response_format structured output
         # if setup.get("response_format", False):
         #     rf = build_response_format(kwargs.get("gold_answer_path"))
         #     if rf:
@@ -86,7 +87,7 @@ class OllamaLLM(BaseLLM):
 
             content = data.get("message", {}).get("content", "")
 
-            # Ollama 本地模型无 API 费用
+            # Local Ollama models incur no API cost
             usage = {
                 "prompt_tokens": data.get("prompt_eval_count", 0),
                 "completion_tokens": data.get("eval_count", 0),
@@ -110,6 +111,6 @@ class OllamaLLM(BaseLLM):
             }
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, OllamaProvider):
             await provider.close()

@@ -1,17 +1,17 @@
 """
 Optis Benchmark - Fine-tune Runner Module
 
-多提供商微调任务管理器，对齐 LLMPredRunner 的架构风格。
-通过 Provider 薄客户端包装 + 内联业务逻辑实现微调。
+Multi-provider fine-tuning job manager, aligned with the architectural style of LLMPredRunner.
+Implements fine-tuning via a thin Provider client wrapper plus inline business logic.
 
-执行流程：
-    1. validate()      - 校验配置与训练文件
-    2. create_job()    - 上传 JSONL → 创建微调任务
-    3. wait_for_completion() - 轮询状态直至终态（可选）
-    4. save_status()   - 状态落盘（job id / ft 模型名）
+Execution flow:
+    1. validate()      - Validate config and training files
+    2. create_job()    - Upload JSONL -> create fine-tuning job
+    3. wait_for_completion() - Poll status until a terminal state (optional)
+    4. save_status()   - Persist status (job id / ft model name)
 
-微调完成后，将 status_output_path 中记录的 fine_tuned_model 名填入
-configs/llm/GPT_OpenAI.yaml 的 model.name 即可复用现有推理/评测管线。
+After fine-tuning completes, fill the fine_tuned_model name recorded in status_output_path
+into model.name in configs/llm/GPT_OpenAI.yaml to reuse the existing inference/evaluation pipeline.
 """
 
 from __future__ import annotations
@@ -34,20 +34,17 @@ from src.utils import logger
 # Constants
 # =============================================================================
 
-# 终态状态集合（达到后停止轮询）
+# Terminal statuses (stop polling once reached)
 TERMINAL_STATUSES: set[str] = {"succeeded", "failed", "cancelled"}
 
-# 支持的微调方法
-VALID_METHODS: set[str] = {"supervised", "dpo"}
-
-# suffix 最大长度（OpenAI 官方限制）
+# Maximum suffix length (OpenAI official limit)
 MAX_SUFFIX_LENGTH = 18
 
-# 轮询默认值
+# Polling defaults
 DEFAULT_POLL_INTERVAL = 30
 DEFAULT_POLL_TIMEOUT = 86400
 
-# Bedrock 微调状态映射
+# Bedrock fine-tuning status mapping
 BEDROCK_STATUS_MAP: dict[str, str] = {
     "InProgress": "running",
     "Completed": "succeeded",
@@ -56,7 +53,7 @@ BEDROCK_STATUS_MAP: dict[str, str] = {
     "Stopped": "cancelled",
 }
 
-# DashScope 状态映射
+# DashScope status mapping
 DASHSCOPE_STATUS_MAP: dict[str, str] = {
     "PENDING": "queued",
     "QUEUING": "queued",
@@ -67,10 +64,19 @@ DASHSCOPE_STATUS_MAP: dict[str, str] = {
     "CANCELING": "cancelled",
 }
 
-# Together AI 端点
-TOGETHER_FINETUNE_ENDPOINT = "/v1/fine-tunes"
-TOGETHER_FILES_ENDPOINT = "/v1/files"
-
+# Together AI status mapping (official SDK 返回值 -> runner 规范状态)
+TOGETHER_STATUS_MAP: dict[str, str] = {
+    "pending": "queued",
+    "queued": "queued",
+    "running": "running",
+    "compressing": "running",
+    "uploading": "running",
+    "cancel_requested": "cancelling",
+    "cancelled": "cancelled",
+    "completed": "succeeded",
+    "error": "failed",
+    "failed": "failed",
+}
 
 def _expand_env_vars(data: Any) -> Any:
     """Recursively expand environment variables ${VAR_NAME}."""
@@ -92,7 +98,7 @@ def _expand_env_vars(data: Any) -> Any:
 
 @dataclass
 class FineTuneJobStatus:
-    """微调任务状态快照。"""
+    """Fine-tuning job status snapshot."""
 
     job_id: str = ""
     status: str = ""
@@ -119,7 +125,7 @@ class FineTuneJobStatus:
 
     @classmethod
     def from_dict_raw(cls, data: dict[str, Any]) -> FineTuneJobStatus:
-        """从适配器返回的字典创建状态快照。"""
+        """Create a status snapshot from a dictionary returned by the adapter."""
         return cls(
             job_id=data.get("job_id", ""),
             status=data.get("status", ""),
@@ -143,13 +149,13 @@ class FineTuneRunnerConfig:
         """Load configuration from YAML file.
 
         Args:
-            path: YAML 配置文件路径
+            path: YAML config file path
 
         Returns:
-            FineTuneRunnerConfig 实例
+            A FineTuneRunnerConfig instance
 
         Raises:
-            FileNotFoundError: 配置文件不存在时
+            FileNotFoundError: when the config file does not exist
         """
         path_obj = Path(path)
         if not path_obj.exists():
@@ -168,10 +174,10 @@ class FineTuneRunnerConfig:
         )
 
     def validate(self) -> list[str]:
-        """校验配置合法性。
+        """Validate config correctness.
 
         Returns:
-            错误列表；空列表表示配置合法
+            List of errors; an empty list means the config is valid
         """
         errors: list[str] = []
 
@@ -181,22 +187,28 @@ class FineTuneRunnerConfig:
                 errors.append("llm.provider.api_key is empty (check env var expansion)")
 
         job = self.job_config
+
+        # 验证 base_model 存在且非空
+        if not job.get("base_model"):
+            errors.append("fine_tuning.base_model is required")
+
+        # 验证 training_file 存在且路径有效
         training_file = job.get("training_file", "")
         if not training_file:
             errors.append("fine_tuning.training_file is required")
         elif not Path(training_file).exists():
             errors.append(f"training_file not found: {training_file}")
+        elif not Path(training_file).is_file():
+            errors.append(f"training_file is not a file: {training_file}")
+
+        # 验证 validation_file 如果存在则路径有效
         if validation_file := job.get("validation_file"):
             if not Path(validation_file).exists():
                 errors.append(f"validation_file not found: {validation_file}")
+            elif not Path(validation_file).is_file():
+                errors.append(f"validation_file is not a file: {validation_file}")
 
-        if not job.get("base_model"):
-            errors.append("fine_tuning.base_model is required")
-
-        method = job.get("method", "supervised")
-        if method not in VALID_METHODS:
-            errors.append(f"invalid method '{method}', expected one of {sorted(VALID_METHODS)}")
-
+        # 验证 suffix 长度（如果存在）
         suffix = str(job.get("suffix") or "")
         if len(suffix) > MAX_SUFFIX_LENGTH:
             errors.append(f"suffix exceeds {MAX_SUFFIX_LENGTH} chars: '{suffix}'")
@@ -205,17 +217,17 @@ class FineTuneRunnerConfig:
 
     @property
     def poll_interval(self) -> int:
-        """轮询间隔（秒）。"""
+        """Polling interval (seconds)."""
         return int(self.execution_config.get("poll_interval", DEFAULT_POLL_INTERVAL))
 
     @property
     def poll_timeout(self) -> int:
-        """轮询超时（秒）。"""
+        """Polling timeout (seconds)."""
         return int(self.execution_config.get("poll_timeout", DEFAULT_POLL_TIMEOUT))
 
     @property
     def status_output_path(self) -> str:
-        """状态落盘路径。"""
+        """Path where status is persisted."""
         return self.execution_config.get("status_output_path", "results/finetune/job_status.json")
 
 
@@ -225,21 +237,21 @@ class FineTuneRunnerConfig:
 
 
 class FineTuneRunner:
-    """多提供商微调任务管理器。
+    """Multi-provider fine-tuning job manager.
 
-    通过 Provider 薄客户端包装 + 内联业务逻辑实现微调。
+    Implements fine-tuning via a thin Provider client wrapper plus inline business logic.
 
-    执行流程：
-        1. setup() - 创建 Provider 实例
-        2. create_job() / wait_for_completion() / cancel_job() 等任务操作
-        3. teardown() - 清理资源
+    Execution flow:
+        1. setup() - Create a Provider instance
+        2. create_job() / wait_for_completion() / cancel_job() and other job operations
+        3. teardown() - Clean up resources
     """
 
     def __init__(self, config: FineTuneRunnerConfig):
-        """初始化 Runner。
+        """Initialize the Runner.
 
         Args:
-            config: 微调运行配置
+            config: Fine-tuning run configuration
         """
         self.config = config
         self.provider: Any = None
@@ -250,13 +262,13 @@ class FineTuneRunner:
     # ------------------------------------------------------------------
 
     async def setup(self) -> None:
-        """创建 Provider 实例。"""
+        """Create a Provider instance."""
         self.provider_type = self.config.provider_config.get("type", "")
         self.provider = create_provider(self.config.provider_config)
         logger.info(f"Provider: {type(self.provider).__name__}")
 
     async def teardown(self) -> None:
-        """清理资源。"""
+        """Clean up resources."""
         if self.provider:
             try:
                 await self.provider.close()
@@ -269,13 +281,13 @@ class FineTuneRunner:
 
     @staticmethod
     def validate_jsonl(path: str | Path) -> list[str]:
-        """校验微调 JSONL 文件的格式与消息结构。
+        """Validate the format and message structure of a fine-tuning JSONL file.
 
         Args:
-            path: JSONL 文件路径
+            path: JSONL file path
 
         Returns:
-            错误列表；空列表表示合法
+            List of errors; an empty list means the file is valid
         """
         errors: list[str] = []
         path_obj = Path(path)
@@ -319,13 +331,13 @@ class FineTuneRunner:
     # ------------------------------------------------------------------
 
     async def _upload_file(self, file_path: str) -> str:
-        """上传文件到微调提供商。
+        """Upload a file to the fine-tuning provider.
 
         Args:
-            file_path: 本地文件路径
+            file_path: Local file path
 
         Returns:
-            文件 ID 或路径
+            File ID or path
         """
         if self.provider_type == "openai":
             return await self._upload_file_openai(file_path)
@@ -338,7 +350,7 @@ class FineTuneRunner:
         elif self.provider_type == "dashscope":
             return await self._upload_file_dashscope(file_path)
         else:
-            raise ValueError(f"不支持的 Provider 类型: {self.provider_type}")
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
     async def _upload_file_openai(self, file_path: str) -> str:
         with open(file_path, "rb") as f:
@@ -347,25 +359,56 @@ class FineTuneRunner:
 
     async def _upload_file_mistral(self, file_path: str) -> str:
         with open(file_path, "rb") as f:
-            file_obj = await self.provider.client.files.upload(file=f, purpose="fine-tune")
+            file_obj = await self.provider.client.files.upload(
+                file={
+                    "file_name": Path(file_path).name,
+                    "content": f
+                },
+                purpose="fine-tune"
+            )
         return file_obj.id
 
     async def _upload_file_together(self, file_path: str) -> str:
-        with open(file_path, "rb") as f:
-            files = {"file": (file_path, f, "application/jsonl")}
-            data = {"purpose": "fine-tune"}
-            response = await self.provider.client.post(
-                TOGETHER_FILES_ENDPOINT, files=files, data=data,
-            )
-            response.raise_for_status()
-            return response.json().get("id", "")
+
+        file_obj = await self.provider.client.files.upload(
+            file=file_path,
+            purpose="fine-tune",
+            check=True
+        )
+        file_id = file_obj.id
+
+        # 轮询等待服务器端校验完成，直到 processing_status == "COMPLETED"
+        # 才返回文件 id；出现 INVALID_FORMAT / FAILED 则报错并结束。
+        # 参照官方: docs.together.ai/docs/fine-tuning/data-preparation
+        deadline = time.monotonic() + 3600
+        while True:
+            meta = await self.provider.client.files.retrieve(file_id)
+            status = meta.processing_status
+            if status == "COMPLETED":
+                break
+            if status == "INVALID_FORMAT":
+                raise ValueError(
+                    f"file is not valid for fine-tuning: {meta.validation_report}"
+                )
+            if status == "FAILED":
+                raise RuntimeError(
+                    f"file processing did not complete: {status}"
+                )
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"timed out after {self.config.poll_timeout}s waiting for "
+                    f"file {file_id} to be processed (status: {status})"
+                )
+            await asyncio.sleep(5)
+
+        return file_id
 
     async def _upload_file_bedrock(self, file_path: str) -> str:
         if file_path.startswith("s3://"):
             return file_path
         raise ValueError(
-            "Bedrock 微调需要将训练数据上传到 S3。"
-            "请使用 AWS CLI: aws s3 cp <local_path> s3://<bucket>/<key>"
+            "Bedrock fine-tuning requires uploading training data to S3. "
+            "Use the AWS CLI: aws s3 cp <local_path> s3://<bucket>/<key>"
         )
 
     async def _upload_file_dashscope(self, file_path: str) -> str:
@@ -386,57 +429,82 @@ class FineTuneRunner:
 
     async def _create_job(
         self,
+        job_cfg: dict[str, Any],
         training_file_id: str,
-        model: str,
         validation_file_id: str | None = None,
-        method: str = "supervised",
-        suffix: str | None = None,
-        seed: int | None = None,
-        hyperparameters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """创建微调任务。
+        """Create a fine-tuning job.
+
+        Args:
+            job_cfg: Fine-tuning configuration (the fine_tuning.* block from YAML),
+                from which each provider extracts only the keys relevant to its own API.
+            training_file_id: ID/path of the uploaded training set.
+            validation_file_id: Optional ID/path of the uploaded validation set.
 
         Returns:
-            标准任务状态字典
+            Standard job status dictionary
         """
         if self.provider_type == "openai":
             return await self._create_job_openai(
-                training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+                job_cfg, training_file_id, validation_file_id,
             )
         elif self.provider_type == "mistral":
             return await self._create_job_mistral(
-                training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+                job_cfg, training_file_id, validation_file_id,
             )
         elif self.provider_type == "together":
             return await self._create_job_together(
-                training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+                job_cfg, training_file_id, validation_file_id,
             )
         elif self.provider_type == "bedrock":
             return await self._create_job_bedrock(
-                training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+                job_cfg, training_file_id, validation_file_id,
             )
         elif self.provider_type == "dashscope":
             return await self._create_job_dashscope(
-                training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+                job_cfg, training_file_id, validation_file_id,
             )
         else:
-            raise ValueError(f"不支持的 Provider 类型: {self.provider_type}")
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
     async def _create_job_openai(
-        self, training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+        self, job_cfg, training_file_id, validation_file_id=None,
     ) -> dict[str, Any]:
+        model = job_cfg["base_model"]
+
         request: dict[str, Any] = {
             "training_file": training_file_id,
             "model": model,
-            "suffix": suffix,
-            "seed": seed,
         }
         if validation_file_id is not None:
             request["validation_file"] = validation_file_id
-        method_config: dict[str, Any] = {"type": method}
-        if hyperparameters:
-            method_config[method] = {"hyperparameters": hyperparameters}
-        request["method"] = method_config
+        if job_cfg.get("suffix", None):
+            request["suffix"] = job_cfg.get("suffix")
+        if job_cfg.get("seed", None):
+            request["seed"] = job_cfg.get("seed")
+        if job_cfg.get("metadata", None):
+            request["metadata"] = job_cfg.get("metadata", None)
+        if job_cfg.get("method", None):
+            method_type = job_cfg.get("method")
+            if job_cfg.get("hyperparameters", None):
+                request["method"] = self._build_openai_method(
+                    method_type,
+                    job_cfg.get("hyperparameters"),
+                    grader=job_cfg.get("grader"),
+                )
+            else:
+                raise ValueError(
+                    f"fine_tuning.method is '{method_type}' but "
+                    "fine_tuning.hyperparameters is missing. "
+                    "hyperparameters is required when a method is specified."
+                )
+        else:
+            logger.info(
+                "No fine-tune method specified; using OpenAI default method "
+                "(no explicit 'method' body). Set 'fine_tuning.method' and "
+                "'fine_tuning.hyperparameters' to customize "
+                "(supervised / dpo / reinforcement)."
+            )
 
         job = await self.provider.client.fine_tuning.jobs.create(**request)
 
@@ -453,20 +521,92 @@ class FineTuneRunner:
             "error": error,
         }
 
+    def _build_openai_method(
+        self,
+        method_type: str,
+        hyperparameters: dict[str, Any],
+        grader: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build the OpenAI fine-tune 'method' request body for a given type.
+
+        Mirrors the OpenAI SDK structure:
+            supervised     -> {"type": "supervised",
+                               "supervised": SupervisedMethod(
+                                   hyperparameters=SupervisedHyperparameters(...))}
+            dpo            -> {"type": "dpo",
+                               "dpo": DpoMethod(
+                                   hyperparameters=DpoHyperparameters(...))}
+            reinforcement  -> {"type": "reinforcement",
+                               "reinforcement": ReinforcementMethod(
+                                   grader=StringCheckGrader(...),
+                                   hyperparameters=ReinforcementHyperparameters(...))}
+
+        Args:
+            method_type: One of "supervised", "dpo", "reinforcement".
+            hyperparameters: Hyperparameter dict (e.g. n_epochs/batch_size).
+            grader: Optional grader config for "reinforcement" (StringCheckGrader,
+                requires name/type/input/operation/reference).
+
+        Returns:
+            The "method" dict to be passed to fine_tuning.jobs.create().
+
+        Raises:
+            ValueError: unsupported method_type, or missing grader for reinforcement.
+        """
+        from openai.types.fine_tuning import (
+            DpoHyperparameters,
+            DpoMethod,
+            ReinforcementHyperparameters,
+            ReinforcementMethod,
+            SupervisedHyperparameters,
+            SupervisedMethod,
+        )
+
+        if method_type == "supervised":
+            return {
+                "type": "supervised",
+                "supervised": SupervisedMethod(
+                    hyperparameters=SupervisedHyperparameters(**hyperparameters),
+                ),
+            }
+        elif method_type == "dpo":
+            return {
+                "type": "dpo",
+                "dpo": DpoMethod(
+                    hyperparameters=DpoHyperparameters(**hyperparameters),
+                ),
+            }
+        elif method_type == "reinforcement":
+            if not grader:
+                raise ValueError(
+                    "fine_tuning.grader is required when method is 'reinforcement'. "
+                    "Provide a StringCheckGrader config "
+                    "(name/type/input/operation/reference)."
+                )
+            from openai.types.graders import StringCheckGrader
+
+            return {
+                "type": "reinforcement",
+                "reinforcement": ReinforcementMethod(
+                    grader=StringCheckGrader(**grader),
+                    hyperparameters=ReinforcementHyperparameters(**hyperparameters),
+                ),
+            }
+        else:
+            raise ValueError(f"Unsupported OpenAI fine-tune method: {method_type}")
+
     async def _create_job_mistral(
-        self, training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+        self, job_cfg, training_file_id, validation_file_id=None,
     ) -> dict[str, Any]:
         request: dict[str, Any] = {
-            "training_files": [training_file_id],
-            "model": model,
-            "suffix": suffix,
+            "model": job_cfg["base_model"],
+            "training_files": [{"file_id": training_file_id, "weight": 1}],
+            "hyperparameters" : job_cfg.get("hyperparameters", None),
+            "auto_start" : job_cfg.get("auto_start", False),
+            "integrations" : job_cfg.get("integrations", None),
         }
         if validation_file_id is not None:
             request["validation_files"] = [validation_file_id]
-        if hyperparameters:
-            request["hyperparameters"] = hyperparameters
-        if seed is not None:
-            request["seed"] = seed
 
         job = await self.provider.client.fine_tuning_jobs.create(**request)
 
@@ -477,46 +617,108 @@ class FineTuneRunner:
         return {
             "job_id": getattr(job, "id", ""),
             "status": getattr(job, "status", ""),
-            "base_model": model,
+            "base_model": job_cfg["base_model"],
             "fine_tuned_model": getattr(job, "fine_tuned_model", None),
             "trained_tokens": getattr(job, "trained_tokens", 0) or 0,
             "error": error,
         }
 
     async def _create_job_together(
-        self, training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+        self, job_cfg, training_file_id, validation_file_id=None,
     ) -> dict[str, Any]:
+
         request: dict[str, Any] = {
             "training_file": training_file_id,
-            "model": model,
+            "model": job_cfg["base_model"],
+            "packing" : job_cfg.get("packing", True),
+            "max_seq_length" : job_cfg.get("max_seq_length", None),
+            "n_epochs" : job_cfg.get("n_epochs", 1),
+            "n_checkpoints" : job_cfg.get("n_checkpoints", 1),
+            "n_evals" : job_cfg.get("n_evals", 0),
+            "batch_size" : job_cfg.get("batch_size", "max"),
+            "gradient_accumulation_steps" : job_cfg.get("gradient_accumulation_steps", 0),
+            "learning_rate" : job_cfg.get("learning_rate", 0.00001),
+            "warmup_ratio" : job_cfg.get("warmup_ratio", 0),
+            "max_grad_norm" : job_cfg.get("max_grad_norm", 1),
+            "weight_decay" : job_cfg.get("weight_decay", 0),
+            "random_seed" : job_cfg.get("random_seed", None),
+            "early_stopping_enabled" : job_cfg.get("early_stopping_enabled", False),
+            "suffix" : job_cfg.get("suffix", None),
+            "wandb_api_key" : job_cfg.get("wandb_api_key", None),
+            "wandb_base_url" : job_cfg.get("wandb_base_url", None),
+            "wandb_project_name" : job_cfg.get("wandb_project_name", None),
+            "wandb_name" : job_cfg.get("wandb_name", None),
+            "wandb_entity" : job_cfg.get("wandb_entity", None),
+
         }
+
+        # 提取 lr_scheduler 配置（映射为 SDk 扁平参数）
+        lr_scheduler = job_cfg.get("lr_scheduler")
+        if lr_scheduler:
+            # 验证 lr_scheduler_type
+            lr_scheduler_type = lr_scheduler.get("lr_scheduler_type")
+            if lr_scheduler_type not in ["linear", "cosine"]:
+                raise ValueError(f"无效的 lr_scheduler_type: {lr_scheduler_type}。必须是 'linear' 或 'cosine'")
+
+            # 验证 lr_scheduler_args
+            lr_scheduler_args = lr_scheduler.get("lr_scheduler_args", {})
+            min_lr_ratio = lr_scheduler_args.get("min_lr_ratio", 0)
+
+            request["lr_scheduler_type"] = lr_scheduler_type
+            request["min_lr_ratio"] = min_lr_ratio
+            if lr_scheduler_type == "cosine":
+                request["scheduler_num_cycles"] = lr_scheduler_args.get("num_cycles", 0.5)
         if validation_file_id is not None:
             request["validation_file"] = validation_file_id
-        if method != "supervised":
-            request["method"] = method
-        if suffix is not None:
-            request["suffix"] = suffix
-        if seed is not None:
-            request["seed"] = seed
-        if hyperparameters:
-            request["hyperparameters"] = hyperparameters
+        early_stopping_enabled = job_cfg.get("early_stopping_enabled", False)
+        if early_stopping_enabled:
+            request["early_stopping_enabled"] = early_stopping_enabled
+            request["early_stopping_patience"] = job_cfg.get("early_stopping_patience", 2)
+            request["early_stopping_min_delta"] = job_cfg.get("early_stopping_min_delta", 0)
+            request["early_stopping_warmup_evals"] = job_cfg.get("early_stopping_warmup_evals", 1)
 
-        response = await self.provider.client.post(TOGETHER_FINETUNE_ENDPOINT, json=request)
-        response.raise_for_status()
-        result = response.json()
+        training_method = job_cfg.get("training_method")
+        if training_method:
+            method = training_method.get("method", None)
+            if method not in ["sft", "dpo"]:
+                raise ValueError(f"无效的 training_method.method: {method}。必须是 'sft' 或 'dpo'")
+            request["training_method"] = method
+            if method == "sft":
+                train_on_inputs = training_method.get("train_on_inputs", "auto")
+                if train_on_inputs is not None:
+                    request["train_on_inputs"] = train_on_inputs
+            elif method == "dpo":
+                dpo_beta = training_method.get("dpo_beta", 0.1)
+                rpo_alpha = training_method.get("rpo_alpha", 0)
+                dpo_normalize_logratios_by_length = training_method.get("dpo_normalize_logratios_by_length", False)
+                simpo_gamma = training_method.get("simpo_gamma", 0)
+                request["dpo_beta"] = dpo_beta
+                request["rpo_alpha"] = rpo_alpha
+                request["dpo_normalize_logratios_by_length"] = dpo_normalize_logratios_by_length
+                request["simpo_gamma"] = simpo_gamma
+
+        # 官方 SDK 使用 Omit 语义，剔除未设置的 None 值
+        request = {k: v for k, v in request.items() if v is not None}
+
+        response = await self.provider.client.fine_tuning.create(**request)
 
         return {
-            "job_id": result.get("id", ""),
-            "status": result.get("status", ""),
-            "base_model": model,
-            "fine_tuned_model": result.get("fine_tuned_model"),
-            "trained_tokens": result.get("trained_tokens", 0) or 0,
-            "error": result.get("error"),
+            "job_id": getattr(response, "id", ""),
+            "status": getattr(response, "status", ""),
+            "base_model": job_cfg["base_model"],
+            "fine_tuned_model": getattr(response, "x_model_output_name", None)
+                or getattr(response, "api_model_object_name", None),
+            "trained_tokens": getattr(response, "token_count", 0) or 0,
+            "error": None,
         }
 
     async def _create_job_bedrock(
-        self, training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+        self, job_cfg, training_file_id, validation_file_id=None,
     ) -> dict[str, Any]:
+        model = job_cfg["base_model"]
+        suffix = job_cfg.get("suffix")
+        hyperparameters = job_cfg.get("hyperparameters") or None
+
         loop = asyncio.get_running_loop()
         job_name = suffix or f"finetune-{model.replace('.', '-')}"
 
@@ -548,11 +750,18 @@ class FineTuneRunner:
         }
 
     async def _create_job_dashscope(
-        self, training_file_id, model, validation_file_id, method, suffix, seed, hyperparameters,
+        self, job_cfg, training_file_id, validation_file_id=None,
     ) -> dict[str, Any]:
         from dashscope import FineTunes
 
-        training_type = self.config.job_config.get("training_type", "sft")
+        model = job_cfg["base_model"]
+        seed = job_cfg.get("seed")
+        hyperparameters = job_cfg.get("hyperparameters") or None
+        training_type = job_cfg.get("training_type", "sft")
+        suffix = job_cfg.get("suffix")
+        job_name = job_cfg.get("job_name")
+        model_name = job_cfg.get("model_name")
+
         params: dict[str, Any] = {
             "model": model,
             "training_file_ids": [training_file_id],
@@ -564,10 +773,8 @@ class FineTuneRunner:
             params["finetuned_output_suffix"] = suffix
         if hyperparameters:
             params["hyper_parameters"] = hyperparameters
-        job_name = self.config.job_config.get("job_name", None)
         if job_name:
             params["job_name"] = job_name
-        model_name = self.config.job_config.get("model_name", None)
         if model_name:
             params["model_name"] = model_name
         if seed is not None:
@@ -599,7 +806,7 @@ class FineTuneRunner:
         elif self.provider_type == "dashscope":
             return await self._retrieve_job_dashscope(job_id)
         else:
-            raise ValueError(f"不支持的 Provider 类型: {self.provider_type}")
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
     async def _retrieve_job_openai(self, job_id: str) -> dict[str, Any]:
         job = await self.provider.client.fine_tuning.jobs.retrieve(job_id)
@@ -610,8 +817,8 @@ class FineTuneRunner:
             "job_id": getattr(job, "id", ""),
             "status": getattr(job, "status", ""),
             "base_model": getattr(job, "model", ""),
-            "fine_tuned_model": getattr(job, "fine_tuned_model", None),
-            "trained_tokens": getattr(job, "trained_tokens", 0) or 0,
+            "fine_tuned_model": getattr(job, "model_object_revision_id", None),
+            "trained_tokens": getattr(job, "token_count", 0),
             "error": error,
         }
 
@@ -630,16 +837,17 @@ class FineTuneRunner:
         }
 
     async def _retrieve_job_together(self, job_id: str) -> dict[str, Any]:
-        response = await self.provider.client.get(f"{TOGETHER_FINETUNE_ENDPOINT}/{job_id}")
-        response.raise_for_status()
-        result = response.json()
+        response = await self.provider.client.fine_tuning.retrieve(id=job_id)
         return {
-            "job_id": result.get("id", ""),
-            "status": result.get("status", ""),
-            "base_model": result.get("model", ""),
-            "fine_tuned_model": result.get("fine_tuned_model"),
-            "trained_tokens": result.get("trained_tokens", 0) or 0,
-            "error": result.get("error"),
+            "job_id": getattr(response, "id", "") or getattr(response, "job_id", ""),
+            "status": TOGETHER_STATUS_MAP.get(
+                getattr(response, "status", ""), getattr(response, "status", "").lower()
+            ),
+            "base_model": getattr(response, "model", ""),
+            "fine_tuned_model": getattr(response, "x_model_output_name", None)
+                or getattr(response, "api_model_object_name", None),
+            "trained_tokens": getattr(response, "token_count", 0) or 0,
+            "error": None,
         }
 
     async def _retrieve_job_bedrock(self, job_id: str) -> dict[str, Any]:
@@ -685,7 +893,7 @@ class FineTuneRunner:
         elif self.provider_type == "dashscope":
             return await self._cancel_job_dashscope(job_id)
         else:
-            raise ValueError(f"不支持的 Provider 类型: {self.provider_type}")
+            raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
     async def _cancel_job_openai(self, job_id: str) -> dict[str, Any]:
         job = await self.provider.client.fine_tuning.jobs.cancel(job_id)
@@ -716,16 +924,16 @@ class FineTuneRunner:
         }
 
     async def _cancel_job_together(self, job_id: str) -> dict[str, Any]:
-        response = await self.provider.client.post(f"{TOGETHER_FINETUNE_ENDPOINT}/{job_id}/cancel")
-        response.raise_for_status()
-        result = response.json()
+        response = await self.provider.client.fine_tuning.cancel(id=job_id)
         return {
-            "job_id": result.get("id", ""),
-            "status": result.get("status", ""),
-            "base_model": result.get("model", ""),
-            "fine_tuned_model": result.get("fine_tuned_model"),
-            "trained_tokens": result.get("trained_tokens", 0) or 0,
-            "error": result.get("error"),
+            "job_id": getattr(response, "id", "") or getattr(response, "job_id", ""),
+            "status": TOGETHER_STATUS_MAP.get(
+                getattr(response, "status", ""), getattr(response, "status", "").lower()
+            ),
+            "base_model": getattr(response, "model", ""),
+            "fine_tuned_model": None,
+            "trained_tokens": getattr(response, "token_count", 0) or 0,
+            "error": None,
         }
 
     async def _cancel_job_bedrock(self, job_id: str) -> dict[str, Any]:
@@ -797,18 +1005,18 @@ class FineTuneRunner:
         return statuses
 
     async def _list_jobs_together(self, limit: int) -> list[dict[str, Any]]:
-        response = await self.provider.client.get(TOGETHER_FINETUNE_ENDPOINT, params={"limit": limit})
-        response.raise_for_status()
-        result = response.json()
+        response = await self.provider.client.fine_tuning.list()
         statuses = []
-        for job in result.get("data", []):
+        for job in response.data[:limit]:
             statuses.append({
-                "job_id": job.get("id", ""),
-                "status": job.get("status", ""),
-                "base_model": job.get("model", ""),
-                "fine_tuned_model": job.get("fine_tuned_model"),
-                "trained_tokens": job.get("trained_tokens", 0) or 0,
-                "error": job.get("error"),
+                "job_id": getattr(job, "id", ""),
+                "status": TOGETHER_STATUS_MAP.get(
+                    getattr(job, "status", ""), getattr(job, "status", "").lower()
+                ),
+                "base_model": getattr(job, "model", ""),
+                "fine_tuned_model": getattr(job, "x_model_output_name", None),
+                "trained_tokens": getattr(job, "token_count", 0) or 0,
+                "error": None,
             })
         return statuses
 
@@ -954,10 +1162,10 @@ class FineTuneRunner:
     # ------------------------------------------------------------------
 
     async def create_job(self) -> FineTuneJobStatus:
-        """上传训练文件并创建微调任务。
+        """Upload the training file and create a fine-tuning job.
 
         Returns:
-            任务状态快照（含 job_id），并写入 status_output_path
+            Job status snapshot (including job_id), also written to status_output_path
         """
         if errors := self.config.validate():
             raise ValueError(f"Invalid fine-tune config: {'; '.join(errors)}")
@@ -992,13 +1200,9 @@ class FineTuneRunner:
 
         try:
             result = await self._create_job(
+                job_cfg=job_cfg,
                 training_file_id=train_file_id,
-                model=job_cfg["base_model"],
                 validation_file_id=val_file_id,
-                method=method,
-                suffix=job_cfg.get("suffix"),
-                seed=job_cfg.get("seed"),
-                hyperparameters=hyperparams if hyperparams else None,
             )
         except Exception:
             await self._safe_delete_file(train_file_id)
@@ -1012,7 +1216,7 @@ class FineTuneRunner:
         return status
 
     async def retrieve_job(self, job_id: str) -> FineTuneJobStatus:
-        """查询任务最新状态。"""
+        """Retrieve the latest status of a job."""
         result = await self._retrieve_job(job_id)
         return FineTuneJobStatus.from_dict_raw(result)
 
@@ -1022,7 +1226,7 @@ class FineTuneRunner:
         interval: int | None = None,
         timeout: int | None = None,
     ) -> FineTuneJobStatus:
-        """轮询任务直至终态或超时。"""
+        """Poll the job until a terminal state or timeout."""
         job_id = job_id or self._load_saved_job_id()
         if not job_id:
             raise ValueError("No job_id provided and no saved status found")
@@ -1070,7 +1274,7 @@ class FineTuneRunner:
             await asyncio.sleep(interval)
 
     async def cancel_job(self, job_id: str) -> FineTuneJobStatus:
-        """取消任务。"""
+        """Cancel a job."""
         result = await self._cancel_job(job_id)
         status = FineTuneJobStatus.from_dict_raw(result)
         logger.info(f"Job cancelled: {job_id} (status: {status.status})")
@@ -1078,7 +1282,7 @@ class FineTuneRunner:
         return status
 
     async def list_jobs(self, limit: int = 10) -> list[FineTuneJobStatus]:
-        """列出最近的微调任务。"""
+        """List recent fine-tuning jobs."""
         results = await self._list_jobs(limit=limit)
         statuses = [FineTuneJobStatus.from_dict_raw(r) for r in results]
         for s in statuses:
@@ -1086,7 +1290,7 @@ class FineTuneRunner:
         return statuses
 
     async def get_events(self, job_id: str, limit: int = 100) -> list[dict[str, Any]]:
-        """导出任务事件日志。"""
+        """Export job events log."""
         events = await self._list_events(job_id=job_id, limit=limit)
         logger.info(f"Fetched {len(events)} events for job {job_id}")
         return events
@@ -1096,7 +1300,7 @@ class FineTuneRunner:
     # ------------------------------------------------------------------
 
     def save_status(self, status: FineTuneJobStatus) -> None:
-        """保存任务状态到 status_output_path。"""
+        """Save job status to status_output_path."""
         out_path = Path(self.config.status_output_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         payload = status.to_dict()
@@ -1105,7 +1309,7 @@ class FineTuneRunner:
             json.dump(payload, f, ensure_ascii=False, indent=2)
 
     def _load_saved_job_id(self) -> str:
-        """从 status_output_path 读取上次保存的 job_id。"""
+        """Read the job_id last saved in status_output_path."""
         path = Path(self.config.status_output_path)
         if not path.exists():
             return ""
@@ -1121,7 +1325,7 @@ class FineTuneRunner:
     # ------------------------------------------------------------------
 
     async def _log_new_events(self, job_id: str, seen: set[str]) -> None:
-        """打印轮询期间新增的事件消息。"""
+        """Print new event messages collected during polling."""
         try:
             events = await self._list_events(job_id=job_id, limit=20)
             for ev in events:
@@ -1134,7 +1338,7 @@ class FineTuneRunner:
             logger.debug(f"Failed to fetch events: {e}")
 
     async def _safe_delete_file(self, file_id: str) -> None:
-        """尽力删除已上传的文件，失败仅警告。"""
+        """Best-effort deletion of an uploaded file; only warn on failure."""
         try:
             await self._delete_file(file_id)
             logger.info(f"Orphan file deleted: {file_id}")

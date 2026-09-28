@@ -214,7 +214,7 @@ OpticsBenchmark/
 │   ├── paper_review/                      # Paper review dataset
 │   └── optics_question_answer/            # Q&A dataset
 ├── prompts/                                # LLM prompt templates
-│   ├── system/                            # System prompts (optical_agent, research_agent)
+│   ├── system/                            # Generic LLM system prompt template
 │   ├── templates/                         # Task-specific templates
 │   ├── paper_info_extract/                # Paper info extraction prompt
 │   ├── paper_review/                      # Paper review prompt

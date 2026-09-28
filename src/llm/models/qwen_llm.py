@@ -1,7 +1,7 @@
 """
-QwenLLM - 通义千问模型调用类
+QwenLLM - Qwen model class
 
-支持通过 OpenAIProvider 进行 OpenAI 兼容 API 调用。
+Supports OpenAI-compatible API calls through OpenAIProvider.
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from src.utils import logger
 
 
 class QwenLLM(BaseLLM):
-    """通义千问模型，支持 OpenAIProvider。"""
+    """Qwen model, supports OpenAIProvider."""
 
-    # 使用 max_tokens 的 API host
+    # API hosts that use max_tokens
     _USE_MAX_TOKENS_HOSTS: set[str] = {"api.deepseek.com"}
 
     def __init__(self, model_name: str = "qwen3.5-plus"):
@@ -35,28 +35,29 @@ class QwenLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+        Dispatch to the implementation matching the provider type; only
+        OpenAIProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 OpenAIProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - 其他透传给底层 API 的参数
+            messages: List of messages [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an OpenAIProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: When the provider type is not supported
         """
         if isinstance(provider, OpenAIProvider):
             return await self._chat_openai(messages, provider, **kwargs)
         raise ValueError(
-            f"QwenLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 OpenAIProvider"
+            f"QwenLLM does not support provider: {type(provider).__name__}, "
+            f"only OpenAIProvider is supported"
         )
 
     async def _chat_openai(
@@ -68,7 +69,7 @@ class QwenLLM(BaseLLM):
         start_time = time.time()
         setup = kwargs.get("setup", {})
 
-        # 处理 messages
+        # Process messages
         processed_messages: list[dict[str, str]] = []
         user_content: list[dict[str, str]] = []
         for message in messages:
@@ -113,7 +114,7 @@ class QwenLLM(BaseLLM):
             extra_body["thinking_budget"] = setup.get("thinking_budget", 4096)
 
         if setup.get("reasoning_effort") and "thinking_budget" in extra_body:
-            raise ValueError("reasoning_effort 与 thinking_budget 不支持同时设置")
+            raise ValueError("reasoning_effort and thinking_budget cannot both be set")
 
         if setup.get("reasoning_effort"):
             extra_body["reasoning_effort"] = setup["reasoning_effort"]
@@ -177,7 +178,7 @@ class QwenLLM(BaseLLM):
                 request_kwargs["tools"] = tools
             request_kwargs["tool_choice"] = setup.get("tool_choice", "auto")
 
-        # api_params 覆盖
+        # api_params override
         request_kwargs.update({"extra_body": extra_body})
 
         try:
@@ -219,6 +220,6 @@ class QwenLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, OpenAIProvider):
             await provider.close()

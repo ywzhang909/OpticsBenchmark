@@ -1,19 +1,21 @@
 """
-GPTLLM - OpenAI GPT 模型调用类
+GPTLLM - OpenAI GPT model call class
 
-支持通过 OpenAIProvider 进行 OpenAI 官方 API 调用。
-提供两种调用方式，通过 setup.api_method 选择：
+Calls the official OpenAI API through OpenAIProvider.
+Two call modes are available, selected via setup.api_method:
   - chat_completions: Chat Completions API (client.chat.completions.create)
   - responses:        Responses API        (client.responses.create)
 
-setup 采用统一扁平参数，两种调用方式的差异由本类按 api_method 自动映射：
+setup uses unified flat parameters; this class maps the differences between
+the two modes automatically based on api_method:
   - max_tokens            → max_completion_tokens / max_output_tokens
   - response_format: true → response_format / text.format (json_object)
-  - frequency/presence_penalty 仅 Chat Completions 有效，Responses 忽略
-响应结构差异：Chat Completions 返回 choices[].message，usage 为
-prompt/completion_tokens；Responses 返回 output_text，usage 为
-input/output_tokens。
-当选择 Responses API 但模型不兼容时，程序会警告并终止执行。
+  - frequency/presence_penalty apply to Chat Completions only; Responses ignores them
+Response structure differences: Chat Completions returns choices[].message with
+usage as prompt/completion_tokens; Responses returns output_text with usage as
+input/output_tokens.
+When the Responses API is selected but the model is incompatible, the program
+warns and terminates.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
 from src.utils.general import _dict_to_response_format
 
-# 不支持 Responses API 的 legacy 模型
+# Legacy models that do not support the Responses API
 _RESPONSES_UNSUPPORTED_MODELS: set[str] = {
     "gpt-4",
     "gpt-4-turbo",
@@ -42,7 +44,7 @@ _VALID_API_METHODS: set[str] = {"chat_completions", "responses"}
 
 
 def _supports_responses(model_name: str) -> bool:
-    """判断模型是否支持 Responses API（legacy 模型不支持）。"""
+    """Check whether the model supports the Responses API (legacy ones do not)."""
     name = model_name.strip().lower()
     if name in _RESPONSES_UNSUPPORTED_MODELS:
         return False
@@ -56,7 +58,7 @@ def _supports_responses(model_name: str) -> bool:
 # =============================================================================
 
 class GPTLLM(BaseLLM):
-    """OpenAI GPT 模型，支持 OpenAIProvider。"""
+    """OpenAI GPT model, supports OpenAIProvider."""
 
     def __init__(self, model_name: str = "gpt-4-turbo"):
         super().__init__(model_name)
@@ -67,27 +69,29 @@ class GPTLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+        Dispatch to the matching implementation based on the provider type;
+        only OpenAIProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 OpenAIProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: Message list [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an OpenAIProvider)
+            **kwargs: Extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: Path to the gold answer JSON, for structured output
+                - Other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: If the provider type is not supported
         """
         if not isinstance(provider, OpenAIProvider):
             raise ValueError(
-                f"GPTLLM 不支持 provider: {type(provider).__name__}，仅支持 OpenAIProvider"
+                f"GPTLLM does not support provider: {type(provider).__name__}, "
+                f"only OpenAIProvider is supported"
             )
 
         setup = kwargs.get("setup", {})
@@ -101,17 +105,20 @@ class GPTLLM(BaseLLM):
 
         if api_method not in _VALID_API_METHODS:
             logger.warning(
-                f"不支持的 api_method: '{api_method}'，可选: {sorted(_VALID_API_METHODS)}"
+                f"Unsupported api_method: '{api_method}', "
+                f"supported options: {sorted(_VALID_API_METHODS)}"
             )
-            raise SystemExit(f"不支持的 api_method: '{api_method}'")
+            raise SystemExit(f"Unsupported api_method: '{api_method}'")
 
         if api_method == "responses" and not _supports_responses(self.model_name):
             logger.warning(
-                f"模型 '{self.model_name}' 不支持 Responses API，"
-                f"请改用支持的新模型（如 gpt-4o、gpt-5）或切换 "
+                f"Model '{self.model_name}' does not support the Responses API; "
+                f"use a supported newer model (e.g. gpt-4o, gpt-5) or switch to "
                 f"api_method='chat_completions'"
             )
-            raise SystemExit(f"模型 '{self.model_name}' 与 api_method='responses' 不兼容")
+            raise SystemExit(
+                f"Model '{self.model_name}' is incompatible with api_method='responses'"
+            )
 
         if api_method == "responses":
             return await self._chat_responses(messages, provider, setup)
@@ -269,7 +276,7 @@ class GPTLLM(BaseLLM):
         if instructions:
             request_kwargs["instructions"] = instructions
 
-        # Responses 不支持 frequency/presence_penalty，此处不传递
+        # Responses does not support frequency/presence_penalty, so they are not passed
 
         if setup.get("response_format", False):
             request_kwargs["text"] = {"format": {"type": "json_object"}}
@@ -337,7 +344,7 @@ class GPTLLM(BaseLLM):
         tools_config: dict[str, Any],
         method_setup: dict[str, Any],
     ) -> dict[str, Any]:
-        """根据 tools 配置构建 tools 请求参数。"""
+        """Build the tools request parameters from the tools config."""
         tools = []
         if tools_config.get("mcp_server", {}):
             tools.append(
@@ -382,6 +389,6 @@ class GPTLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, OpenAIProvider):
             await provider.close()
