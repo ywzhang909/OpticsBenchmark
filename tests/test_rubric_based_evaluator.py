@@ -17,7 +17,6 @@ import pytest
 from src.evaluators import RubricBasedEvaluator
 from src.module import EvaluationResult
 
-
 # ===========================================================================
 # Offline (unit) tests — no LLM callable needed
 # ===========================================================================
@@ -103,9 +102,7 @@ class TestRubricBasedEvaluator_Offline:
             # All 5 field entries present in field_scores
             assert len(result.details["field_scores"]) == 5
             # Skipped fields have 0.0
-            assert (
-                result.details["field_scores"]["innovation_points"]["accuracy"] == 0.0
-            )
+            assert result.details["field_scores"]["innovation_points"]["accuracy"] == 0.0
         finally:
             await ev.teardown()
 
@@ -145,9 +142,11 @@ class TestRubricBasedEvaluator_Offline:
     @pytest.mark.asyncio
     async def test_custom_field_map(self):
         """Custom field_map routes JSON keys correctly."""
-        ev = RubricBasedEvaluator({
-            "field_map": {"keywords": "my_keys"},
-        })
+        ev = RubricBasedEvaluator(
+            {
+                "field_map": {"keywords": "my_keys"},
+            }
+        )
         await ev.setup()
         try:
             result = await ev.evaluate(
@@ -248,8 +247,7 @@ class TestRubricBasedEvaluator_Offline:
             ("", 0.0, "Parse error"),
             # Markdown fences stripped
             (
-                '```json\n{"accuracy": 4.0, "completeness": 3.0, '
-                '"readability": 5.0}\n```',
+                '```json\n{"accuracy": 4.0, "completeness": 3.0, "readability": 5.0}\n```',
                 4.0,
                 "",
             ),
@@ -280,7 +278,10 @@ class TestRubricBasedEvaluator_Offline:
         ],
     )
     def test_parse_review_response(
-        self, raw: str, expected_acc: float, expected_just: str,
+        self,
+        raw: str,
+        expected_acc: float,
+        expected_just: str,
     ):
         """Response parsing handles invalid JSON, fences, clamping, defaults."""
         result = RubricBasedEvaluator._parse_review_response(raw)
@@ -301,9 +302,7 @@ class TestRubricBasedEvaluator_Offline:
         assert "## Readability (1-5)" in block
         # Each dimension has 5 anchor levels
         for score in range(1, 6):
-            assert f"  {score}:" in block, (
-                f"Missing anchor level '{score}:' in rubric block"
-            )
+            assert f"  {score}:" in block, f"Missing anchor level '{score}:' in rubric block"
 
     # ---- _build_field_prompt unit tests ----------------------------------
 
@@ -331,9 +330,7 @@ class TestRubricBasedEvaluator_Offline:
             expected_value=None,
         )
         assert "<answer>" in prompt
-        assert "<response>" not in prompt, (
-            "<response> should be absent in reference-free mode"
-        )
+        assert "<response>" not in prompt, "<response> should be absent in reference-free mode"
 
     # ---- hallucination edge cases ----------------------------------------
 
@@ -344,15 +341,9 @@ class TestRubricBasedEvaluator_Offline:
             predicted={"ten keywords": "lens, optics, MTF"},
             expected={},
         )
-        assert hallu_count == 0, (
-            f"Expected 0 hallucinations with empty expected, got {hallu_count}"
-        )
-        assert total_items > 0, (
-            "Should still count items from predicted"
-        )
-        assert details["hallucinated_items"] == [], (
-            "No items should be marked hallucinated"
-        )
+        assert hallu_count == 0, f"Expected 0 hallucinations with empty expected, got {hallu_count}"
+        assert total_items > 0, "Should still count items from predicted"
+        assert details["hallucinated_items"] == [], "No items should be marked hallucinated"
 
     def test_hallucination_both_empty(self):
         """No hallucination when both predicted and expected are empty."""
@@ -370,19 +361,18 @@ class TestRubricBasedEvaluator_Offline:
     @pytest.mark.parametrize(
         "value, expected",
         [
-            ("${HOME}", ""),                     # unset var → empty
-            ("plain text", "plain text"),         # no pattern → unchanged
-            ("${MISSING_VAR_XYZ}", ""),           # missing var → empty
-            ("not${VAR}", "not${VAR}"),           # partial pattern → unchanged
-            ("", ""),                             # empty → empty
+            ("${HOME}", ""),  # unset var → empty
+            ("plain text", "plain text"),  # no pattern → unchanged
+            ("${MISSING_VAR_XYZ}", ""),  # missing var → empty
+            ("not${VAR}", "not${VAR}"),  # partial pattern → unchanged
+            ("", ""),  # empty → empty
         ],
     )
-    def test_expand_env_var(self, value: str, expected: str):
+    def test_expand_env_var(self, monkeypatch, value: str, expected: str):
         """Env-var expansion handles missing vars, plain text, edge cases."""
+        monkeypatch.delenv("HOME", raising=False)
         result = RubricBasedEvaluator._expand_env_var(value)
-        assert result == expected, (
-            f"_expand_env_var({value!r}) = {result!r}, expected {expected!r}"
-        )
+        assert result == expected, f"_expand_env_var({value!r}) = {result!r}, expected {expected!r}"
 
     def test_expand_env_var_resolved(self, monkeypatch):
         """A set env var is resolved correctly."""
@@ -414,9 +404,7 @@ class TestRubricBasedEvaluator_Offline:
             ],
         }
         result = RubricBasedEvaluator._extract_content(data)
-        assert result == "Fallback reasoning text", (
-            f"Expected reasoning fallback, got {result!r}"
-        )
+        assert result == "Fallback reasoning text", f"Expected reasoning fallback, got {result!r}"
 
     def test_extract_content_empty_choices(self):
         """Malformed response with missing choices returns empty string."""
@@ -481,10 +469,8 @@ class TestRubricBasedEvaluator_Online:
                 "ten keywords": "diffractive optics, meta-lens, "
                 "wavefront shaping, computational imaging, "
                 "point spread function",
-                "objective": "Design a meta-lens for wide-field "
-                "imaging in the visible spectrum",
-                "novelty": "We propose a new inverse-design "
-                "algorithm for meta-lens optimization",
+                "objective": "Design a meta-lens for wide-field imaging in the visible spectrum",
+                "novelty": "We propose a new inverse-design algorithm for meta-lens optimization",
                 "method": "Finite-difference time-domain (FDTD) "
                 "simulations with adjoint optimization",
                 "performance metrics": "Focusing efficiency: 85%, "
@@ -496,10 +482,8 @@ class TestRubricBasedEvaluator_Online:
                 "point spread function",
                 "objective": "Design and optimize a meta-lens for "
                 "wide-field imaging in visible spectrum",
-                "novelty": "Novel inverse-design approach for "
-                "meta-lens optimization",
-                "method": "FDTD simulations with adjoint-based "
-                "topology optimization",
+                "novelty": "Novel inverse-design approach for meta-lens optimization",
+                "method": "FDTD simulations with adjoint-based topology optimization",
                 "performance metrics": "Focusing efficiency: 85%, "
                 "Strehl ratio: 0.95, FOV: 60 degrees",
             }
@@ -521,16 +505,12 @@ class TestRubricBasedEvaluator_Online:
             # Per-field details should be populated
             for field in RubricBasedEvaluator.FIELDS:
                 fs = result.details["field_scores"].get(field, {})
-                assert fs.get("accuracy", 0) >= 1.0, (
-                    f"Field '{field}' accuracy < 1.0: {fs}"
-                )
+                assert fs.get("accuracy", 0) >= 1.0, f"Field '{field}' accuracy < 1.0: {fs}"
 
             # Justifications should exist
             for field in RubricBasedEvaluator.FIELDS:
                 fj = result.details["field_justifications"].get(field, {})
-                assert fj.get("accuracy", ""), (
-                    f"Field '{field}' missing accuracy justification"
-                )
+                assert fj.get("accuracy", ""), f"Field '{field}' missing accuracy justification"
 
         finally:
             await ev.teardown()
@@ -570,8 +550,7 @@ class TestRubricBasedEvaluator_Online:
             result = await ev.evaluate(
                 task_id="online_no_ref",
                 predicted_output={
-                    "ten keywords": "meta-lens, diffractive optics, "
-                    "wavefront shaping",
+                    "ten keywords": "meta-lens, diffractive optics, wavefront shaping",
                 },
                 expected_output=None,
             )
