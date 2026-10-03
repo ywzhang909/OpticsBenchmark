@@ -1,0 +1,5 @@
+# OptiS 文献处理工作台 — 额外依赖
+# 主仓库依赖见根目录 pyproject.toml（本项目复用 src/ 的依赖）
+streamlit>=1.40
+PyPDF2>=3.0.1
+PyYAML>=6.0
