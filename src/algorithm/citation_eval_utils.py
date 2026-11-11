@@ -103,7 +103,7 @@ def extract_citations(text: str) -> list[str]:
 
 
 def _get_citation_model():
-    """获取或创建 citation NLI 模型（通过 ModelRegistry 缓存）。"""
+    """Get or create the citation NLI model (cached via ModelRegistry)."""
     def _loader():
         offload_dir = tempfile.mkdtemp(prefix="citation_offload_")
         return AutoModelForSeq2SeqLM.from_pretrained(
@@ -117,7 +117,7 @@ def _get_citation_model():
 
 
 def _get_citation_tokenizer():
-    """获取或创建 citation NLI tokenizer（通过 ModelRegistry 缓存）。"""
+    """Get or create the citation NLI tokenizer (cached via ModelRegistry)."""
     return model_registry.get_or_load(
         _CITATION_TOKENIZER_KEY,
         lambda: AutoTokenizer.from_pretrained(OSU_AUTOAIS_MODEL, use_fast=False),
@@ -125,7 +125,7 @@ def _get_citation_tokenizer():
 
 
 def unload_citation_model() -> None:
-    """显式卸载 citation NLI 模型，释放 GPU 显存。"""
+    """Explicitly unload the citation NLI model to free GPU memory."""
     model_registry.unload(_CITATION_NLI_KEY)
     model_registry.unload(_CITATION_TOKENIZER_KEY)
 

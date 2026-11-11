@@ -350,10 +350,11 @@ def generate_markdown_report(results: dict[str, Any], output_path: str | Path) -
 
 
 def main():
-    """命令行入口：从结果文件生成 HTML/Markdown 报告。
+    """Command-line entry point: generate an HTML/Markdown report from a results file.
 
-    解析命令行参数后加载结果并按指定格式输出报告，
-    未指定输出路径时默认写入结果文件同目录下的 report.html / report.md。
+    Parses the command-line arguments, loads the results and writes the report in the
+    requested format. When no output path is given, the report defaults to
+    report.html / report.md next to the results file.
     """
     parser = argparse.ArgumentParser(description="Generate reports from Optis Benchmark results")
     parser.add_argument(

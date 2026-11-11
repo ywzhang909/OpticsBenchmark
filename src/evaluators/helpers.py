@@ -21,7 +21,7 @@ _EMBEDDER_PREFIX = "sentence_embedder"
 
 
 def _get_sentence_embedder(model_name: str = "BAAI/bge-m3") -> SentenceEmbedder:
-    """获取或创建缓存的 SentenceEmbedder 实例。"""
+    """Get or create the cached SentenceEmbedder instance."""
     key = f"{_EMBEDDER_PREFIX}:{model_name}"
     return model_registry.get_or_load(
         key,
@@ -30,7 +30,7 @@ def _get_sentence_embedder(model_name: str = "BAAI/bge-m3") -> SentenceEmbedder:
 
 
 def unload_sentence_embedder(model_name: str = "BAAI/bge-m3") -> None:
-    """显式卸载指定的 SentenceEmbedder，释放 GPU 显存。"""
+    """Explicitly unload the given SentenceEmbedder to free GPU memory."""
     model_registry.unload(f"{_EMBEDDER_PREFIX}:{model_name}")
 
 

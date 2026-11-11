@@ -127,7 +127,8 @@ class ConfigParser:
         if isinstance(value, str):
 
             def replace_env(match):
-                """从正则匹配中提取变量名并返回对应环境变量值（缺失时为空串）。"""
+                """Extract the variable name from the regex match and return the
+                corresponding environment variable value (empty if missing)."""
                 var_name = match.group(1)
                 return os.environ.get(var_name, "")
 

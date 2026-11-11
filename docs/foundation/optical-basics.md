@@ -1,85 +1,85 @@
-# 光学设计基础
+# Optical Design Basics
 
-> 本文档介绍光学设计的基本概念，为理解和评测光学智能体提供必要的领域知识。
-
----
-
-## 📑 目录
-
-1. [几何光学基础](#1-几何光学基础)
-2. [光学系统组成](#2-光学系统组成)
-3. [像差理论](#3-像差理论)
-4. [光学性能指标](#4-光学性能指标)
-5. [光学设计流程](#5-光学设计流程)
+> This document introduces the fundamental concepts of optical design and provides the domain knowledge needed to understand and evaluate optical agents.
 
 ---
 
-## 1. 几何光学基础
+## 📑 Table of Contents
 
-### 1.1 基本概念
+1. [Geometric Optics Basics](#1-geometric-optics-basics)
+2. [Optical System Composition](#2-optical-system-composition)
+3. [Aberration Theory](#3-aberration-theory)
+4. [Optical Performance Metrics](#4-optical-performance-metrics)
+5. [Optical Design Workflow](#5-optical-design-workflow)
 
-| 术语 | 英文 | 定义 |
+---
+
+## 1. Geometric Optics Basics
+
+### 1.1 Basic Concepts
+
+| Term | English | Definition |
 |------|------|------|
-| **光线** | Ray | 描述光传播方向的直线 |
-| **焦距** | Focal Length | 透镜到焦点的距离 |
-| **光轴** | Optical Axis | 通过系统中心的光线 |
-| **孔径** | Aperture | 限制光束的开口 |
-| **视场** | Field of View | 系统能成像的范围 |
+| **Light ray** | Ray | A straight line describing the propagation direction of light |
+| **Focal length** | Focal Length | The distance from a lens to its focal point |
+| **Optical axis** | Optical Axis | The ray passing through the centre of the system |
+| **Aperture** | Aperture | The opening that limits the light beam |
+| **Field of view** | Field of View | The range over which the system can form images |
 
-### 1.2 折射定律
+### 1.2 Law of Refraction
 
 ```
 n₁ sin(θ₁) = n₂ sin(θ₂)
 ```
 
-其中：
-- `n₁, n₂`: 两种介质的折射率
-- `θ₁`: 入射角
-- `θ₂`: 折射角
+where:
+- `n₁, n₂`: refractive indices of the two media
+- `θ₁`: angle of incidence
+- `θ₂`: angle of refraction
 
-### 1.3 透镜成像公式
+### 1.3 Thin Lens Imaging Equation
 
 ```
 1/f = 1/u + 1/v
 ```
 
-其中：
-- `f`: 焦距
-- `u`: 物距
-- `v`: 像距
+where:
+- `f`: focal length
+- `u`: object distance
+- `v`: image distance
 
-### 1.4 近轴光学
+### 1.4 Paraxial Optics
 
-在近轴近似下 (小角度近似)，光学系统可以用矩阵光学描述：
+Under the paraxial approximation (small-angle approximation), an optical system can be described using matrix optics:
 
 ```python
-# 自由空间传播
+# Free-space propagation
 def propagate(distance: float, angle: float) -> tuple[float, float]:
     """
-    光线在自由空间传播
-    
+    Propagate a ray through free space.
+
     Args:
-        distance: 传播距离
-        angle: 初始角度 (弧度)
-    
+        distance: propagation distance
+        angle: initial angle (radians)
+
     Returns:
-        (y, angle): 新的 y 位置和角度
+        (y, angle): the new y position and angle
     """
     y = angle * distance
     return y, angle
 
-# 薄透镜折射
+# Thin lens refraction
 def thin_lens(focal_length: float, y: float, angle: float) -> tuple[float, float]:
     """
-    薄透镜折射
-    
+    Refraction at a thin lens.
+
     Args:
-        focal_length: 焦距
-        y: 光线高度
-        angle: 入射角度
-    
+        focal_length: focal length
+        y: ray height
+        angle: angle of incidence
+
     Returns:
-        (y, angle): 新的角度
+        (y, angle): the new angle
     """
     new_angle = angle - y / focal_length
     return y, new_angle
@@ -87,61 +87,61 @@ def thin_lens(focal_length: float, y: float, angle: float) -> tuple[float, float
 
 ---
 
-## 2. 光学系统组成
+## 2. Optical System Composition
 
-### 2.1 典型镜头结构
+### 2.1 Typical Lens Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        镜头系统                              │
-├─────────────────────────────────────────────────────────────┤
-│  ┌───┐  ┌───┐  ┌───┐  ┌───┐  ┌───┐                       │
-│  │ 1 │→ │ 2 │→ │ 3 │→ │ 4 │→ │ 5 │→ ...                 │
-│  └───┘  └───┘  └───┘  └───┘  └───┘                       │
-│   ↓       ↓       ↓       ↓       ↓                        │
-│  面1    面2     面3     面4     面5    ...                   │
-│                                                             │
-│  OBJ ──────────────────────────────────→ IMAGE             │
-│  (物体)                                         (像面)        │
-│                                                             │
-│  EPD ────────────────────→ (入瞳)                          │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                         Lens System                               │
+│                                                                   │
+│  ┌───┐  ┌───┐  ┌───┐  ┌───┐  ┌───┐                                │
+│  │ 1 │─►│ 2 │─►│ 3 │─►│ 4 │─►│ 5 │ ─► ...                         │
+│  └───┘  └───┘  └───┘  └───┘  └───┘                                │
+│      ↓      ↓      ↓      ↓      ↓                                │
+│   Surf.1 Surf.2 Surf.3 Surf.4 Surf.5                              │
+│                                                                   │
+│  OBJ ──────────────────────► IMAGE                                │
+│  (object)                                    (image plane)        │
+│                                                                   │
+│  EPD ──────────────► (entrance pupil)                             │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 镜片类型
+### 2.2 Lens Types
 
-| 类型 | 描述 | 典型用途 |
+| Type | Description | Typical Use |
 |------|------|----------|
-| **平凸透镜** | 一面平，一面凸 | 准直、聚焦 |
-| **平凹透镜** | 一面平，一面凹 | 发散光束 |
-| **双凸透镜** | 两面都凸 | 成像、放大 |
-| **双凹透镜** | 两面都凹 | 发散光束 |
-| **消色差透镜** | 两片或多片组合 | 校正色差 |
-| **非球面透镜** | 曲面非球面 | 减少像差 |
+| **Plano-convex lens** | One flat side, one convex side | Collimation, focusing |
+| **Plano-concave lens** | One flat side, one concave side | Diverging a beam |
+| **Biconvex lens** | Both sides convex | Imaging, magnification |
+| **Biconcave lens** | Both sides concave | Diverging a beam |
+| **Achromatic lens** | A combination of two or more elements | Correcting chromatic aberration |
+| **Aspheric lens** | Surface is an asphere | Reducing aberration |
 
-### 2.3 玻璃材料
+### 2.3 Glass Materials
 
-常用光学玻璃：
+Commonly used optical glasses:
 
 ```python
-# Schott 玻璃系列
+# Schott glass catalogue
 OPTICAL_GLASSS = {
-    "N-BK7": {        # 常用冕牌玻璃
-        "nd": 1.5168,    # d 光折射率 (587.6nm)
-        "vd": 64.1,      # 阿贝数
+    "N-BK7": {        # common crown glass
+        "nd": 1.5168,    # d-line refractive index (587.6nm)
+        "vd": 64.1,      # Abbe number
         "density": 2.51,
     },
-    "N-SF11": {      # 重火石玻璃
+    "N-SF11": {      # dense flint glass
         "nd": 1.7847,
         "vd": 25.8,
         "density": 3.78,
     },
-    "F2": {          # 火石玻璃
+    "F2": {          # flint glass
         "nd": 1.6200,
         "vd": 36.4,
         "density": 3.61,
     },
-    "N-SSK8": {     # 重冕玻璃
+    "N-SSK8": {     # dense crown glass
         "nd": 1.6880,
         "vd": 53.2,
         "density": 3.31,
@@ -151,28 +151,28 @@ OPTICAL_GLASSS = {
 
 ---
 
-## 3. 像差理论
+## 3. Aberration Theory
 
-### 3.1 七种像差
+### 3.1 The Seven Aberrations
 
-| 像差类型 | 描述 | 影响 |
+| Aberration | Description | Effect |
 |----------|------|------|
-| **球差** | 边缘光线与近轴光线焦点不一致 | 图像模糊 |
-| **彗差** | 离轴点成像呈彗星状 | 图像变形 |
-| **像散** | 子午/弧矢焦线分离 | 图像不清晰 |
-| **场曲** | 平面物体成像在曲面上 | 边缘模糊 |
-| **畸变** | 放大率随视场变化 | 图像变形 |
-| **色差** | 不同波长焦点位置不同 | 彩色边缘 |
-| **像差** | 波前与理想球面的偏差 | 综合影响 |
+| **Spherical aberration** | Marginal rays and paraxial rays do not focus at the same point | Blurred image |
+| **Coma** | Off-axis point images form a comet shape | Image distortion |
+| **Astigmatism** | Tangential and sagittal focal lines are separated | Unsharp image |
+| **Field curvature** | A flat object is imaged onto a curved surface | Blurred edges |
+| **Distortion** | Magnification varies with field height | Image distortion |
+| **Chromatic aberration** | Different wavelengths focus at different positions | Coloured fringes |
+| **Aberration** | Deviation of the wavefront from the ideal sphere | Combined effect |
 
-### 3.2 波像差
+### 3.2 Wavefront Aberration
 
-光学系统像差可以用 Zernike 多项式描述：
+The aberration of an optical system can be described with Zernike polynomials:
 
 ```python
 import numpy as np
 
-# Zernike 多项式索引 (Noll 约定)
+# Zernike polynomial indices (Noll convention)
 ZERNIKE_INDICES = {
     1: ("Z1", " piston"),
     2: ("Z2", " tilt-x"),
@@ -182,31 +182,31 @@ ZERNIKE_INDICES = {
     6: ("Z6", " astigmatism 0°"),
     7: ("Z7", " coma-x"),
     8: ("Z8", " coma-y"),
-    # ... 更多项
+    # ... more terms
 }
 
 def calculate_wavefront_error(zernike_coeffs: list[float], rho: float, theta: float) -> float:
     """
-    计算波前误差
-    
+    Calculate the wavefront error.
+
     Args:
-        zernike_coeffs: Zernike 系数列表
-        rho, theta: 归一化极坐标
-    
+        zernike_coeffs: list of Zernike coefficients
+        rho, theta: normalized polar coordinates
+
     Returns:
-        波前误差值
+        the wavefront error value
     """
-    # 简化实现
+    # Simplified implementation
     error = 0.0
     for i, c in enumerate(zernike_coeffs):
-        # 这里应该是完整的 Zernike 多项式计算
+        # This should be a full Zernike polynomial evaluation
         error += c * (rho ** i) * np.cos(i * theta)
     return error
 ```
 
-### 3.3 色差校正
+### 3.3 Chromatic Aberration Correction
 
-消色差透镜通过组合不同玻璃材料校正色差：
+An achromatic lens corrects chromatic aberration by combining different glass materials:
 
 ```python
 def design_achromat(
@@ -215,19 +215,19 @@ def design_achromat(
     glass2: str = "F2",
 ) -> dict[str, float]:
     """
-    设计简单的消色差双合透镜
-    
+    Design a simple achromatic doublet.
+
     Args:
-        focal_length: 系统焦距 (mm)
-        glass1: 正透镜材料
-        glass2: 负透镜材料
-    
+        focal_length: system focal length (mm)
+        glass1: material of the positive lens
+        glass2: material of the negative lens
+
     Returns:
-        透镜参数
+        the lens parameters
     """
-    # 简化的设计计算
-    # 实际设计需要迭代优化
-    
+    # Simplified design calculation
+    # A real design requires iterative optimization
+
     return {
         "focal_length": focal_length,
         "lens1_material": glass1,
@@ -239,19 +239,19 @@ def design_achromat(
 
 ---
 
-## 4. 光学性能指标
+## 4. Optical Performance Metrics
 
-### 4.1 MTF (调制传递函数)
+### 4.1 MTF (Modulation Transfer Function)
 
-MTF 描述光学系统传递对比度的能力：
+MTF describes the ability of an optical system to transfer contrast:
 
 ```
 MTF(f) = M_image(f) / M_object(f)
 ```
 
-其中：
-- `f`: 空间频率 (lp/mm 或 cycles/mm)
-- `M`: 对比度 = (Imax - Imin) / (Imax + Imin)
+where:
+- `f`: spatial frequency (lp/mm or cycles/mm)
+- `M`: contrast = (Imax - Imin) / (Imax + Imin)
 
 ```python
 def calculate_mtf(
@@ -260,64 +260,65 @@ def calculate_mtf(
     fnumber: float = 2.0,
 ) -> float:
     """
-    简化 MTF 计算 (圆孔径衍射极限)
-    
+    Simplified MTF calculation (circular-aperture diffraction limit).
+
     Args:
-        spatial_frequency: 空间频率 (lp/mm)
-        wavelength: 波长 (μm)
-        fnumber: F 数
-    
+        spatial_frequency: spatial frequency (lp/mm)
+        wavelength: wavelength (μm)
+        fnumber: F-number
+
     Returns:
-        MTF 值 [0, 1]
+        MTF value in [0, 1]
     """
-    # 光学系统的 MTF 受衍射极限和像差的共同影响
-    # 这里使用简化的 sinc 函数模型
-    
-    cutoff_frequency = 1 / (1.22 * wavelength * fnumber)  # 衍射截止频率
-    
+    # The MTF of an optical system is jointly determined by the
+    # diffraction limit and the aberrations.
+    # A simplified sinc-function model is used here.
+
+    cutoff_frequency = 1 / (1.22 * wavelength * fnumber)  # diffraction cutoff frequency
+
     if spatial_frequency > cutoff_frequency:
         return 0.0
-    
-    # 简化的 sinc 模型
+
+    # Simplified sinc model
     normalized_freq = spatial_frequency / cutoff_frequency
     mtf = np.sinc(normalized_freq)
-    
+
     return abs(mtf)
 ```
 
-### 4.2 RMS 点列图
+### 4.2 RMS Spot Diagram
 
 ```python
 def calculate_spot_rms(
     rays: list[tuple[float, float]],
 ) -> float:
     """
-    计算 RMS 点列半径
-    
+    Calculate the RMS spot radius.
+
     Args:
-        rays: 光线交点列表 [(x, y), ...]
-    
+        rays: list of ray intersection points [(x, y), ...]
+
     Returns:
-        RMS 半径
+        the RMS radius
     """
     import math
-    
+
     n = len(rays)
     if n == 0:
         return 0.0
-    
-    # 计算质心
+
+    # Calculate the centroid
     cx = sum(r[0] for r in rays) / n
     cy = sum(r[1] for r in rays) / n
-    
-    # 计算 RMS 半径
+
+    # Calculate the RMS radius
     sum_sq = sum((r[0] - cx)**2 + (r[1] - cy)**2 for r in rays)
     rms = math.sqrt(sum_sq / n)
-    
+
     return rms
 ```
 
-### 4.3 畸变
+### 4.3 Distortion
 
 ```python
 def calculate_distortion(
@@ -325,25 +326,25 @@ def calculate_distortion(
     actual_height: float,
 ) -> float:
     """
-    计算畸变百分比
-    
+    Calculate the distortion percentage.
+
     Distortion(%) = (y_actual - y_ideal) / y_ideal × 100%
-    
+
     Args:
-        ideal_height: 理想像高
-        actual_height: 实际像高
-    
+        ideal_height: ideal image height
+        actual_height: actual image height
+
     Returns:
-        畸变百分比 (正=桶形, 负=枕形)
+        distortion percentage (positive = barrel, negative = pincushion)
     """
     if ideal_height == 0:
         return 0.0
-    
+
     distortion = (actual_height - ideal_height) / ideal_height * 100
     return distortion
 ```
 
-### 4.4 透射率
+### 4.4 Transmission
 
 ```python
 def calculate_transmission(
@@ -353,126 +354,127 @@ def calculate_transmission(
     n_surfaces: int = 10,
 ) -> float:
     """
-    计算系统透射率
-    
+    Calculate the transmission of the system.
+
     Args:
-        surface_reflectance: 每个表面的反射率
-        glass_thickness: 每片玻璃厚度 (mm)
-        glass_absorption: 玻璃吸收系数 (per mm)
-        n_surfaces: 表面数量
-    
+        surface_reflectance: reflectance of each surface
+        glass_thickness: thickness of each glass element (mm)
+        glass_absorption: absorption coefficient of the glass (per mm)
+        n_surfaces: number of surfaces
+
     Returns:
-        系统透射率 [0, 1]
+        the transmission of the system in [0, 1]
     """
     transmission = 1.0
-    
-    # 表面反射损失
+
+    # Loss due to surface reflection
     for R in surface_reflectance:
         transmission *= (1 - R)
-    
-    # 玻璃吸收损失
+
+    # Loss due to absorption in the glass
     for thickness in glass_thickness:
         transmission *= math.exp(-glass_absorption * thickness)
-    
+
     return transmission
 ```
 
-### 4.5 性能指标汇总
+### 4.5 Summary of Performance Metrics
 
-| 指标 | 符号 | 单位 | 典型目标 |
+| Metric | Symbol | Unit | Typical Target |
 |------|------|------|----------|
 | MTF @ 50 lp/mm | MTF | % | > 0.7 |
-| RMS 点列半径 | RMS Spot | μm | < 10 |
-| 畸变 | Distortion | % | < 2% |
-| 透射率 | T | % | > 85% |
-| RMS 波前误差 | WFE | λ (波长) | < 0.07λ |
-| 渐晕 | Vignetting | % | < 30% |
+| RMS spot radius | RMS Spot | μm | < 10 |
+| Distortion | Distortion | % | < 2% |
+| Transmission | T | % | > 85% |
+| RMS wavefront error | WFE | λ (wavelength) | < 0.07λ |
+| Vignetting | Vignetting | % | < 30% |
 
 ---
 
-## 5. 光学设计流程
+## 5. Optical Design Workflow
 
-### 5.1 设计流程图
+### 5.1 Design Workflow Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        光学设计流程                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐ │
-│  │  需求分析 │ → │  初步设计 │ → │   优化   │ → │  公差分析 │ │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘ │
-│       │                                                   │      │
-│       ▼                                                   ▼      │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐ │
-│  │ 规格定义 │ ← │ 技术评审 │ ← │ 性能验证 │ ← │ 生产移交 │ │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘ │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                   Optical Design Workflow                                       │
+│                                                                                 │
+│  ┌───────────────┐  →┌───────────────┐  →┌───────────────┐  →┌───────────────┐  │
+│  │Requirements   │  →│Preliminary    │  →│Optimize       │  →│Tolerance      │  │
+│  │Analysis       │  →│Design         │  →│               │  →│Analysis       │  │
+│  └───────────────┘  →└───────────────┘  →└───────────────┘  →└───────────────┘  │
+│         │                                                     │                 │
+│         ▼                                                     ▼                 │
+│  ┌───────────────┐  ←┌───────────────┐  ←┌───────────────┐  ←┌───────────────┐  │
+│  │Spec           │  ←│Technical      │  ←│Performance    │  ←│Production     │  │
+│  │Definition     │  ←│Review         │  ←│Validation     │  ←│Transfer       │  │
+│  └───────────────┘  ←└───────────────┘  ←└───────────────┘  ←└───────────────┘  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 需求分析
+### 5.2 Requirements Analysis
 
 ```python
 @dataclass
 class LensRequirements:
-    """镜头设计需求"""
-    focal_length: float           # 焦距 (mm)
-    fnumber: float                # F 数
-    field_of_view: float          # 视场角 (°)
-    working_distance: float       # 工作距离 (mm)
-    wavelength_range: tuple[float, float]  # 波长范围 (μm)
-    
-    # 性能要求
-    mtf_target: float = 0.7       # MTF 目标 @ 50 lp/mm
-    distortion_max: float = 2.0   # 最大畸变 (%)
-    transmission_min: float = 0.85 # 最小透射率
-    
-    # 约束
-    max_elements: int = 10        # 最大透镜数量
-    max_length: float = 100.0     # 最大长度 (mm)
-    max_diameter: float = 50.0    # 最大直径 (mm)
-    
-    # 成本
-    max_cost: float = 1000.0       # 最大成本 ($)
+    """Lens design requirements."""
+    focal_length: float           # focal length (mm)
+    fnumber: float                # F-number
+    field_of_view: float          # field of view (°)
+    working_distance: float       # working distance (mm)
+    wavelength_range: tuple[float, float]  # wavelength range (μm)
+
+    # Performance requirements
+    mtf_target: float = 0.7       # MTF target @ 50 lp/mm
+    distortion_max: float = 2.0   # maximum distortion (%)
+    transmission_min: float = 0.85 # minimum transmission
+
+    # Constraints
+    max_elements: int = 10        # maximum number of lens elements
+    max_length: float = 100.0     # maximum length (mm)
+    max_diameter: float = 50.0    # maximum diameter (mm)
+
+    # Cost
+    max_cost: float = 1000.0       # maximum cost ($)
 ```
 
-### 5.3 优化变量
+### 5.3 Optimization Variables
 
 ```python
-# 典型优化变量
+# Typical optimization variables
 OPTIMIZATION_VARIABLES = {
-    # 曲率半径
+    # Curvature
     "curvature": {
         "type": "continuous",
-        "bounds": (-1.0, 1.0),  # 曲率范围 (1/mm)
-        "description": "每个面的曲率半径的倒数",
+        "bounds": (-1.0, 1.0),  # curvature range (1/mm)
+        "description": "reciprocal of the radius of curvature of each surface",
     },
-    
-    # 厚度
+
+    # Thickness
     "thickness": {
         "type": "continuous",
         "bounds": (0.5, 50.0),   # mm
-        "description": "透镜中心厚度或间隔",
+        "description": "centre thickness of a lens or a spacing",
     },
-    
-    # 非球面系数
+
+    # Aspheric coefficients
     "aspheric": {
         "type": "continuous",
         "bounds": (-1e-3, 1e-3),
-        "description": "非球面系数 (4th order)",
+        "description": "aspheric coefficient (4th order)",
     },
-    
-    # 材料
+
+    # Material
     "material": {
         "type": "discrete",
         "options": ["N-BK7", "N-SF11", "F2", ...],
-        "description": "透镜材料",
+        "description": "lens material",
     },
 }
 ```
 
-### 5.4 优化算法
+### 5.4 Optimization Algorithm
 
 ```python
 from scipy.optimize import minimize
@@ -483,48 +485,48 @@ def optimize_lens(
     algorithm: str = "Damped Least Squares",
 ) -> dict:
     """
-    优化镜头设计
-    
+    Optimize a lens design.
+
     Args:
-        initial_lens: 初始设计
-        requirements: 设计需求
-        algorithm: 优化算法
-    
+        initial_lens: initial design
+        requirements: design requirements
+        algorithm: optimization algorithm
+
     Returns:
-        优化后的镜头参数
+        the optimized lens parameters
     """
-    
+
     def merit_function(params):
         """
-        评价函数 (越小越好)
+        Merit function (smaller is better).
         """
-        # 计算各项指标
+        # Evaluate each metric
         mtf = calculate_mtf_from_lens(params)
         distortion = calculate_distortion(params)
-        
-        # 加权求和
+
+        # Weighted sum
         merit = (
             1.0 * max(0, requirements.mtf_target - mtf) +
             0.5 * max(0, distortion - requirements.distortion_max) +
             0.3 * thickness_penalty(params)
         )
-        
+
         return merit
-    
-    # 执行优化
+
+    # Run the optimization
     result = minimize(
         merit_function,
         initial_lens["params"],
         method=algorithm,
         options={"maxiter": 1000}
     )
-    
+
     return {"params": result.x, "merit": result.fun}
 ```
 
 ---
 
-## 📚 参考资料
+## 📚 References
 
 1. Born, M., & Wolf, E. (2019). *Principles of Optics* (7th ed.). Cambridge University Press.
 2. Hecht, E. (2016). *Optics* (5th ed.). Pearson.
@@ -533,4 +535,4 @@ def optimize_lens(
 
 ---
 
-*最后更新: 2024-XX-XX*
+*Last updated: 2024-XX-XX*

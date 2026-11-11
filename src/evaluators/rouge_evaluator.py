@@ -37,12 +37,12 @@ class RougeEvaluator(BaseEvaluator):
     """
 
     async def setup(self) -> None:
-        """预加载 SentenceEmbedder 模型（用于 Hungarian 匹配）。"""
+        """Preload the SentenceEmbedder model (used for Hungarian matching)."""
         match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
         _get_sentence_embedder(match_model)
 
     async def teardown(self) -> None:
-        """释放 SentenceEmbedder 模型，回收 GPU 显存。"""
+        """Release the SentenceEmbedder model and reclaim GPU memory."""
         match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
         unload_sentence_embedder(match_model)
 

@@ -1,27 +1,29 @@
-# 技术基础文档
+# Technical Foundation Documents
 
-> 本目录包含 Optis Benchmark 所需的技术基础知识，涵盖光学设计、AI 智能体理论和评测方法论。
+> This directory holds the technical knowledge required for Optis Benchmark,
+> covering optical design, AI agent theory and evaluation methodology.
 
-## 📄 文档列表
+## 📄 Document List
 
-| 文档 | 描述 | 难度 | 前置知识 |
-|------|------|------|----------|
-| [optical-basics.md](optical-basics.md) | 光学设计基本概念（透镜、像差、MTF 等） | ⭐ | 基础物理 |
-| [agent-theory.md](agent-theory.md) | AI 智能体架构、工具调用与推理原理 | ⭐⭐ | 基础 ML |
-| [evaluation.md](evaluation.md) | 评测设计原则、指标选择与实践 | ⭐⭐ | 基础 NLP |
+| Document | Description | Difficulty | Prerequisites |
+|----------|-------------|------------|----------------|
+| [optical-basics.md](optical-basics.md) | Basic optical design concepts (lenses, aberrations, MTF, etc.) | ⭐ | Basic physics |
+| [agent-theory.md](agent-theory.md) | AI agent architecture, tool calling and reasoning principles | ⭐⭐ | Basic ML |
+| [evaluation.md](evaluation.md) | Evaluation design principles, metric selection and practice | ⭐⭐ | Basic NLP |
 
-## 📚 阅读顺序建议
+## 📚 Suggested Reading Order
 
-### 光学领域研究者
+### Researchers in Optics
 
-1. `agent-theory.md` — 理解 AI 智能体的工作方式
-2. `evaluation.md` — 理解评测框架的设计逻辑
+1. `agent-theory.md` — understand how AI agents work
+2. `evaluation.md` — understand the design logic of the evaluation framework
 
-### AI/软件工程师
+### AI / Software Engineers
 
-1. `optical-basics.md` — 了解光学实验的基本概念和术语
-2. `evaluation.md` — 理解评测指标和评估流程
+1. `optical-basics.md` — learn the basic concepts and terminology of optical experiments
+2. `evaluation.md` — understand the evaluation metrics and the assessment workflow
 
-### 新贡献者
+### New Contributors
 
-建议按 `optical-basics.md` → `agent-theory.md` → `evaluation.md` 顺序阅读，以确保全面理解项目设计理念。
+Read `optical-basics.md` → `agent-theory.md` → `evaluation.md` in that order, so
+that the project design philosophy is fully understood.

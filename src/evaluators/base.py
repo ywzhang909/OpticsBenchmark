@@ -29,11 +29,11 @@ class BaseEvaluator(ABC):
         self.config = config
 
     async def setup(self) -> None:
-        """加载此评估器所需的 GPU 模型。子类可重写。"""
+        """Load the GPU models required by this evaluator. May be overridden by subclasses."""
         pass
 
     async def teardown(self) -> None:
-        """释放 GPU 模型。子类可重写。"""
+        """Release the GPU models. May be overridden by subclasses."""
         pass
 
     @abstractmethod

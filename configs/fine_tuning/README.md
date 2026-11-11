@@ -1,26 +1,28 @@
 # Fine-tuning Configs
 
-**Path:** `configs/fine_tuning/` — 微调任务配置文件目录。
+**Path:** `configs/fine_tuning/` — Configuration files for fine-tuning jobs.
 
-包含用于实际微调任务的配置文件，支持 OpenAI、DashScope（阿里云通义千问）、Together AI（Llama）和 Mistral AI 四个提供商。
+Holds the configuration files for real fine-tuning jobs, supporting four
+providers: OpenAI, DashScope (Alibaba Cloud Tongyi Qianwen), Together AI (Llama)
+and Mistral AI.
 
-## 文件说明
+## Files
 
-| 文件 | 提供商 | 模型 | 描述 |
-|------|--------|------|------|
-| `GPT_OpenAI_finetune.yaml` | OpenAI | GPT-4o-mini | OpenAI 微调任务配置 |
-| `qwen_dashscope.yaml` | DashScope | Qwen3.7-plus | 阿里云通义千问微调任务配置 |
-| `llama_together.yaml` | Together AI | Meta-Llama-3.1-8B-Instruct | Together AI 微调任务配置 |
-| `ministral_mistral.yaml` | Mistral AI | Ministral-3b | Mistral AI 微调任务配置 |
+| File | Provider | Model | Description |
+|------|----------|-------|-------------|
+| `GPT_OpenAI_finetune.yaml` | OpenAI | GPT-4o-mini | OpenAI fine-tuning job configuration |
+| `qwen_dashscope.yaml` | DashScope | Qwen3.7-plus | Alibaba Cloud Tongyi Qianwen fine-tuning job configuration |
+| `llama_together.yaml` | Together AI | Meta-Llama-3.1-8B-Instruct | Together AI fine-tuning job configuration |
+| `ministral_mistral.yaml` | Mistral AI | Ministral-3b | Mistral AI fine-tuning job configuration |
 
-## 配置结构
+## Configuration Structure
 
-每个配置文件包含三个主要部分：
+Each configuration file contains three main sections:
 
 ```yaml
 llm:
   provider:
-    type: "openai"  # 或 "dashscope"、"together"、"mistral"
+    type: "openai"  # or "dashscope", "together", "mistral"
     api_key: "${ENV_VAR}"
     base_url: "https://api.openai.com/v1"
 
@@ -42,35 +44,41 @@ execution:
   status_output_path: "results/finetune/job_status.json"
 ```
 
-> **注意**：不同提供商的 `base_url`、`hyperparameters` 字段及 API 参数不同。例如 Together AI 将超参数作为请求体顶层字段发送（`n_epochs`/`batch_size`/`learning_rate`/...），且使用官方 SDK (together-py)，`base_url` 需带 `/v1`；Mistral AI 使用原生字段（`training_steps`/`learning_rate`/`weight_decay`/`warmup_fraction`），且无需 `base_url`（使用官方 SDK）。
+> **Note**: `base_url`, the `hyperparameters` fields and the API parameters
+> differ between providers. For example, Together AI sends hyperparameters as
+> top-level request body fields (`n_epochs`/`batch_size`/`learning_rate`/...) and
+> uses the official SDK (together-py), where `base_url` must include `/v1`; Mistral
+> AI uses native fields (`training_steps`/`learning_rate`/`weight_decay`/`warmup_fraction`)
+> and needs no `base_url` (it uses the official SDK).
 
-## 工作流
+## Workflow
 
 ```bash
-# 阶段 A：生成训练数据
+# Stage A: generate the training data
 python utils/build_finetune_dataset.py \
   -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \
   -p prompts/paper_info_extract/zero-shot_v1.0.txt \
   -d dataset/paper_info_extract/dataset_json/dataset_v1.json \
   -o results/finetune/train.jsonl --val-ratio 0.2
 
-# 阶段 B：运行微调任务
+# Stage B: run the fine-tuning job
 python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --wait
-# 或使用 Together AI（Llama）
+# or use Together AI (Llama)
 python src/finetune.py -c configs/fine_tuning/llama_together.yaml --wait
-# 或使用 Mistral AI（Ministral）
+# or use Mistral AI (Ministral)
 python src/finetune.py -c configs/fine_tuning/ministral_mistral.yaml --wait
 
-# 使用微调后的模型
-# 将 status_output_path 中记录的模型名填入对应推理配置的 model.name
-# (如 configs/llm/GPT_OpenAI.yaml 的 ft:gpt-4o-mini:...，
-#  或 configs/llm/llama_openai.yaml 的 together/...，
-#  或 configs/llm/mistral_official.yaml 的 ft:ministral-3b-latest:...)
+# Use the fine-tuned model
+# Put the model name recorded in status_output_path into model.name of the
+# matching inference config
+# (e.g. ft:gpt-4o-mini:... in configs/llm/GPT_OpenAI.yaml,
+#  together/... in configs/llm/llama_openai.yaml,
+#  or ft:ministral-3b-latest:... in configs/llm/mistral_official.yaml)
 ```
 
-## 官方文档
+## Official Documentation
 
-- OpenAI 微调: https://platform.openai.com/docs/guides/fine-tuning
-- DashScope 微调: https://help.aliyun.com/zh/model-studio/developer-reference/finetune-overview
-- Together AI 微调: https://docs.together.ai/docs/fine-tuning/supervised
-- Mistral AI 微调: https://docs.mistral.ai/capabilities/finetuning/
+- OpenAI fine-tuning: https://platform.openai.com/docs/guides/fine-tuning
+- DashScope fine-tuning: https://help.aliyun.com/zh/model-studio/developer-reference/finetune-overview
+- Together AI fine-tuning: https://docs.together.ai/docs/fine-tuning/supervised
+- Mistral AI fine-tuning: https://docs.mistral.ai/capabilities/finetuning/

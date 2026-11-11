@@ -16,7 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -60,7 +60,7 @@ Examples:
         "-o",
         "--output",
         type=str,
-        default="results/qwen3.8-max_pred.jsonl",
+        default="results/qwen-local.jsonl",
         help="Output file path (overrides output_path in config)",
     )
     parser.add_argument(

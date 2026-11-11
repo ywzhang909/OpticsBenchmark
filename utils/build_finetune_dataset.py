@@ -2,29 +2,29 @@
 """
 Optis Benchmark - Fine-tune Dataset Builder
 
-将基准数据集的 gold answer + prompt 转换为 OpenAI 微调所需的 JSONL 格式。
+Converts the benchmark dataset gold answer + prompt into the JSONL format required by OpenAI fine-tuning.
 
-每行输出一个训练样本:
+Emits one training sample per line:
     {"messages": [{"role": "system", "content": "..."},
                   {"role": "user", "content": "..."},
                   {"role": "assistant", "content": "<gold answer JSON>"}]}
 
-工作流位置（阶段 A，显式步骤）：
-    本脚本产出 train.jsonl / val.jsonl
-        ↓ 文件即契约
-    configs/fine_tuning/*.yaml 的 training_file / validation_file 指向上述文件
+Position in the workflow (stage A, an explicit step):
+    This script produces train.jsonl / val.jsonl
+        ↓ the files are the contract
+    the training_file / validation_file in configs/fine_tuning/*.yaml point at the above
         ↓
     python src/finetune.py -c <config> [--wait]
 
 Examples:
-    # paper_info_extract 任务：以标题作为 user 消息
+    # paper_info_extract task: use the title as the user message
     python utils/build_finetune_dataset.py \\
         -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \\
         -p prompts/paper_info_extract/zero-shot_v1.0.txt \\
         -d dataset/paper_info_extract/dataset_json/dataset_v1.json \\
         -o results/finetune/train.jsonl --val-ratio 0.2
 
-    # 使用 PDF 提取全文作为 user 消息（--user-field location）
+    # Use the full text extracted from the PDF as the user message (--user-field location)
     python utils/build_finetune_dataset.py \\
         -g dataset/paper_info_extract/dataset_json/gold_answer_v1.json \\
         -p prompts/paper_info_extract/zero-shot_v1.0.txt \\
@@ -49,13 +49,13 @@ from src.utils import logger  # noqa: E402
 # Constants
 # ---------------------------------------------------------------------------
 
-# 单样本 token 上限告警阈值（gpt-4o-mini 训练样本上限约 65k input tokens）
+# Per-sample token limit warning threshold (gpt-4o-mini caps a training sample at ~65k input tokens)
 MAX_SAMPLE_TOKENS_WARNING = 60000
 
-# 官方建议的最少训练样本数
+# Minimum number of training samples officially recommended
 MIN_RECOMMENDED_SAMPLES = 50
 
-# PyPDF2 为软依赖，缺失时降级为仅使用标题文本
+# PyPDF2 is a soft dependency; when missing, degrade to using the title text only
 try:
     from PyPDF2 import PdfReader
 
@@ -71,15 +71,15 @@ except ImportError:
 
 
 def load_prompt(path: str | Path) -> str:
-    """加载 prompt 文件内容作为 system 消息。
+    """Load the prompt file content as the system message.
 
-    与 LLMPredRunner._load_prompt 保持一致：跳过前两行（注释行 + 空行）。
+    Consistent with LLMPredRunner._load_prompt: skip the first two lines (comment line + blank line).
 
     Args:
-        path: prompt 文件路径
+        path: Path to the prompt file
 
     Returns:
-        system 消息内容；文件不存在时返回空字符串并记录警告
+        The system message content; an empty string plus a warning if the file does not exist
     """
     path_obj = Path(path)
     if not path_obj.exists():
@@ -95,14 +95,14 @@ def load_prompt(path: str | Path) -> str:
 
 
 def extract_pdf_text(pdf_path: str | Path, max_chars: int) -> str | None:
-    """从 PDF 提取文本（截断到 max_chars）。
+    """Extract text from a PDF (truncated to max_chars).
 
     Args:
-        pdf_path: PDF 文件路径
-        max_chars: 最大字符数
+        pdf_path: Path to the PDF file
+        max_chars: Maximum number of characters
 
     Returns:
-        提取的文本；不可用时返回 None 并记录警告
+        The extracted text; None plus a warning when unavailable
     """
     if not _PDF_AVAILABLE:
         logger.warning("PyPDF2 not installed, cannot extract PDF text. Fallback to title only.")
@@ -127,18 +127,18 @@ def build_user_content(
     user_field: str,
     max_chars: int,
 ) -> str:
-    """构建 user 消息内容。
+    """Build the user message content.
 
-    若指定字段的值为已存在的文件路径且为 PDF，则提取文本；
-    否则直接使用字段值作为文本。
+    If the value of the given field is an existing path to a PDF file, extract its text;
+    otherwise use the field value directly as the text.
 
     Args:
-        record: 数据集记录（如 {"title": ..., "location": ...}）
-        user_field: 取值字段名
-        max_chars: 文本最大字符数
+        record: A dataset record (e.g. {"title": ..., "location": ...})
+        user_field: Name of the field to read the value from
+        max_chars: Maximum number of characters for the text
 
     Returns:
-        user 消息文本；字段缺失时返回空字符串
+        The user message text; an empty string if the field is missing
     """
     value = record.get(user_field, "")
     if not value:
@@ -158,12 +158,12 @@ def match_dataset_records(
     dataset_records: list[dict[str, Any]] | None,
     gold_key: str,
 ) -> list[tuple[dict[str, Any], dict[str, Any] | None]]:
-    """按标题（大小写不敏感）匹配 gold answer 与数据集记录。
+    """Match gold answers to dataset records by title (case-insensitive).
 
     Args:
-        gold_records: gold answer 记录列表 [{id, data: {...}}]
-        dataset_records: 数据集记录列表 [{title, location, ...}]，可为 None
-        gold_key: gold answer 中载荷所在的键名（默认 "data"）
+        gold_records: List of gold answer records [{id, data: {...}}]
+        dataset_records: List of dataset records [{title, location, ...}], or None
+        gold_key: Key holding the payload in the gold answer (default "data")
 
     Returns:
         [(gold_record, matched_dataset_record_or_None), ...]
@@ -210,17 +210,17 @@ def build_samples(
     user_field: str,
     max_chars: int,
 ) -> list[dict[str, Any]]:
-    """构建 OpenAI 微调格式样本列表。
+    """Build the list of samples in the OpenAI fine-tuning format.
 
     Args:
-        pairs: match_dataset_records() 的输出
-        system_prompt: system 消息内容（可为空）
-        gold_key: gold answer 载荷键名
-        user_field: 数据集记录中 user 内容的字段名
-        max_chars: user 内容最大字符数
+        pairs: The output of match_dataset_records()
+        system_prompt: The system message content (may be empty)
+        gold_key: Key holding the gold answer payload
+        user_field: Name of the field holding the user content in a dataset record
+        max_chars: Maximum number of characters for the user content
 
     Returns:
-        样本列表 [{"messages": [...]}]，已过滤无效样本
+        The list of samples [{"messages": [...]}], with invalid samples filtered out
     """
     samples: list[dict[str, Any]] = []
     skipped = 0
@@ -255,13 +255,13 @@ def build_samples(
 
 
 def validate_sample(sample: dict[str, Any]) -> list[str]:
-    """校验单个样本的消息结构。
+    """Validate the message structure of a single sample.
 
     Args:
-        sample: 待校验样本
+        sample: The sample to validate
 
     Returns:
-        错误列表；空列表表示合法
+        A list of errors; an empty list means the sample is valid
     """
     errors: list[str] = []
     messages = sample.get("messages", [])
@@ -286,7 +286,7 @@ def validate_sample(sample: dict[str, Any]) -> list[str]:
 
 
 def get_encoding(encoding_model: str) -> Any:
-    """获取 tiktoken 编码器，未知模型时回退到 o200k_base。"""
+    """Get the tiktoken encoder, falling back to o200k_base for unknown models."""
     import tiktoken
 
     try:
@@ -297,7 +297,7 @@ def get_encoding(encoding_model: str) -> Any:
 
 
 def count_tokens(sample: dict[str, Any], encoding: Any) -> int:
-    """统计单样本总 token 数（含消息结构开销）。"""
+    """Count the total tokens of a single sample (including message structure overhead)."""
     total = 0
     for m in sample["messages"]:
         total += len(encoding.encode(m["content"])) + 4
@@ -315,12 +315,12 @@ def split_train_val(
     val_ratio: float,
     seed: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """按固定种子随机切分训练集与验证集。
+    """Randomly split the dataset into train and validation sets with a fixed seed.
 
     Args:
-        samples: 全部样本
-        val_ratio: 验证集比例 [0, 1)
-        seed: 随机种子（保证可复现）
+        samples: All samples
+        val_ratio: Validation ratio [0, 1)
+        seed: Random seed (for reproducibility)
 
     Returns:
         (train_samples, val_samples)
@@ -337,14 +337,14 @@ def split_train_val(
 
 
 def save_jsonl(samples: list[dict[str, Any]], path: str | Path) -> int:
-    """保存样本到 JSONL 文件。
+    """Save the samples to a JSONL file.
 
     Args:
-        samples: 样本列表
-        path: 输出路径
+        samples: The list of samples
+        path: Output path
 
     Returns:
-        写入的样本数
+        The number of samples written
     """
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -363,7 +363,7 @@ def save_jsonl(samples: list[dict[str, Any]], path: str | Path) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    """解析命令行参数。"""
+    """Parse the command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Build OpenAI fine-tuning JSONL dataset from benchmark gold answers",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -465,11 +465,11 @@ Examples:
 
 
 def main() -> int:
-    """主入口：加载 → 匹配 → 构建 → 校验 → 切分 → 保存。"""
+    """Main entry point: load -> match -> build -> validate -> split -> save."""
     args = parse_args()
 
     try:
-        # 加载 gold answer
+        # Load the gold answer
         gold_path = Path(args.gold)
         if not gold_path.exists():
             logger.error(f"Gold answer file not found: {args.gold}")
@@ -480,7 +480,7 @@ def main() -> int:
             logger.error(f"Expected non-empty JSON array in gold file: {args.gold}")
             return 1
 
-        # 加载数据集记录（可选）
+        # Load the dataset records (optional)
         dataset_records = None
         if args.dataset:
             dataset_path = Path(args.dataset)
@@ -490,10 +490,10 @@ def main() -> int:
             with open(dataset_path, encoding="utf-8") as f:
                 dataset_records = json.load(f)
 
-        # 构建 prompt
+        # Build the prompt
         system_prompt = load_prompt(args.prompt) if args.prompt else ""
 
-        # 匹配并构建样本
+        # Match and build the samples
         pairs = match_dataset_records(gold_records, dataset_records, args.gold_key)
         samples = build_samples(
             pairs=pairs,
@@ -510,14 +510,14 @@ def main() -> int:
             logger.error("No valid samples built")
             return 1
 
-        # 结构校验
+        # Structural validation
         invalid = [(i, errs) for i, s in enumerate(samples) if (errs := validate_sample(s))]
         if invalid:
             for idx, errs in invalid:
                 logger.error(f"Sample[{idx}] validation failed: {'; '.join(errs)}")
             return 1
 
-        # token 统计与告警
+        # Token statistics and warnings
         encoding = get_encoding(args.encoding_model)
         token_counts = [count_tokens(s, encoding) for s in samples]
         oversized = sum(1 for t in token_counts if t > MAX_SAMPLE_TOKENS_WARNING)
@@ -531,7 +531,7 @@ def main() -> int:
                 f"{MIN_RECOMMENDED_SAMPLES} for meaningful fine-tuning"
             )
 
-        # 切分并保存
+        # Split and save
         train_samples, val_samples = split_train_val(samples, args.val_ratio, args.seed)
 
         val_output = args.val_output or str(Path(args.output).with_suffix("")) + "_val.jsonl"
@@ -539,7 +539,7 @@ def main() -> int:
         if val_samples:
             save_jsonl(val_samples, val_output)
 
-        # 统计报告
+        # Summary report
         avg_tokens = sum(token_counts) / len(token_counts)
         logger.info("=" * 60)
         logger.info("Fine-tune dataset built successfully")

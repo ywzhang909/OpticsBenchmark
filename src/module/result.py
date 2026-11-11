@@ -1,9 +1,9 @@
 """
-Module Result - 评估结果数据模型
+Module Result - Evaluation result data models
 
-定义评估流程的核心数据结构：
-- EvaluationResult: 单个任务的评估结果
-- AggregatedResults: 多任务聚合结果
+Defines the core data structures of the evaluation pipeline:
+- EvaluationResult: evaluation result of a single task
+- AggregatedResults: aggregated results across multiple tasks
 """
 
 from __future__ import annotations

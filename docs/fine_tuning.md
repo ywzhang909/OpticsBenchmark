@@ -1,43 +1,44 @@
-# Fine-tuning 指南
+# Fine-tuning Guide
 
-> 使用多提供商 API 对光学领域基准数据集进行微调。
+> Fine-tune optics-domain benchmark datasets using multi-provider APIs.
 
 ---
 
-## 工作流概览
+## Workflow Overview
 
-采用**两阶段显式流水线**，数据文件（JSONL）是两阶段唯一契约：
+The pipeline is a **two-stage explicit pipeline**, where the data files (JSONL)
+are the only contract between the two stages:
 
 ```
-阶段 A：数据准备（独立步骤）
+Stage A: data preparation (a standalone step)
   gold_answer + prompt + dataset ──build_finetune_dataset.py──▶ train.jsonl / val.jsonl
 
-阶段 B：微调执行（配置驱动）
-  YAML(training_file 指向 JSONL) ──finetune.py──▶ 上传 → 创建任务 → 轮询/管理
-  结果: ft:gpt-4o-mini:... ◀──────────────────────────────────────┘
-  ↓ 填回 configs/llm/GPT_OpenAI.yaml 的 model.name
-  复用现有 llm_pred.py + eval.py 完成微调前后效果对比
+Stage B: fine-tuning execution (config driven)
+  YAML(training_file points at the JSONL) ──finetune.py──▶ upload → create job → poll/manage
+  Result: ft:gpt-4o-mini:... ◀──────────────────────────────────────┘
+  ↓ put it back into model.name in configs/llm/GPT_OpenAI.yaml
+  Reuse the existing llm_pred.py + eval.py to compare pre- and post-fine-tuning results
 ```
 
 ---
 
-## 支持的提供商
+## Supported Providers
 
-| 提供商 | 类型 | 事件查询 | 说明 |
-|--------|------|----------|------|
-| OpenAI | `openai` | ✅ | 支持 GPT-4o mini/4o/4.1 mini 等模型 |
-| Mistral | `mistral` | ❌ | 支持 Mistral 模型微调 |
-| Together AI | `together` | ❌ | 支持 DeepSeek、Qwen 等开源模型 |
-| Bedrock | `bedrock` | ❌ | 支持 Claude Haiku、Titan 等 AWS 模型 |
-| DashScope | `dashscope` | ✅ | 支持 Qwen 系列模型（阿里云百炼） |
+| Provider | Type | Event query | Description |
+|----------|------|-------------|-------------|
+| OpenAI | `openai` | ✅ | Supports GPT-4o mini/4o/4.1 mini and similar models |
+| Mistral | `mistral` | ❌ | Supports fine-tuning Mistral models |
+| Together AI | `together` | ❌ | Supports open-source models such as DeepSeek and Qwen |
+| Bedrock | `bedrock` | ❌ | Supports AWS models such as Claude Haiku and Titan |
+| DashScope | `dashscope` | ✅ | Supports the Qwen model family (Alibaba Cloud Bailian) |
 
-> ⚠️ Bedrock 需要额外安装 `boto3`：`pip install boto3`
+> ⚠️ Bedrock requires `boto3` to be installed separately: `pip install boto3`
 
 ---
 
-## 阶段 A：数据准备
+## Stage A: Data Preparation
 
-### 运行命令
+### Command
 
 ```bash
 python utils/build_finetune_dataset.py \
@@ -49,44 +50,44 @@ python utils/build_finetune_dataset.py \
   --seed 42
 ```
 
-### 参数说明
+### Parameters
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `-g / --gold` | **必需**，gold answer JSON 路径（`[{id, data}]`格式） | — |
-| `-p / --prompt` | prompt 模板文件（作为 system 消息，跳过前两行注释） | 无 system 消息 |
-| `-d / --dataset` | 数据集 JSON（含 PDF 路径等字段），按 title 与 gold 匹配 | 仅使用标题 |
-| `-o / --output` | 训练集输出 JSONL 路径 | `results/finetune/train.jsonl` |
-| `--val-output` | 验证集输出 JSONL 路径 | `<output>_val.jsonl` |
-| `--val-ratio` | 验证集比例 `[0, 1)` | `0.2` |
-| `--seed` | 切分随机种子 | `42` |
-| `--user-field` | 取数据集记录的哪个字段作为 user 消息 | `title` |
-| `--max-chars` | 用户内容最大字符数 | `100000` |
-| `--encoding-model` | 用于 token 计数的 tiktoken 模型 | `gpt-4o-mini` |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `-g / --gold` | **Required**, path to the gold answer JSON (format `[{id, data}]`) | — |
+| `-p / --prompt` | Prompt template file (used as the system message, skipping the first two comment lines) | No system message |
+| `-d / --dataset` | Dataset JSON (with fields such as the PDF path), matched to the gold answers by `title` | Titles only |
+| `-o / --output` | Output JSONL path for the training set | `results/finetune/train.jsonl` |
+| `--val-output` | Output JSONL path for the validation set | `<output>_val.jsonl` |
+| `--val-ratio` | Validation ratio `[0, 1)` | `0.2` |
+| `--seed` | Random seed for the split | `42` |
+| `--user-field` | Which field of the dataset record to use as the user message | `title` |
+| `--max-chars` | Maximum number of characters in the user content | `100000` |
+| `--encoding-model` | The tiktoken model used for token counting | `gpt-4o-mini` |
 
-### 输出格式（每行一个 JSON）
+### Output Format (one JSON object per line)
 
 ```json
 {"messages": [
-  {"role": "system", "content": "<prompt 模板内容>"},
-  {"role": "user", "content": "<论文标题或提取全文>"},
-  {"role": "assistant", "content": "<gold answer 的 JSON 字符串>"}
+  {"role": "system", "content": "<prompt template content>"},
+  {"role": "user", "content": "<paper title or the full extracted text>"},
+  {"role": "assistant", "content": "<the gold answer as a JSON string>"}
 ]}
 ```
 
-### 自动告警
+### Automatic Warnings
 
-- 样本数 < 50 时：警告 OpenAI 建议最少 50 样本
-- 单样本 token > 60,000 时：警告可能超出 gpt-4o-mini 训练限制
-- 转换过程会输出 token 统计用于估算费用
+- Fewer than 50 samples: warns that OpenAI recommends a minimum of 50 samples
+- A single sample above 60,000 tokens: warns that the gpt-4o-mini training limit may be exceeded
+- The conversion prints token statistics used to estimate the cost
 
 ---
 
-## 阶段 B：微调执行
+## Stage B: Fine-tuning Execution
 
-### 配置文件
+### Configuration Files
 
-#### OpenAI 配置示例
+#### OpenAI Configuration Example
 
 ```yaml
 llm:
@@ -113,7 +114,7 @@ execution:
   status_output_path: "results/finetune/job_status.json"
 ```
 
-#### Mistral 配置示例
+#### Mistral Configuration Example
 
 ```yaml
 llm:
@@ -136,7 +137,7 @@ execution:
   status_output_path: "results/finetune/job_status.json"
 ```
 
-#### Together AI 配置示例
+#### Together AI Configuration Example
 
 ```yaml
 llm:
@@ -157,7 +158,7 @@ execution:
   status_output_path: "results/finetune/job_status.json"
 ```
 
-#### Bedrock 配置示例
+#### Bedrock Configuration Example
 
 ```yaml
 llm:
@@ -178,7 +179,7 @@ execution:
   status_output_path: "results/finetune/job_status.json"
 ```
 
-#### DashScope (阿里云百炼) 配置示例
+#### DashScope (Alibaba Cloud Bailian) Configuration Example
 
 ```yaml
 llm:
@@ -204,32 +205,32 @@ execution:
   status_output_path: "results/finetune/job_status.json"
 ```
 
-### CLI 命令
+### CLI Commands
 
 ```bash
-# 创建并等待完成
+# Create and wait for completion
 python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --wait
 
-# 仅创建（打印 job id）
+# Create only (prints the job id)
 python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml
 
-# 校验配置与数据（不触网）
+# Validate the config and the data (no network calls)
 python src/finetune.py -c configs/fine_tuning/GPT_OpenAI_finetune.yaml --dry-run
 
-# 查询状态
+# Query the status
 python src/finetune.py --status ftjob-abc123
 
-# 列出历史任务
+# List past jobs
 python src/finetune.py --list
 
-# 导出事件日志
+# Export the event log
 python src/finetune.py --events ftjob-abc123 -o results/finetune/events.json
 
-# 取消任务
+# Cancel a job
 python src/finetune.py --cancel ftjob-abc123
 ```
 
-### 任务状态流转
+### Job Status Transitions
 
 ```
 creating → validating_files → queued → running → succeeded
@@ -237,14 +238,17 @@ creating → validating_files → queued → running → succeeded
                                          ↓     → cancelled
 ```
 
-`--wait` 模式会实时打印训练事件（step / loss / checkpoint），任务完成后状态落盘至 `status_output_path`。
+`--wait` mode prints the training events (step / loss / checkpoint) in real time;
+once the job completes, the status is written to `status_output_path`.
 
 ---
 
-## 微调完成后：效果对比评测
+## After Fine-tuning: Comparative Evaluation
 
-1. 将 `results/finetune/job_status.json` 中的 `fine_tuned_model`（形如 `ft:gpt-4o-mini:org:suffix:id`）填入 `configs/llm/GPT_OpenAI.yaml` 的 `llm.model.name`
-2. 运行标准推理与评测管线，与微调前的 baseline 对比：
+1. Put the `fine_tuned_model` from `results/finetune/job_status.json` (of the form
+   `ft:gpt-4o-mini:org:suffix:id`) into `llm.model.name` in `configs/llm/GPT_OpenAI.yaml`
+2. Run the standard inference and evaluation pipeline and compare against the
+   pre-fine-tuning baseline:
 
 ```bash
 python src/llm_pred.py -c configs/llm/GPT_OpenAI.yaml
@@ -255,87 +259,92 @@ python src/eval.py -i results/llm_outputs.jsonl \
 
 ---
 
-## 支持的微调方法
+## Supported Fine-tuning Methods
 
-| 方法 | `method` | 说明 |
-|------|----------|------|
-| Supervised Fine-tuning (SFT) | `supervised` | 基于 JSONL 对话格式的标准监督微调 |
-| Direct Preference Optimization | `dpo` | 直接偏好优化，训练数据需含 `rejected` 内容 |
+| Method | `method` | Description |
+|--------|----------|-------------|
+| Supervised Fine-tuning (SFT) | `supervised` | Standard supervised fine-tuning based on the JSONL conversation format |
+| Direct Preference Optimization | `dpo` | Direct preference optimization; the training data must contain `rejected` content |
 
-当前版本主要演示 SFT；DPO 训练数据格式遵循各提供商官方规范。
+The current version mainly demonstrates SFT; the DPO training data format
+follows each provider's official specification.
 
 ---
 
-## 支持的基座模型
+## Supported Base Models
 
 ### OpenAI
 
-| 模型 | 建议快照 |
-|------|----------|
+| Model | Recommended snapshot |
+|-------|----------------------|
 | GPT-4o mini | `gpt-4o-mini-2024-07-18` |
 | GPT-4o | `gpt-4o-2024-08-06` |
 | GPT-4.1 mini | `gpt-4.1-mini-2025-04-14` |
 
-完整列表见：[OpenAI Fine-tuning Models](https://platform.openai.com/docs/guides/fine-tuning#which-models-can-be-fine-tuned)
+For the full list see: [OpenAI Fine-tuning Models](https://platform.openai.com/docs/guides/fine-tuning#which-models-can-be-fine-tuned)
 
 ### Mistral
 
-支持的模型见：[Mistral Fine-tuning](https://docs.mistral.ai/capabilities/fine-tuning/)
+Supported models see: [Mistral Fine-tuning](https://docs.mistral.ai/capabilities/fine-tuning/)
 
 ### Together AI
 
-支持 100+ 开源模型，完整列表见：[Together AI Models](https://docs.together.ai/docs/chat-fine-tuning)
+Supports 100+ open-source models. For the full list see: [Together AI Models](https://docs.together.ai/docs/chat-fine-tuning)
 
 ### Bedrock
 
-| 模型 | 说明 |
-|------|------|
-| Claude 3 Haiku | 通过 Bedrock 微调 |
-| Amazon Titan | AWS 自研模型 |
-| Meta Llama 2 | 开源模型 |
+| Model | Description |
+|-------|-------------|
+| Claude 3 Haiku | Fine-tuned via Bedrock |
+| Amazon Titan | An AWS in-house model |
+| Meta Llama 2 | An open-source model |
 
-完整列表见：[Bedrock Custom Model Jobs](https://docs.aws.amazon.com/bedrock/latest/userguide/custom-models.html)
-
----
-
-## 费用说明
-
-- **训练费用**：按输入 + 输出 token 总量计费，转换器会输出 `Total tokens` 用于估算
-- **文件上传**：免费，但长期闲置的上传文件可能计费
-- **推理费用**：微调后模型的推理按对应模型定价计费
-
-建议在转换完成后查看 token 统计，通过各提供商定价页面预估费用。
+For the full list see: [Bedrock Custom Model Jobs](https://docs.aws.amazon.com/bedrock/latest/userguide/custom-models.html)
 
 ---
 
-## 架构设计
+## Cost Notes
 
-### 提供商适配器模式
+- **Training cost**: billed on the total number of input + output tokens; the
+  converter prints `Total tokens` for estimation
+- **File upload**: free, but long-idle uploaded files may be billed
+- **Inference cost**: inference with the fine-tuned model is billed at the
+  corresponding model's pricing
+
+After the conversion, check the token statistics and estimate the cost using
+each provider's pricing page.
+
+---
+
+## Architecture Design
+
+### Provider Adapter Pattern
 
 ```
 BaseFineTuneProvider (ABC)
-├── OpenAIFineTuneProvider      # OpenAI + 兼容 API
+├── OpenAIFineTuneProvider      # OpenAI + compatible APIs
 ├── MistralFineTuneProvider     # Mistral AI
 ├── TogetherAIFineTuneProvider  # Together AI
 └── BedrockFineTuneProvider     # AWS Bedrock
 ```
 
-工厂函数 `create_finetune_provider()` 根据配置自动创建对应的适配器实例。
+The factory function `create_finetune_provider()` automatically creates the
+matching adapter instance from the configuration.
 
-### 扩展新提供商
+### Adding a New Provider
 
-1. 继承 `BaseFineTuneProvider` ABC
-2. 实现所有抽象方法（upload_file, create_job, retrieve_job 等）
-3. 在 `finetune_provider_factory.py` 中注册新提供商
+1. Subclass the `BaseFineTuneProvider` ABC
+2. Implement all abstract methods (upload_file, create_job, retrieve_job, etc.)
+3. Register the new provider in `finetune_provider_factory.py`
 
 ---
 
-## 关键设计决策
+## Key Design Decisions
 
-| 决策 | 理由 |
-|------|------|
-| YAML 不含 `task` 字段 | 数据来源是转换器的职责，JSONL 文件即两阶段契约，避免两处真相源 |
-| `llm` 节仅含 `provider` | 微调基座模型属于 `fine_tuning` 参数，不属于推理 `llm` 段 |
-| `execution` 节仅含轮询参数 | 轮询间隔/超时是客户端行为，非 API 请求参数 |
-| 状态文件单条记录 | 简化 `--status` / `--wait` 的恢复逻辑，历史任务用 `--list` 查看 |
-| 适配器模式 | 统一接口，支持多提供商，易于扩展 |
+| Decision | Rationale |
+|----------|-----------|
+| The YAML has no `task` field | Sourcing the data is the converter's job; the JSONL file is the contract between the two stages, which avoids two sources of truth |
+| The `llm` section only holds `provider` | The fine-tuning base model belongs to the `fine_tuning` parameters, not to the inference `llm` section |
+| The `execution` section only holds polling parameters | The polling interval/timeout are client behaviour, not API request parameters |
+| A single record in the status file | Simplifies the resume logic of `--status` / `--wait`; past jobs are listed with `--list` |
+| Adapter pattern | A unified interface, multi-provider support, easy to extend |

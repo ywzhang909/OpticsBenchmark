@@ -1,54 +1,55 @@
-# Optis Benchmark - 代码规范与约定
+# Optis Benchmark - Coding Standards and Conventions
 
-> 本文档定义了 Optis Benchmark 项目的代码规范、命名约定和最佳实践。
-
----
-
-## 📑 目录
-
-1. [Python 代码规范](#1-python-代码规范)
-2. [命名约定](#2-命名约定)
-3. [文件结构](#3-文件结构)
-4. [配置规范](#4-配置规范)
-5. [Git 约定](#5-git-约定)
-6. [文档规范](#6-文档规范)
-7. [测试规范](#7-测试规范)
+> This document defines the coding standards, naming conventions and best
+> practices of the Optis Benchmark project.
 
 ---
 
-## 1. Python 代码规范
+## 📑 Table of Contents
 
-### 1.1 基础规范
+1. [Python Coding Standards](#1-python-coding-standards)
+2. [Naming Conventions](#2-naming-conventions)
+3. [File Structure](#3-file-structure)
+4. [Configuration Standards](#4-configuration-standards)
+5. [Git Conventions](#5-git-conventions)
+6. [Documentation Standards](#6-documentation-standards)
+7. [Testing Standards](#7-testing-standards)
 
-- 遵循 **PEP 8** 标准
-- 行长度限制: **100 字符**
-- 使用 **type hints** (类型提示)
-- 缩进: **4 空格**
+---
 
-### 1.2 导入顺序
+## 1. Python Coding Standards
+
+### 1.1 Basics
+
+- Follow **PEP 8**
+- Line length limit: **100 characters**
+- Use **type hints**
+- Indentation: **4 spaces**
+
+### 1.2 Import Order
 
 ```python
-# 1. 标准库
+# 1. Standard library
 import os
 import sys
 from pathlib import Path
 from typing import Any, Optional
 
-# 2. 第三方库
+# 2. Third-party libraries
 import yaml
 from pydantic import BaseModel
 
-# 3. 本项目模块
+# 3. Project modules
 from src.llm.base import BaseLLM
 from src.utils.logger import get_logger
 
-# 4. 相对导入 (仅在同一包内使用)
+# 4. Relative imports (only within the same package)
 from .base_env import BaseEnvironment
 ```
 
-### 1.3 文档字符串
+### 1.3 Docstrings
 
-**所有公共函数、类、模块必须包含文档字符串。**
+**All public functions, classes and modules must have docstrings.**
 
 ```python
 def calculate_mtf(
@@ -56,105 +57,105 @@ def calculate_mtf(
     modulation_depth: float,
 ) -> float:
     """
-    计算调制传递函数 (MTF) 值。
+    Compute the modulation transfer function (MTF) value.
 
-    MTF 描述了光学系统传递对比度的能力，
-    是评估镜头性能的重要指标。
+    MTF describes how well an optical system transfers contrast,
+    and is an important metric for evaluating lens performance.
 
     Args:
-        spatial_frequency: 空间频率 (lp/mm)
-        modulation_depth: 输入调制深度 (0-1)
+        spatial_frequency: Spatial frequency (lp/mm)
+        modulation_depth: Input modulation depth (0-1)
 
     Returns:
-        MTF 值，范围 [0, 1]
+        The MTF value, in the range [0, 1]
 
     Raises:
-        ValueError: 当 spatial_frequency 为负数时
+        ValueError: When spatial_frequency is negative
 
     Examples:
         >>> calculate_mtf(50.0, 0.5)
         0.85
     """
     if spatial_frequency < 0:
-        raise ValueError("空间频率不能为负数")
+        raise ValueError("Spatial frequency must not be negative")
     
-    # 计算 MTF
+    # Compute the MTF
     mtf = modulation_depth * (1.0 / (1.0 + spatial_frequency / 100))
     return mtf
 ```
 
-### 1.4 类型注解
+### 1.4 Type Annotations
 
 ```python
-# ✅ 推荐
+# ✅ Recommended
 def process_data(data: dict[str, Any]) -> list[str]:
     ...
 
-# ❌ 避免
+# ❌ Avoid
 def process_data(data):
     ...
 ```
 
-### 1.5 常量定义
+### 1.5 Constant Definitions
 
 ```python
-# ✅ 使用大写+下划线
+# ✅ Use UPPER_SNAKE_CASE
 DEFAULT_TIMEOUT = 300
 MAX_RETRIES = 3
 
-# ❌ 避免
+# ❌ Avoid
 defaultTimeout = 300
 ```
 
 ---
 
-## 2. 命名约定
+## 2. Naming Conventions
 
-### 2.1 模块和包
+### 2.1 Modules and Packages
 
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| Python 模块 | 小写 + 下划线 | `base_env.py`, `json_parser.py` |
-| 包名 | 小写 + 下划线 | `src/core/`, `src/utils/` |
-| 目录名 | 小写 + 下划线 | `configs/agents/` |
+| Type | Convention | Examples |
+|------|------------|----------|
+| Python module | lower case + underscores | `base_env.py`, `json_parser.py` |
+| Package name | lower case + underscores | `src/core/`, `src/utils/` |
+| Directory name | lower case + underscores | `configs/agents/` |
 
-### 2.2 类名
+### 2.2 Class Names
 
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| 类名 | CapWords (PascalCase) | `BaseLLM`, `MetricEvaluator` |
-| 异常类 | 以 `Error` 结尾 | `TimeoutError`, `ConfigError` |
-| 基类 | 以 `Base` 开头 | `BaseEnvironment`, `BaseEvaluator` |
+| Type | Convention | Examples |
+|------|------------|----------|
+| Class name | CapWords (PascalCase) | `BaseLLM`, `MetricEvaluator` |
+| Exception class | Suffix `Error` | `TimeoutError`, `ConfigError` |
+| Base class | Prefix `Base` | `BaseEnvironment`, `BaseEvaluator` |
 
-### 2.3 函数和变量
+### 2.3 Functions and Variables
 
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| 函数 | 小写 + 下划线 | `get_system_data()` |
-| 变量 | 小写 + 下划线 | `total_cost`, `task_id` |
-| 私有方法 | 前缀双下划线 | `__init_connection()` |
-| 保护方法 | 前缀单下划线 | `_validate_config()` |
+| Type | Convention | Examples |
+|------|------------|----------|
+| Function | lower case + underscores | `get_system_data()` |
+| Variable | lower case + underscores | `total_cost`, `task_id` |
+| Private method | double underscore prefix | `__init_connection()` |
+| Protected method | single underscore prefix | `_validate_config()` |
 
-### 2.4 常量
+### 2.4 Constants
 
 ```python
-# 全局常量: 大写 + 下划线
+# Global constants: UPPER_SNAKE_CASE
 MAX_CONCURRENT_TASKS = 10
 DEFAULT_TIMEOUT_SECONDS = 300
 SUPPORTED_PROVIDERS = ["openai", "anthropic", "groq"]
 ```
 
-### 2.5 配置字段
+### 2.5 Configuration Fields
 
-配置 YAML 中的字段名使用 **snake_case**：
+Field names in configuration YAML use **snake_case**:
 
 ```yaml
-# ✅ 推荐
+# ✅ Recommended
 api_key: "${OPENAI_API_KEY}"
 max_tokens: 4096
 save_intermediate: true
 
-# ❌ 避免
+# ❌ Avoid
 apiKey: "..."
 maxTokens: 4096
 saveIntermediate: true
@@ -162,26 +163,26 @@ saveIntermediate: true
 
 ---
 
-## 3. 文件结构
+## 3. File Structure
 
-### 3.1 Python 模块结构
+### 3.1 Python Module Structure
 
 ```
 src/core/
-├── __init__.py          # 导出公共 API
-├── config.py            # TaskConfig 相关
-├── llm_judge.py         # LLM Judge 相关
-├── llm_runner.py        # LLM Runner 相关
-└── runner.py            # Runner 相关
+├── __init__.py          # exports the public API
+├── config.py            # TaskConfig
+├── llm_judge.py         # LLM Judge
+├── llm_runner.py        # LLM Runner
+└── runner.py            # Runner
 ```
 
-### 3.2 __init__.py 规范
+### 3.2 `__init__.py` Convention
 
 ```python
 """
-Core Module - 核心模块
+Core Module - core components
 
-提供 Runner、Config、LLM Judge 等核心组件。
+Provides the core components: Runner, Config, LLM Judge and so on.
 """
 
 from .llm_judge import LLMJudge, JudgePromptBuilder, Rubric
@@ -200,15 +201,15 @@ __all__ = [
     "RunnerConfig",
     "TaskConfig",
     "TaskInstance",
-    # ... 其他导出
+    # ... other exports
 ]
 ```
 
-### 3.3 类文件结构
+### 3.3 Class File Structure
 
 ```python
 """
-模块描述
+Module description
 """
 
 from __future__ import annotations
@@ -227,7 +228,7 @@ DEFAULT_VALUE = 100
 # =============================================================================
 
 class MyError(Exception):
-    """自定义错误类"""
+    """Custom exception class"""
     pass
 
 # =============================================================================
@@ -236,7 +237,7 @@ class MyError(Exception):
 
 @dataclass
 class MyConfig:
-    """配置数据类"""
+    """Configuration dataclass"""
     name: str
     value: int = 100
 
@@ -245,25 +246,25 @@ class MyConfig:
 # =============================================================================
 
 class MyClass:
-    """主类"""
+    """Main class"""
     
     def __init__(self, config: MyConfig):
         self.config = config
     
     def method(self) -> None:
-        """公共方法"""
+        """Public method"""
         pass
     
     def _private_method(self) -> None:
-        """私有方法"""
+        """Private method"""
         pass
 ```
 
 ---
 
-## 4. 配置规范
+## 4. Configuration Standards
 
-### 4.1 YAML 配置结构
+### 4.1 YAML Configuration Structure
 
 ```yaml
 # configs/llm/GPT_OpenAI.yaml
@@ -293,27 +294,27 @@ execution:
   max_retries: 3
 ```
 
-### 4.2 配置字段规范
+### 4.2 Configuration Field Convention
 
-| 字段类型 | 格式 | 示例 |
-|----------|------|------|
-| API 密钥 | `${ENV_VAR}` | `${OPENAI_API_KEY}` |
-| 布尔值 | `true`/`false` | `save_intermediate: true` |
-| 数值 | 不加引号 | `timeout: 300` |
-| 字符串 | 不加引号 | `provider: "openai"` |
+| Field type | Format | Example |
+|------------|--------|---------|
+| API key | `${ENV_VAR}` | `${OPENAI_API_KEY}` |
+| Boolean | `true`/`false` | `save_intermediate: true` |
+| Number | unquoted | `timeout: 300` |
+| String | unquoted | `provider: "openai"` |
 
-### 4.3 任务配置规范
+### 4.3 Task Configuration Convention
 
 ```yaml
 task:
-  id: "lens_design"           # 唯一 ID (snake_case)
-  name: "Lens Design"         # 显示名称
-  description: "..."          # 描述
-  category: "lens_design"     # 类别
-  difficulty: 3               # 难度 1-5
+  id: "lens_design"           # unique ID (snake_case)
+  name: "Lens Design"         # display name
+  description: "..."          # description
+  category: "lens_design"     # category
+  difficulty: 3               # difficulty 1-5
 
 dataset:
-  path: "dataset/processed/..."  # 相对于项目根目录
+  path: "dataset/processed/..."  # relative to the project root
   num_samples: 50
   shuffle: false
 
@@ -323,28 +324,28 @@ evaluation:
 
 ---
 
-## 5. Git 约定
+## 5. Git Conventions
 
-### 5.1 分支命名
+### 5.1 Branch Naming
 
 ```
-feature/<feature-name>      # 新功能
-fix/<bug-description>       # Bug 修复
-docs/<doc-section>          # 文档更新
-task/<task-name>            # 任务相关
-dataset/<dataset-name>      # 数据集相关
+feature/<feature-name>      # new feature
+fix/<bug-description>       # bug fix
+docs/<doc-section>          # documentation update
+task/<task-name>            # task related
+dataset/<dataset-name>      # dataset related
 ```
 
-示例:
+Examples:
 ```
 feature/multi-agent-support
 fix/timeout-handling
 docs/api-reference
 ```
 
-### 5.2 Commit 格式
+### 5.2 Commit Format
 
-遵循 [Conventional Commits](https://www.conventionalcommits.org/)：
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 <type>(<scope>): <subject>
@@ -355,18 +356,18 @@ docs/api-reference
 ```
 
 **Type:**
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档
-- `style`: 格式 (不影响代码)
-- `refactor`: 重构
-- `test`: 测试
-- `chore`: 构建/工具
+- `feat`: new feature
+- `fix`: bug fix
+- `docs`: documentation
+- `style`: formatting (no code change)
+- `refactor`: refactoring
+- `test`: tests
+- `chore`: build/tooling
 
 **Examples:**
 
 ```bash
-# 新功能
+# New feature
 git commit -m "feat(agent): add Anthropic Claude 3 support
 
 - Implement AnthropicAgent class
@@ -375,7 +376,7 @@ git commit -m "feat(agent): add Anthropic Claude 3 support
 
 Closes #123"
 
-# Bug 修复
+# Bug fix
 git commit -m "fix(runner): handle timeout gracefully
 
 The runner now catches TimeoutError and marks the task
@@ -383,7 +384,7 @@ as failed instead of crashing.
 
 Fixes #456"
 
-# 文档
+# Documentation
 git commit -m "docs: add optical basics guide
 
 Added docs/foundation/optical-basics.md covering:
@@ -392,20 +393,20 @@ Added docs/foundation/optical-basics.md covering:
 - MTF and PSF concepts"
 ```
 
-### 5.3 Pull Request 规范
+### 5.3 Pull Request Convention
 
 ```markdown
 ## Summary
-<!-- 简要描述改动 -->
+<!-- briefly describe the change -->
 
 ## Motivation
-<!-- 为什么需要这个改动 -->
+<!-- why this change is needed -->
 
 ## Changes Made
-<!-- 具体改了什么 -->
+<!-- what exactly was changed -->
 
 ## Testing
-<!-- 如何测试的 -->
+<!-- how it was tested -->
 
 ## Checklist
 - [ ] Code follows style guidelines
@@ -415,54 +416,54 @@ Added docs/foundation/optical-basics.md covering:
 
 ---
 
-## 6. 文档规范
+## 6. Documentation Standards
 
-### 6.1 README 要求
+### 6.1 README Requirements
 
-每个目录应包含 `README.md`，内容包括：
-- 目录用途
-- 包含文件说明
-- 使用示例
+Every directory should contain a `README.md` that covers:
+- The purpose of the directory
+- A description of the files it contains
+- Usage examples
 
-### 6.2 代码注释
+### 6.2 Code Comments
 
 ```python
-# ✅ 使用说明性注释
-# 计算 MTF 时使用对比度传递公式
+# ✅ Use explanatory comments
+# Use the contrast transfer formula when computing the MTF
 mtf = contrast_in / contrast_out
 
-# ❌ 避免无意义的注释
-# 计算 MTF
+# ❌ Avoid meaningless comments
+# Compute the MTF
 mtf = contrast_in / contrast_out
 
-# ✅ 使用 TODO/FIXME 标记待办
-# TODO(yourname): 优化性能
-# FIXME: 边界条件未处理
+# ✅ Use TODO/FIXME to mark pending work
+# TODO(yourname): optimize performance
+# FIXME: boundary conditions not handled
 ```
 
-### 6.3 Markdown 格式
+### 6.3 Markdown Formatting
 
 ```markdown
-# 标题层级 (最多 H3)
+# Heading level (H3 at most)
 
-## 主要标题
-### 次要标题
-#### 三级标题
+## Major heading
+### Minor heading
+#### Third-level heading
 
-**加粗** 用于强调
+**Bold** for emphasis
 
-`代码` 用于命令或代码引用
+`Code` for commands or code references
 
-| 表格 | 格式 |
-|------|------|
-| 数据 | 内容 |
+| Table  | Format |
+|--------|--------|
+| Data   | Content|
 ```
 
 ---
 
-## 7. 测试规范
+## 7. Testing Standards
 
-### 7.1 测试文件命名
+### 7.1 Test File Naming
 
 ```
 tests/
@@ -477,38 +478,38 @@ tests/
 └── ...
 ```
 
-### 7.2 测试函数命名
+### 7.2 Test Function Naming
 
 ```python
 def test_agent_chat_success():
-    """测试 Agent 成功响应"""
+    """Test a successful Agent response"""
     ...
 
 def test_agent_chat_timeout():
-    """测试 Agent 超时处理"""
+    """Test Agent timeout handling"""
     ...
 
 def test_evaluator_metric_calculation():
-    """测试评估指标计算"""
+    """Test the evaluation metric computation"""
     ...
 ```
 
-### 7.3 测试结构
+### 7.3 Test Structure
 
 ```python
 import pytest
 
 class TestLLMModel:
-    """LLM 模型测试类"""
+    """Test class for the LLM model"""
     
     @pytest.fixture
     def llm(self):
-        """测试 fixture"""
+        """Test fixture"""
         from src.llm import create_llm
         return create_llm("configs/llm/GPT_OpenAI.yaml")
     
     async def test_chat(self, llm):
-        """测试聊天功能"""
+        """Test the chat functionality"""
         from src.llm.base import Message
         messages = [Message(role="user", content="Hello")]
         response = await llm.chat(messages)
@@ -517,32 +518,32 @@ class TestLLMModel:
         assert response.cost > 0
     
     async def test_timeout(self, agent):
-        """测试超时处理"""
+        """Test timeout handling"""
         ...
 ```
 
-### 7.4 覆盖率要求
+### 7.4 Coverage Requirements
 
-| 模块 | 最低覆盖率 |
-|------|-----------|
+| Module | Minimum coverage |
+|--------|------------------|
 | core/ | 80% |
 | environments/ | 70% |
 | utils/ | 80% |
 
 ---
 
-## 📋 检查清单
+## 📋 Checklist
 
-提交代码前请确认：
+Before committing, confirm:
 
-- [ ] 遵循 PEP 8 规范
-- [ ] 包含类型注解
-- [ ] 包含文档字符串
-- [ ] 命名符合规范
-- [ ] 测试覆盖新增代码
-- [ ] commit message 符合规范
-- [ ] 没有调试代码遗留
+- [ ] PEP 8 is followed
+- [ ] Type annotations are included
+- [ ] Docstrings are included
+- [ ] Naming follows the conventions
+- [ ] Tests cover the new code
+- [ ] The commit message follows the convention
+- [ ] No leftover debug code
 
 ---
 
-*最后更新: 2026-08-19*
+*Last updated: 2026-08-19*

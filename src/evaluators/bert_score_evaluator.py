@@ -38,14 +38,14 @@ class BertScoreEvaluator(BaseEvaluator):
     """
 
     async def setup(self) -> None:
-        """预加载 BERTScorer 和 SentenceEmbedder 模型。"""
+        """Preload the BERTScorer and SentenceEmbedder models."""
         model_name = self.config.get("model_name", "roberta-large")
         match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
         _get_scorer(model_name)
         _get_sentence_embedder(match_model)
 
     async def teardown(self) -> None:
-        """释放 BERTScorer 和 SentenceEmbedder 模型，回收 GPU 显存。"""
+        """Release the BERTScorer and SentenceEmbedder models and reclaim GPU memory."""
         model_name = self.config.get("model_name", "roberta-large")
         match_model = self.config.get("hungarian_match", {}).get("model", "BAAI/bge-m3")
         unload_bert_scorer(model_name)

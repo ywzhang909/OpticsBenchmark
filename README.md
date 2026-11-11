@@ -220,7 +220,7 @@ OpticsBenchmark/
 │   ├── paper_review/                      # Paper review prompt
 │   └── optics_question_answers/           # Optics Q&A prompt
 ├── utils/                                  # Standalone utility scripts
-│   ├── list_openai_support_models.py      # List available OpenAI-compatible models
+│   ├── list_provider_support_models.py    # List provider LLM models to Markdown
 │   └── paper_data_to_dateset.py           # Convert paper files to JSON dataset
 ├── self_test/                              # Self-test datasets and scripts (excluded from git)
 ├── tests/                                  # Pytest test suite (18 test files)
@@ -468,8 +468,9 @@ Arguments:
 ### Standalone Utility Scripts
 
 ```bash
-# List supported OpenAI models
-python utils/list_openai_support_models.py
+# List the LLM models a provider exposes and save them as Markdown
+python utils/list_provider_support_models.py --list-providers
+python utils/list_provider_support_models.py -p glm
 
 # Convert paper data to dataset format
 python utils/paper_data_to_dateset.py

@@ -183,7 +183,7 @@ async def run_evaluation(
             logger.error("No evaluators created from config")
             return 1
 
-        # 按 YAML 配置中的 priority 排序评估器（重模型在前）
+        # Sort evaluators by priority from the YAML config (heavier models first)
         named_evaluators = sort_evaluators_by_priority(named_evaluators, eval_config)
 
         logger.info(f"Evaluators created: {len(named_evaluators)}")
@@ -201,11 +201,11 @@ async def run_evaluation(
             logger.info(f"[{ev_idx}/{len(named_evaluators)}] Running evaluator: {name}")
             logger.info("-" * 60)
 
-            # 加载此评估器所需的 GPU 模型
+            # Load the GPU models required by this evaluator
             await ev.setup()
 
             try:
-                # 使用 tqdm 进度条
+                # Use the tqdm progress bar
                 progress = tqdm(agent_outputs, desc=f"  {name}", unit="task", leave=True)
                 for ao in progress:
                     if ao.task_id not in gold_map:
@@ -218,7 +218,7 @@ async def run_evaluation(
                     )
                     per_evaluator_results[name].append(result)
                     progress.set_postfix({"done": len(per_evaluator_results[name])})
-                    # 输出每个任务的详细日志
+                    # Print the detailed log of each task
                     metrics_str = (
                         ", ".join(f"{k}: {v:.4f}" for k, v in result.metrics.items())
                         if result.metrics
@@ -229,7 +229,7 @@ async def run_evaluation(
                         f" - {metrics_str}"
                     )
             finally:
-                # 无论成功失败，都释放 GPU 显存
+                # Free GPU memory regardless of success or failure
                 await ev.teardown()
                 logger.info(f"  {name} completed, GPU memory released")
 
@@ -255,7 +255,7 @@ async def run_evaluation(
         logger.info("EVALUATION COMPLETE")
         logger.info("=" * 60)
 
-        # 构建表格
+        # Build the table
         separator = "+" + "-" * 16 + "+" + "-" * 7 + "+" + "-" * 27 + "+" + "-" * 10 + "+"
         header = f"| {'Evaluator':<14} | {'Tasks':>5} | {'Metrics':<25} | {'Avg Time':>8} |"
 

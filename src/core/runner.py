@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# TODO: 重构为使用 src.llm 抽象层替代已删除的 agent.py
+# TODO: Refactor to use the src.llm abstraction layer in place of the deleted agent.py
 # from src.core.agent import AgentConfig, AgentOutput, BaseAgent, create_agent
 from src.core.config import TaskConfig
 from src.utils import logger
@@ -116,7 +116,7 @@ class AgentRunner:
             prompt_path = Path(task_file)
             if prompt_path.exists():
                 prompt = prompt_path.read_text(encoding="utf-8")
-                # 删除前两行（注释行 + 空行）
+                # Drop the first two lines (comment line + blank line)
                 lines = prompt.split("\n")
                 if len(lines) > 2:
                     prompt = "\n".join(lines[2:])

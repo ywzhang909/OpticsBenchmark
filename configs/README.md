@@ -23,6 +23,8 @@ configs/
 ├── evaluations/               # Evaluation configs
 │   ├── paper_info_extract.yaml
 │   └── template.yaml
+├── dataset/                   # Dataset preparation configs
+│   └── marker_pdf2md.yaml     # marker-pdf PDF→Markdown (ConfigParser) options
 ├── system/
 │   └── template.yaml          # Global settings template (logging)
 └── README.md                  # This file
@@ -160,6 +162,38 @@ Global runtime settings for the benchmark runner.
 | `logging` | Level (`DEBUG`–`CRITICAL`), console output, optional file path, format, rotation (default 100 MB), retention (default 30 days), compression (zip) |
 
 Only `logging` is currently consumed by the code (see `load_system_config()` in `src/eval.py`); additional sections are planned but not yet implemented.
+
+---
+
+## 5. Dataset Preparation Configuration (`dataset/*.yaml`)
+
+`configs/dataset/marker_pdf2md.yaml` holds the options for converting PDFs into
+Markdown with `marker-pdf`, consumed by `src/utils/pdf_convert_md_marker.py`.
+
+```bash
+uv run python -m src.utils.pdf_convert_md_marker \
+  --input-dir dataset/paper_info_extract/pdfs \
+  --output-dir dataset/paper_info_extract/markdown \
+  --marker-config configs/dataset/marker_pdf2md.yaml
+```
+
+Keys are marker's `ConfigParser` option names (CLI flag names without the
+leading `--`) and are passed straight to `marker.config.parser.ConfigParser`.
+Component-specific overrides use the `<Component>_<param>` form (e.g.
+`MarkdownRenderer_page_separator`). For the full parameter reference (Chinese),
+see [`ref_document/marker_config_reference.zh.md`](../ref_document/marker_config_reference.zh.md);
+the authoritative list is `marker_single --help`.
+
+With `extract_images: true` (marker's default) the images marker crops out of
+each document are written next to the Markdown into a per-document
+`<md name>_images/` folder and the Markdown links are rewritten to point there —
+so Markdown files can stay flat in one directory without image names colliding.
+`--no-images` keeps Markdown-only output; `--overwrite` re-converts files whose
+`.md` already exists (`--skip-existing` only checks for the `.md`).
+
+Journal logos and license badges are cropped along with the real figures;
+`python -m src.utils.md_image_filter --dir DIR` prunes those non-content images
+and their Markdown links afterwards (see `src/utils/md_image_filter.py`).
 
 ---
 

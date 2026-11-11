@@ -1,7 +1,8 @@
 """
-Module Package - 评估结果数据模型包
+Module Package - Evaluation result data model package
 
-导出评估流程的核心数据结构，供 evaluators 及上层模块使用。
+Exports the core data structures of the evaluation pipeline for use by
+evaluators and upper-level modules.
 """
 
 from .result import AggregatedResults, EvaluationResult

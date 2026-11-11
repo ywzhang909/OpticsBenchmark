@@ -30,12 +30,12 @@ class CitationEvaluator(BaseEvaluator):
     """Evaluator that scores citation quality via NLI-based F1."""
 
     async def setup(self) -> None:
-        """预加载 Citation NLI 模型。"""
+        """Preload the Citation NLI model."""
         _get_citation_model()
         _get_citation_tokenizer()
 
     async def teardown(self) -> None:
-        """释放 Citation NLI 模型，回收 GPU 显存。"""
+        """Release the Citation NLI model and reclaim GPU memory."""
         unload_citation_model()
 
     async def evaluate(

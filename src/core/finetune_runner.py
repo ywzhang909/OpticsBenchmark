@@ -64,7 +64,7 @@ DASHSCOPE_STATUS_MAP: dict[str, str] = {
     "CANCELING": "cancelled",
 }
 
-# Together AI status mapping (official SDK 返回值 -> runner 规范状态)
+# Together AI status mapping (official SDK return values -> runner canonical status)
 TOGETHER_STATUS_MAP: dict[str, str] = {
     "pending": "queued",
     "queued": "queued",
@@ -188,11 +188,11 @@ class FineTuneRunnerConfig:
 
         job = self.job_config
 
-        # 验证 base_model 存在且非空
+        # Validate that base_model exists and is non-empty
         if not job.get("base_model"):
             errors.append("fine_tuning.base_model is required")
 
-        # 验证 training_file 存在且路径有效
+        # Validate that training_file exists and its path is valid
         training_file = job.get("training_file", "")
         if not training_file:
             errors.append("fine_tuning.training_file is required")
@@ -201,14 +201,14 @@ class FineTuneRunnerConfig:
         elif not Path(training_file).is_file():
             errors.append(f"training_file is not a file: {training_file}")
 
-        # 验证 validation_file 如果存在则路径有效
+        # Validate that validation_file, if present, has a valid path
         if validation_file := job.get("validation_file"):
             if not Path(validation_file).exists():
                 errors.append(f"validation_file not found: {validation_file}")
             elif not Path(validation_file).is_file():
                 errors.append(f"validation_file is not a file: {validation_file}")
 
-        # 验证 suffix 长度（如果存在）
+        # Validate the suffix length (if present)
         suffix = str(job.get("suffix") or "")
         if len(suffix) > MAX_SUFFIX_LENGTH:
             errors.append(f"suffix exceeds {MAX_SUFFIX_LENGTH} chars: '{suffix}'")
@@ -377,9 +377,9 @@ class FineTuneRunner:
         )
         file_id = file_obj.id
 
-        # 轮询等待服务器端校验完成，直到 processing_status == "COMPLETED"
-        # 才返回文件 id；出现 INVALID_FORMAT / FAILED 则报错并结束。
-        # 参照官方: docs.together.ai/docs/fine-tuning/data-preparation
+        # Poll until server-side validation finishes, i.e. until processing_status == "COMPLETED",
+        # and only then return the file id; raise and abort on INVALID_FORMAT / FAILED.
+        # See the official docs: docs.together.ai/docs/fine-tuning/data-preparation
         deadline = time.monotonic() + 3600
         while True:
             meta = await self.provider.client.files.retrieve(file_id)
@@ -652,15 +652,15 @@ class FineTuneRunner:
 
         }
 
-        # 提取 lr_scheduler 配置（映射为 SDk 扁平参数）
+        # Extract the lr_scheduler config (mapped to the SDK flat parameters)
         lr_scheduler = job_cfg.get("lr_scheduler")
         if lr_scheduler:
-            # 验证 lr_scheduler_type
+            # Validate lr_scheduler_type
             lr_scheduler_type = lr_scheduler.get("lr_scheduler_type")
             if lr_scheduler_type not in ["linear", "cosine"]:
-                raise ValueError(f"无效的 lr_scheduler_type: {lr_scheduler_type}。必须是 'linear' 或 'cosine'")
+                raise ValueError(f"Invalid lr_scheduler_type: {lr_scheduler_type}. Must be 'linear' or 'cosine'")
 
-            # 验证 lr_scheduler_args
+            # Validate lr_scheduler_args
             lr_scheduler_args = lr_scheduler.get("lr_scheduler_args", {})
             min_lr_ratio = lr_scheduler_args.get("min_lr_ratio", 0)
 
@@ -681,7 +681,7 @@ class FineTuneRunner:
         if training_method:
             method = training_method.get("method", None)
             if method not in ["sft", "dpo"]:
-                raise ValueError(f"无效的 training_method.method: {method}。必须是 'sft' 或 'dpo'")
+                raise ValueError(f"Invalid training_method.method: {method}. Must be 'sft' or 'dpo'")
             request["training_method"] = method
             if method == "sft":
                 train_on_inputs = training_method.get("train_on_inputs", "auto")
@@ -697,7 +697,7 @@ class FineTuneRunner:
                 request["dpo_normalize_logratios_by_length"] = dpo_normalize_logratios_by_length
                 request["simpo_gamma"] = simpo_gamma
 
-        # 官方 SDK 使用 Omit 语义，剔除未设置的 None 值
+        # The official SDK uses Omit semantics, so drop None values that were not set
         request = {k: v for k, v in request.items() if v is not None}
 
         response = await self.provider.client.fine_tuning.create(**request)

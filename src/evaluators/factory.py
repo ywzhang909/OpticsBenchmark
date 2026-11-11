@@ -24,7 +24,7 @@ EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
     "citation": CitationEvaluator,
 }
 
-# 评估器按 GPU 开销分类
+# Evaluators classified by GPU cost
 
 
 # =============================================================================
@@ -72,12 +72,12 @@ def sort_evaluators_by_priority(
     named_evaluators: list[tuple[str, BaseEvaluator]],
     config: dict[str, Any],
 ) -> list[tuple[str, BaseEvaluator]]:
-    """根据 YAML 配置中的 priority 字段对评估器排序。
+    """Sort evaluators by the priority field in the YAML config.
 
-    priority 值越小越先执行。未配置 priority 的评估器默认为 999。
-    同一 priority 内保持原始顺序。
+    The smaller the priority value, the earlier it runs. Evaluators without a configured
+    priority default to 999. Within the same priority the original order is kept.
 
-    YAML 配置示例:
+    Example YAML config:
         eval_metrics:
           citation:
             priority: 1
