@@ -1,7 +1,7 @@
 """
-Ollama Provider - 封装 Ollama HTTP API
+Ollama Provider - Wrapper around the Ollama HTTP API
 
-支持本地 Ollama 模型的异步调用（通过 httpx.AsyncClient）。
+Supports async calls for local Ollama models (via httpx.AsyncClient).
 """
 
 from __future__ import annotations
@@ -14,22 +14,22 @@ import httpx
 
 
 class OllamaProvider:
-    """封装 Ollama HTTP API，通过 httpx.AsyncClient 实现异步调用。"""
+    """Wraps the Ollama HTTP API, implementing async calls via httpx.AsyncClient."""
 
     def __init__(self, host: str = "http://localhost:11434"):
         """
-        初始化 Ollama Provider。
+        Initialize the Ollama Provider.
 
         Args:
-            host: Ollama 服务地址
+            host: Ollama service address
         """
         self._client = httpx.AsyncClient(base_url=host, timeout=120.0)
 
     @property
     def client(self):
-        """返回 httpx.AsyncClient 实例。"""
+        """Return the httpx.AsyncClient instance."""
         return self._client
 
     async def close(self) -> None:
-        """关闭 HTTP 客户端连接。"""
+        """Close the HTTP client connection."""
         await self._client.aclose()

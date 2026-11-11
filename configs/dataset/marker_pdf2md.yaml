@@ -1,0 +1,132 @@
+# =============================================================================
+# Marker PDF -> Markdown Configuration
+# Optis Benchmark - Dataset Preparation
+# =============================================================================
+#
+# Used by: src/utils/pdf_convert_md_marker.py
+#   python -m src.utils.pdf_convert_md_marker --input-dir DIR \
+#       --marker-config configs/dataset/marker_pdf2md.yaml
+#
+# The keys below are marker's `ConfigParser` option names (the CLI flag name
+# without the leading `--`) and are passed straight to
+# `marker.config.parser.ConfigParser`.
+#
+# Full parameter reference (Chinese): ref_document/marker_config_reference.zh.md
+# Upstream source of truth: `marker_single --help`
+#
+# Notes:
+#   * A key set to `null` (or omitted) means "not provided" -> marker keeps its
+#     own default. Explicit `false` / `0` ARE real values.
+#   * Component-specific overrides use the `<Component>_<param>` form, e.g.
+#     `MarkdownRenderer_page_separator` or `PdfProvider_pdftext_workers`.
+#   * `mode` defaults by device: `balanced` on GPU, `fast` on CPU/MPS.
+#   * `mode: "balanced"` needs a surya VLM server, and so does `mode: "fast"`
+#     whenever OCR is enabled (verified with marker-pdf 2.0.0 even on clean
+#     text-layer PDFs). Point SURYA_INFERENCE_URL at a running server, or leave
+#     it unset and let surya launch a temporary `vllm` docker container. Only
+#     `mode: "fast"` + `disable_ocr: true` runs without any server.
+#   * The Markdown files are written flat into `--output-dir`; with
+#     `extract_images: true` the extracted images are written next to each `.md`
+#     in a per-document `<md name>_images/` folder and the Markdown links are
+#     rewritten to point there. Use `--no-images` to skip that, and `--overwrite`
+#     to re-convert files whose `.md` already exists (`--skip-existing` only
+#     checks for the `.md`). Logos / license badges cropped along with the real
+#     figures are pruned afterwards by `python -m src.utils.md_image_filter`.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Conversion control
+# -----------------------------------------------------------------------------
+# Conversion mode: "balanced" (VLM layout + full-page OCR, best on GPU) or
+# "fast" (lightweight CPU detectors). Comment out to let marker pick by device.
+# mode: "balanced"
+
+# Output format: "markdown" | "json" | "html" | "chunks".
+# Required by the converter wiring (selects the renderer); keep as "markdown".
+output_format: "markdown"
+
+# Page range to convert, e.g. "0,5-10,20" (0-based). null converts all pages.
+page_range: null
+
+# -----------------------------------------------------------------------------
+# Images and resolution
+# -----------------------------------------------------------------------------
+# Extract images from the document (rendered as image links in Markdown).
+# The script saves them into "<md name>_images/" beside the .md and rewrites the
+# links; set false or pass --no-images for Markdown-only output.
+extract_images: true
+
+# DPI for page images: low-res is used for layout detection, high-res for OCR.
+# lowres_image_dpi: 96
+# highres_image_dpi: 192
+
+# -----------------------------------------------------------------------------
+# OCR
+# -----------------------------------------------------------------------------
+# Disable OCR entirely (text-layer only). false keeps OCR enabled.
+disable_ocr: false
+
+# Force OCR for the whole document (skips layout, rebuilds structure from OCR).
+# force_ocr: false
+
+# Use a single full-page OCR request per page (more accurate, faster on CPU).
+# ocr_full_page: true
+
+# Strip an existing OCR text layer from the PDF before processing.
+# strip_existing_ocr: false
+
+# -----------------------------------------------------------------------------
+# Page headers / footers (marginalia)
+# -----------------------------------------------------------------------------
+# Keep running headers / footers in the Markdown output (default: dropped).
+keep_page_in_output: true
+keep_pagefooter_in_output: true
+
+# Remove blank pages detected as images.
+filter_blank_pages: false
+
+# -----------------------------------------------------------------------------
+# Markdown rendering
+# -----------------------------------------------------------------------------
+# Separate pages with a delimiter in the output.
+# paginate_output: false
+# page_separator: "------------------------------------------------"
+
+# Emit tables as HTML instead of Markdown pipe tables.
+# html_tables_in_markdown: false
+
+# -----------------------------------------------------------------------------
+# Performance
+# -----------------------------------------------------------------------------
+# Number of pdftext extraction workers.
+# pdftext_workers: 4
+
+# Run pdftext extraction single-process (sets pdftext_workers=1).
+# disable_multiprocessing: false
+
+# Cache raw pdftext pages so table cell text can be assigned without
+# re-extracting the PDF (higher memory usage).
+# cache_pdftext_pages: true
+
+# -----------------------------------------------------------------------------
+# LLM enhancement (tables / equations / handwriting)
+# -----------------------------------------------------------------------------
+# Enable LLM-assisted processing. Needs an LLM service + credentials below.
+use_llm: false
+
+# Full import path of the LLM service.
+# llm_service: "marker.services.gemini.GoogleGeminiService"
+
+# Credentials for the default Gemini service. Prefer ${ENV_VAR} placeholders
+# (expanded from the environment / .env by the config loader).
+# gemini_api_key: "${GEMINI_API_KEY}"
+# max_concurrency: 3
+
+# -----------------------------------------------------------------------------
+# Debugging
+# -----------------------------------------------------------------------------
+# Debug mode: dumps debug images/JSON into output_dir.
+# debug: false
+# debug_layout_images: false
+# debug_pdf_images: false
+# debug_json: false

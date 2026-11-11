@@ -41,7 +41,7 @@ from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
 from src.llm.providers.together_ai_provider import TogetherAIProvider
 from src.utils import logger
-from src.utils.general import _dict_to_response_format
+from src.utils.general import _dict_to_response_format, read_text_file
 
 # Price per million tokens (input, output), Together AI pricing
 _LLAMA_PRICES: dict[str, tuple[float, float]] = {
@@ -275,9 +275,9 @@ class LlamaLLM(BaseLLM):
     ) -> list[dict[str, Any]]:
         """Convert a flat message list into chat completion message format.
 
-        Handle location files by provider type:
-        - OpenAIProvider: upload the file and reference its file_id
-        - TogetherAIProvider: read the file text and inline it into the message
+        Location files (local markdown paths) are read and inlined as text.
+        If reading fails, OpenAIProvider falls back to uploading the file,
+        while TogetherAIProvider (no file upload) logs a warning and skips it.
         """
         processed_messages: list[dict[str, str]] = []
         user_content: list[dict[str, str]] = []
@@ -290,11 +290,20 @@ class LlamaLLM(BaseLLM):
                 elif key == "prompt":
                     user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    if isinstance(provider, TogetherAIProvider):
-                        text = self._read_location_text(value)
-                        if text:
-                            user_content.append({"type": "text", "text": text})
+                    text = read_text_file(value)
+                    if text is not None:
+                        # Inline the local file content directly into the user message
+                        user_content.append({"type": "text", "text": text})
+                    elif isinstance(provider, TogetherAIProvider):
+                        # Together AI has no file-upload capability; skip when reading fails
+                        logger.warning(
+                            f"Failed to read location file, skipping: {value}"
+                        )
                     elif isinstance(provider, OpenAIProvider):
+                        # Read failed; fall back to uploading the file
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
                         file_object = await provider.client.files.create(
                             file=open(value, "rb"), purpose="user_data"
                         )
@@ -314,16 +323,6 @@ class LlamaLLM(BaseLLM):
             processed_messages.append({"role": "user", "content": user_content})
 
         return processed_messages
-
-    @staticmethod
-    def _read_location_text(path: str) -> str:
-        """Read a local file's text (used to inline location files for Together)."""
-        file_path = Path(path)
-        try:
-            return file_path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            logger.warning(f"Failed to read location file: {path}")
-            return ""
 
     def _build_structured_output(
         self, gold_answer_path: str | None

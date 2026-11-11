@@ -1,15 +1,15 @@
 """
-GlmLLM - 智谱 GLM 模型调用类
+GlmLLM - Zhipu GLM model call class
 
-支持通过 OpenAIProvider 进行智谱 API 兼容调用（OpenAI SDK）。
+Calls the Zhipu OpenAI-compatible API through OpenAIProvider (OpenAI SDK).
 Endpoint: https://open.bigmodel.cn/api/paas/v4
 
-setup 参数与 OpenAI Chat Completions 兼容：
+setup parameters are compatible with OpenAI Chat Completions:
   - max_tokens             → max_tokens
   - response_format: true  → response_format (json_object)
   - gold_answer_path       → response_format (json_schema via _build_structured_output)
   - tools / tool_choice    → tools / tool_choice
-  - frequency/presence_penalty, logit_bias, metadata, n, store 等均透传
+  - frequency/presence_penalty, logit_bias, metadata, n, store, etc. pass through as-is
 """
 
 from __future__ import annotations
@@ -21,7 +21,8 @@ from typing import Any
 
 from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
-from src.utils.general import _dict_to_response_format
+from src.utils import logger
+from src.utils.general import _dict_to_response_format, read_text_file
 
 # =============================================================================
 # Classes
@@ -29,7 +30,7 @@ from src.utils.general import _dict_to_response_format
 
 
 class GlmLLM(BaseLLM):
-    """智谱 GLM 模型，支持 OpenAIProvider（OpenAI SDK 兼容）。"""
+    """Zhipu GLM model, backed by OpenAIProvider (OpenAI SDK compatible)."""
 
     def __init__(self, model_name: str = "glm-4.5-air"):
         super().__init__(model_name)
@@ -40,28 +41,29 @@ class GlmLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 OpenAIProvider。
+        Dispatches to the matching implementation based on the provider type;
+        only OpenAIProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 OpenAIProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: message list [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be an OpenAIProvider)
+            **kwargs: extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: gold answer JSON path, used for structured output
+                - other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: when the provider type is not supported
         """
         if not isinstance(provider, OpenAIProvider):
             raise ValueError(
-                f"GlmLLM 不支持 provider: {type(provider).__name__}，"
-                f"仅支持 OpenAIProvider"
+                f"GlmLLM does not support provider: {type(provider).__name__}, "
+                f"only OpenAIProvider is supported"
             )
 
         setup = kwargs.get("setup", {})
@@ -146,7 +148,7 @@ class GlmLLM(BaseLLM):
     async def _process_messages(
         self, messages: list[dict[str, str]], provider: OpenAIProvider
     ) -> list[dict[str, Any]]:
-        """将扁平消息列表转换为 OpenAI messages 格式。"""
+        """Convert a flat message list into the OpenAI messages format."""
         processed_messages: list[dict[str, str]] = []
         user_content: list[dict[str, str]] = []
         system_content: list[dict[str, str]] = []
@@ -158,12 +160,20 @@ class GlmLLM(BaseLLM):
                 elif key == "prompt":
                     user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    file_object = await provider.client.files.create(
-                        file=open(value, "rb"), purpose="user_data"
-                    )
-                    user_content.append(
-                        {"type": "file", "file_id": file_object.id}
-                    )
+                    text = read_text_file(value)
+                    if text is not None:
+                        user_content.append({"type": "text", "text": text})
+                    else:
+                        # Read failed; fall back to uploading the file
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        file_object = await provider.client.files.create(
+                            file=open(value, "rb"), purpose="user_data"
+                        )
+                        user_content.append(
+                            {"type": "file", "file_id": file_object.id}
+                        )
                 elif key == "content" and "role" in message:
                     role = message["role"]
                     if role == "system":
@@ -179,7 +189,7 @@ class GlmLLM(BaseLLM):
         return processed_messages
 
     def _build_structured_output(self, gold_answer_path: str) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 response_format schema。"""
+        """Build a response_format schema from gold_answer_path."""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -209,7 +219,7 @@ class GlmLLM(BaseLLM):
         tools_config: dict[str, Any],
         method_setup: dict[str, Any],
     ) -> dict[str, Any]:
-        """根据 tools 配置构建 tools 请求参数。"""
+        """Build the tools request parameters from the tools configuration."""
         tools = []
         if tools_config.get("mcp_server", {}):
             tools.append(
@@ -256,6 +266,6 @@ class GlmLLM(BaseLLM):
         ) * output_cost_per_1k
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, OpenAIProvider):
             await provider.close()

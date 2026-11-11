@@ -11,6 +11,8 @@ from typing import Any
 
 from src.llm.base import BaseLLM
 from src.llm.providers.ollama_provider import OllamaProvider
+from src.utils import logger
+from src.utils.general import read_text_file
 
 # =============================================================================
 # Classes
@@ -54,6 +56,33 @@ class OllamaLLM(BaseLLM):
             f"only OllamaProvider is supported"
         )
 
+    async def _process_messages(self, messages: list[dict[str, str]]) -> list[dict[str, Any]]:
+        """Process messages, reading location files (local markdown paths) as text."""
+        processed_messages: list[dict[str, Any]] = []
+
+        for message in messages:
+            # Handle dict messages with special keys
+            if isinstance(message, dict):
+                new_message = {}
+                for key, value in message.items():
+                    if key == "location":
+                        text = read_text_file(value)
+                        if text is not None:
+                            new_message = {"role": "user", "content": text}
+                        else:
+                            # Read failed; no upload capability, log a warning and skip
+                            logger.warning(
+                                f"Failed to read location file, skipping: {value}"
+                            )
+                    else:
+                        new_message[key] = value
+                if new_message:
+                    processed_messages.append(new_message)
+            else:
+                processed_messages.append(message)
+
+        return processed_messages
+
     async def _chat_ollama(
         self,
         messages: list[dict[str, str]],
@@ -63,9 +92,12 @@ class OllamaLLM(BaseLLM):
         start_time = time.time()
         setup = kwargs.get("setup", {})
 
+        # Process messages to handle location files
+        processed_messages = await self._process_messages(messages)
+
         request_body = {
             "model": self.model_name,
-            "messages": messages,
+            "messages": processed_messages,
             "stream": False,
             "options": {
                 "temperature": setup.get("temperature", 0.0),

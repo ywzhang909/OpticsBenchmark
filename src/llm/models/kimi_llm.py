@@ -22,7 +22,7 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
-from src.utils.general import _dict_to_response_format
+from src.utils.general import _dict_to_response_format, read_text_file
 
 # Pricing per million tokens (input, output) for Kimi models
 _KIMI_PRICES: dict[str, tuple[float, float]] = {
@@ -208,7 +208,7 @@ class KimiLLM(BaseLLM):
         - prompt/user → user message
         - system/developer → system message
         - assistant → assistant message
-        - location → file upload via Files API, content as system message
+        - location → read the local markdown file, content as user message
 
         Args:
             messages: Flat list of message dicts with role keys.
@@ -228,17 +228,25 @@ class KimiLLM(BaseLLM):
                 elif key == "assistant":
                     processed.append({"role": "assistant", "content": value})
                 elif key == "location":
-                    # Upload file via OpenAI-compatible Files API
-                    file_object = await provider.client.files.create(
-                        file=Path(value),
-                        purpose="file-extract",
-                    )
-                    file_content = await provider.client.files.content(
-                        file_id=file_object.id
-                    ).text
-                    processed.append(
-                        {"role": "system", "content": file_content}
-                    )
+                    text = read_text_file(value)
+                    if text is not None:
+                        # Inline the local file content as a user message
+                        processed.append({"role": "user", "content": text})
+                    else:
+                        # Read failed; fall back to uploading the file and sending its content as a system message
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        file_object = await provider.client.files.create(
+                            file=Path(value),
+                            purpose="file-extract",
+                        )
+                        file_content = await provider.client.files.content(
+                            file_id=file_object.id
+                        ).text
+                        processed.append(
+                            {"role": "system", "content": file_content}
+                        )
 
         return processed
 

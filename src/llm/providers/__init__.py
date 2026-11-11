@@ -1,8 +1,9 @@
 """
-LLM Providers - 各厂商 SDK 异步封装
+LLM Providers - Async wrappers around vendor SDKs
 
-每个 Provider 封装对应厂商的 SDK 客户端，提供异步调用支持。
-使用延迟导入，缺失可选 SDK 时不会在模块导入阶段报错。
+Each Provider wraps the corresponding vendor SDK client and provides async call
+support. Imports are deferred, so a missing optional SDK does not raise at
+module import time.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ __all__ = list(_PROVIDER_CLASSES.keys())
 
 
 def __getattr__(name: str) -> Any:
-    """延迟导入：访问 src.llm.providers.XXX 时才真正导入。"""
+    """Deferred import: the real import happens only on access to src.llm.providers.XXX."""
     if name in _PROVIDER_CLASSES:
         import importlib
 

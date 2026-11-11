@@ -1,21 +1,22 @@
 """
-MistralLLM - Mistral 模型调用类
+MistralLLM - Mistral model call class
 
-通过官方 Mistral AI SDK (mistralai) 调用 API。
+Calls the API through the official Mistral AI SDK (mistralai).
 SDK: pip install mistralai
 Reference: https://docs.mistral.ai/studio/conversations/chat-completion
 
-setup 采用统一扁平参数：
+setup uses unified flat parameters:
   - max_tokens / max_completion_tokens → max_tokens
   - response_format: true / gold_answer_path → response_format
-    （json_schema，structured outputs；无 schema 时退回 json_object）
-  - random_seed / safe_prompt            → Mistral 特有参数
-  - reasoning / reasoning_effort          → 推理开关与强度
+    (json_schema, structured outputs; falls back to json_object without a schema)
+  - random_seed / safe_prompt            → Mistral specific parameters
+  - reasoning / reasoning_effort          → reasoning switch and intensity
   - tools.function_declarations / custom  → function tools
   - tools.tool_choice                     → tool_choice
-  - api_params                            → 覆盖或扩展请求体
-消息处理：支持扁平消息字典，其中 prompt/record 为文本，location 为本地文件
-路径（读取文本内联，Mistral API 无文件上传），system 为系统消息。
+  - api_params                            → override or extend the request body
+Message handling: supports flat message dicts, where prompt/record is text and location
+is a local markdown file path (read and inlined; falls back to file upload on read
+failure); system is the system message.
 """
 
 from __future__ import annotations
@@ -28,9 +29,9 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.mistral_provider import MistralProvider
 from src.utils import logger
-from src.utils.general import _dict_to_response_format
+from src.utils.general import _dict_to_response_format, read_text_file
 
-# 每百万 token 价格（input, output）
+# Price per million tokens (input, output)
 _MISTRAL_PRICES: dict[str, tuple[float, float]] = {
     "mistral-small-latest": (0.10, 0.30),
     "mistral-medium-latest": (1.50, 7.50),
@@ -49,7 +50,7 @@ _DEFAULT_PRICE: tuple[float, float] = (1.50, 7.50)
 # =============================================================================
 
 class MistralLLM(BaseLLM):
-    """Mistral 模型，支持 MistralProvider（官方 SDK）。"""
+    """Mistral model, backed by MistralProvider (official SDK)."""
 
     def __init__(self, model_name: str = "mistral-large-latest"):
         super().__init__(model_name)
@@ -60,29 +61,30 @@ class MistralLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 MistralProvider。
+        Dispatches to the matching implementation based on the provider type;
+        only MistralProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 MistralProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: message list [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be a MistralProvider)
+            **kwargs: extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: gold answer JSON path, used for structured output
+                - other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: when the provider type is not supported
         """
         if isinstance(provider, MistralProvider):
             return await self._chat_mistral(messages, provider, **kwargs)
         raise ValueError(
-            f"MistralLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 MistralProvider（官方 SDK）"
+            f"MistralLLM does not support provider: {type(provider).__name__}, "
+            f"only MistralProvider (official SDK) is supported"
         )
 
     async def _chat_mistral(
@@ -154,7 +156,7 @@ class MistralLLM(BaseLLM):
                     },
                 }
 
-        # tools 处理
+        # tools handling
         if setup.get("tools", None):
             request_kwargs["tools"] = setup["tools"]
 
@@ -188,7 +190,7 @@ class MistralLLM(BaseLLM):
     async def _process_messages(
         self, messages: list[dict[str, str]], provider: MistralProvider
     ) -> list[dict[str, Any]]:
-        """将扁平消息列表转换为 OpenAI messages 格式。"""
+        """Convert a flat message list into the OpenAI messages format."""
         processed_messages: list[dict[str, str]] = []
         user_content: list[dict[str, str]] = []
         system_content: list[dict[str, str]] = []
@@ -200,16 +202,24 @@ class MistralLLM(BaseLLM):
                 elif key == "prompt":
                     user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    file_path = Path(value)
-                    file_object = await provider.client.files.upload(
-                        file={
-                            "file_name": file_path.name,
-                            "content": open(file_path, "rb")
-                        }
-                    )
-                    user_content.append(
-                        {"type": "file", "file_id": file_object.id}
-                    )
+                    text = read_text_file(value)
+                    if text is not None:
+                        user_content.append({"type": "text", "text": text})
+                    else:
+                        # Read failed; fall back to uploading the file
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        file_path = Path(value)
+                        file_object = await provider.client.files.upload(
+                            file={
+                                "file_name": file_path.name,
+                                "content": open(file_path, "rb")
+                            }
+                        )
+                        user_content.append(
+                            {"type": "file", "file_id": file_object.id}
+                        )
                 elif key == "content" and "role" in message:
                     role = message["role"]
                     if role == "system":
@@ -226,7 +236,7 @@ class MistralLLM(BaseLLM):
 
     @staticmethod
     def _read_file(path: str) -> str:
-        """读取本地文件内容（文本内联，Mistral API 无文件上传）。"""
+        """Read local file content (inlined as text, the Mistral API has no file upload)."""
         file_path = Path(path)
         try:
             return file_path.read_text(encoding="utf-8", errors="ignore")
@@ -236,7 +246,7 @@ class MistralLLM(BaseLLM):
     def _build_structured_output(
         self, gold_answer_path: str | None
     ) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 response_format（json_schema）。"""
+        """Build response_format (json_schema) from gold_answer_path."""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -276,6 +286,6 @@ class MistralLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, MistralProvider):
             await provider.close()

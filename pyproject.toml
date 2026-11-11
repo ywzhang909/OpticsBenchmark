@@ -54,6 +54,8 @@ dependencies = [
     "mistralai>=2.9.3",
     "dashscope>=1.20.0",
     "together",
+    "pymupdf4llm>=1.28.2",
+    "marker-pdf>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -138,10 +140,10 @@ exclude_lines = [
 ]
 
 # ==============================================================
-# PyTorch / CUDA 自适应配置
-# 参考: https://uv.doczh.com/guides/integration/pytorch/#_3
+# PyTorch / CUDA adaptive configuration
+# Reference: https://docs.astral.sh/uv/guides/integration/pytorch/#_3
 # ==============================================================
-# 定义 PyTorch 专用索引（explicit=true 确保仅 torch 系列包走此索引）
+# Define the PyTorch-specific index (explicit=true ensures only torch packages use it)
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
@@ -162,7 +164,8 @@ name = "pytorch-cu130"
 url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
-# 默认使用 CPU 索引（跨平台安全）；运行 scripts/install_torch.py 后自动切换为 GPU 索引
+# Use the CPU index by default (cross-platform safe); switches to the GPU index
+# automatically after running scripts/install_torch.py
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]
 torchvision = [{ index = "pytorch-cpu" }]

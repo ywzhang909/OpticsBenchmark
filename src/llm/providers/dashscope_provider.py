@@ -1,7 +1,7 @@
 """
-DashScope Provider - 封装阿里云百炼 DashScope SDK
+DashScope Provider - Wrapper around the Alibaba Cloud Bailian DashScope SDK
 
-提供 DashScope API 的异步客户端，支持 Qwen 系列模型。
+Provides an async client for the DashScope API, supporting the Qwen model family.
 """
 
 from __future__ import annotations
@@ -10,14 +10,14 @@ import dashscope
 
 
 class DashScopeProvider:
-    """DashScope API 客户端包装。"""
+    """DashScope API client wrapper."""
 
     def __init__(self, api_key: str, base_url: str | None = None):
-        """初始化 DashScope 客户端。
+        """Initialize the DashScope client.
 
         Args:
             api_key: DashScope API Key
-            base_url: API 端点地址（可选）
+            base_url: API endpoint URL (optional)
         """
         dashscope.api_key = api_key
         if base_url:
@@ -25,9 +25,9 @@ class DashScopeProvider:
 
     @property
     def client(self) -> dashscope:
-        """返回 dashscope 模块引用。"""
+        """Return the dashscope module reference."""
         return dashscope
 
     async def close(self) -> None:
-        """关闭客户端（无需显式关闭）。"""
+        """Close the client (no explicit close required)."""
         pass

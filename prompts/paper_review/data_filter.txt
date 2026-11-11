@@ -1,0 +1,34 @@
+# Optis Benchmark - Paper review data filter
+
+***TASK***
+Read the input paper review comments (in Markdown format), accurately extract key information, complete the following three judgments, and return the results in strict JSON format:
+1.Determine whether the paper belongs to the field of optics.
+- A clear reason for the judgment must be provided.
+- The basis for judgment includes, but is not limited to: the paper title, research topic, research object, and the technologies or methods involved (such as optics-related keywords like laser, photonics, imaging, optical devices, light propagation, spectroscopy, etc.).
+- Distinguish between "papers in the field of optics" and "papers in other fields that only slightly involve optical concepts" (such as pure computer vision algorithm papers, pure materials science papers, etc.), and explain the basis for the distinction.
+2.Determine whether all review comments are initial review comments.
+- If all comments are initial reviews, the value is True, and a reason for the judgment must be provided.
+- If even one reviewer's comments indicate a non-initial review, the judgment is False. Point out which reviewers' comments are not initial reviews one by one, and explain the basis for the judgment (such as the appearance of expressions like "revision", "after revision", "review again", "previous round of comments", etc.). Each piece of information must be written into the reviews_judge_reason field.
+3.Determine whether the review comments include an evaluation of the paper's figures/charts.
+- The basis for judgment: whether the review comments contain specific evaluations of Figure, Fig., figure, chart, image quality, image clarity, errors in image content, etc.
+- If included, extract the relevant original review content and fill it into the images_document field. It is strictly prohibited to modify, add, delete, or summarize the original content. Comments on images from multiple reviewers must all be extracted and separated by semicolons or line breaks, with the corresponding reviewer labeled.
+- If not included, the images_document field value is null.
+***INPUT***
+The input content is a segment of Markdown text, containing the paper title and review comments from multiple reviewers.
+***OUTPUT***
+{
+    "title" : "paper title",
+    "is_optics_paper" : "True or False",
+    "optics_judge_reason" : "Reason for judging whether the paper is in the field of optics",
+    "is_have_images" : "True or False",
+    "images_document" : "Review comments regarding images (extracted from the original text; null if none)",
+    "is_first_reviews" : "True or False",
+    "reviews_judge_reason" : "Reason for judging whether all review comments are initial reviews (if non-initial review comments exist, specify which reviewers' comments they are and the basis for the judgment)"
+}
+***DOCUMENT***
+1.The fields is_optics_paper, is_have_images, and is_first_reviews must use JSON boolean types (true/false); do not use the strings "True"/"False".
+2.The title field must extract the complete original title of the paper and must not be rewritten.
+3.If the images_document field contains content, it must be an excerpt from the original review comments, maintaining the original wording; do not translate, rewrite, or summarize.
+4.The reviews_judge_reason and optics_judge_reason fields must include specific evidence (citing keywords, original statements, etc.), and must not simply output conclusions like "yes/no" without reasons.
+5.The output must be valid JSON, directly parsable by standard parsers, with no trailing commas and no comments.
+6.Strictly judge based on the content of the input file; do not introduce information outside the file or make assumptions.

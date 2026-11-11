@@ -1,10 +1,61 @@
 """
-Utils General - 通用工具函数
+Utils General - Common utility functions
 
-提供 LLM 结构化输出的 schema 推导等通用辅助功能。
+Provides common helpers such as schema inference for LLM structured output,
+text file reading for `location` inputs and image encoding for `images` inputs.
 """
 
+import base64
+from pathlib import Path
 from typing import Any
+
+#: Image extensions accepted by the `images` message input of the LLM layer.
+IMAGE_MIME_TYPES: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+
+
+def read_text_file(file_path: str | Path) -> str | None:
+    """
+    Read a local text file (the file a ``location`` message key points to, usually Markdown).
+
+    Args:
+        file_path: Path of the file
+
+    Returns:
+        The file's text content; None when the file is missing or cannot be read.
+    """
+    try:
+        return Path(file_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return None
+
+
+def encode_image_data_url(file_path: str | Path) -> str | None:
+    """Read an image file and return it as a base64 data URL.
+
+    Used by the LLM layer for `images` message inputs (vision requests).
+
+    Args:
+        file_path: Local image path (jpeg / png / webp / gif).
+
+    Returns:
+        A ``data:<mime>;base64,<payload>`` URL; None when the file is missing,
+        has an unsupported extension, or cannot be read.
+    """
+    path = Path(file_path)
+    mime = IMAGE_MIME_TYPES.get(path.suffix.lower())
+    if mime is None:
+        return None
+    try:
+        payload = base64.b64encode(path.read_bytes()).decode("utf-8")
+    except Exception:
+        return None
+    return f"data:{mime};base64,{payload}"
 
 
 def _dict_to_response_format(d: dict[str, Any], strict: bool = True) -> dict[str, Any]:

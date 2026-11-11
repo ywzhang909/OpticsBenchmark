@@ -1,7 +1,7 @@
 """
-Google Provider - 封装 Google GenAI Client
+Google Provider - Wrapper around the Google GenAI Client
 
-支持 Google Gemini 系列模型的异步调用（通过 client.aio）。
+Supports async calls for the Google Gemini model family (via client.aio).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from google import genai
 
 
 class GoogleProvider:
-    """封装 Google GenAI Client，通过 client.aio 实现异步调用。"""
+    """Wraps the Google GenAI Client, implementing async calls via client.aio."""
 
     def __init__(
         self,
@@ -26,13 +26,13 @@ class GoogleProvider:
         location: str | None = None,
     ):
         """
-        初始化 Google Provider。
+        Initialize the Google Provider.
 
         Args:
-            api_key: Google API 密钥
-            vertexai: 是否使用 Vertex AI
-            project_id: Google Cloud 项目 ID（Vertex AI 时需要）
-            location: Google Cloud 区域（Vertex AI 时需要）
+            api_key: Google API key
+            vertexai: Whether to use Vertex AI
+            project_id: Google Cloud project ID (required for Vertex AI)
+            location: Google Cloud location (required for Vertex AI)
         """
         self._client = genai.Client(
             api_key=api_key,
@@ -43,14 +43,14 @@ class GoogleProvider:
 
     @property
     def client(self):
-        """返回 genai.Client 实例。"""
+        """Return the genai.Client instance."""
         return self._client
 
     @property
     def aio(self) -> Any:
-        """返回异步接口 client.aio，用于 models.generate_content() 等调用。"""
+        """Return the async interface client.aio, used by calls such as models.generate_content()."""
         return self._client.aio
 
     async def close(self) -> None:
-        """关闭客户端（genai.Client 无需显式关闭）。"""
+        """Close the client (genai.Client requires no explicit close)."""
         pass

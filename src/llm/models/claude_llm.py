@@ -29,7 +29,7 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.anthropic_provider import AnthropicProvider
 from src.utils import logger
-from src.utils.general import _dict_to_response_format
+from src.utils.general import _dict_to_response_format, read_text_file
 
 # Price per million tokens (input, output, cache_write, cache_read)
 _CLAUDE_PRICES: dict[str, tuple[float, float, float, float]] = {
@@ -189,7 +189,7 @@ class ClaudeLLM(BaseLLM):
         provider: AnthropicProvider,
         setup: dict[str, Any],
     ) -> tuple[list[dict[str, Any]], str]:
-        """将扁平消息列表转换为 Claude messages，并提取 system 内容。"""
+        """Convert a flat message list into Claude messages and extract the system content."""
         system_parts: list[str] = []
         buckets: dict[str, list[dict[str, Any]]] = {"user": [], "assistant": []}
 
@@ -202,7 +202,15 @@ class ClaudeLLM(BaseLLM):
                 elif key == "assistant":
                     buckets["assistant"].append({"type": "text", "text": value})
                 elif key == "location":
-                    buckets["user"].append(await self._build_document(value, provider))
+                    text = read_text_file(value)
+                    if text is not None:
+                        buckets["user"].append({"type": "text", "text": text})
+                    else:
+                        # Read failed; fall back to uploading the document
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        buckets["user"].append(await self._build_document(value, provider))
                 elif key == "content" and "role" in message:
                     role = "assistant" if message["role"] == "assistant" else "user"
                     buckets[role].append({"type": "text", "text": value})
@@ -263,7 +271,7 @@ class ClaudeLLM(BaseLLM):
         setup: dict[str, Any],
         gold_answer_path: str | None,
     ) -> dict[str, Any] | None:
-        """根据 setup 构建 output_config（format/effort/task_budget）。"""
+        """Build output_config (format/effort/task_budget) from setup."""
         output_config: dict[str, Any] = {}
 
         if setup.get("output_config"):
@@ -274,8 +282,8 @@ class ClaudeLLM(BaseLLM):
             schema = self._build_structured_output(gold_answer_path)
         else:
             logger.warning(
-                "response_format 已启用但无法从 gold_answer_path 生成 JSON Schema，"
-                "将忽略结构化输出"
+                "response_format is enabled but no JSON Schema can be generated "
+                "from gold_answer_path, structured output will be ignored"
             )
         output_config["format"] = {
             "type": "json_schema",
@@ -284,7 +292,7 @@ class ClaudeLLM(BaseLLM):
         return output_config or None
 
     def _build_structured_output(self, gold_answer_path: str | None) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 JSON Schema（参照 GPTLLM）。"""
+        """Build a JSON Schema from gold_answer_path (mirrors GPTLLM)."""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -303,7 +311,7 @@ class ClaudeLLM(BaseLLM):
 
     @staticmethod
     def _build_tools(tools_config: dict[str, Any]) -> dict[str, Any]:
-        """根据 tools 配置构建 mcp_servers 与 tools 请求参数。"""
+        """Build the mcp_servers and tools request parameters from the tools configuration."""
         built: dict[str, Any] = {}
 
         tools: list[dict[str, Any]] = []
@@ -355,7 +363,7 @@ class ClaudeLLM(BaseLLM):
 
     @staticmethod
     def _clean(data: dict[str, Any]) -> dict[str, Any]:
-        """剔除值为 None 的字段，避免向 API 发送 null。"""
+        """Drop fields whose value is None to avoid sending null to the API."""
         return {k: v for k, v in data.items() if v is not None}
 
     def _calculate_cost(self, usage: dict[str, Any]) -> float:
@@ -379,6 +387,6 @@ class ClaudeLLM(BaseLLM):
         )
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, AnthropicProvider):
             await provider.close()

@@ -1,6 +1,6 @@
 # TESTS
 
-**Path:** `tests/` — pytest suite (20 test files, flat structure).
+**Path:** `tests/` — pytest suite (24 test files, flat structure).
 
 ## OVERVIEW
 Async-first test suite. All evaluator tests are async, using centralized fixtures from `conftest.py`. No mocking library — pure dataclass fixtures.
@@ -23,7 +23,13 @@ Async-first test suite. All evaluator tests are async, using centralized fixture
 | `test_composite_scorer.py` | Composite scorer | Scoring tests |
 | `test_llm_judge.py` | LLM judge | Integration tests |
 | `test_model_registry.py` | Model registry | Registry tests |
+| `test_pdf_convert_md_images.py` | `_save_images` | marker image saving + link rewriting |
+| `test_md_image_filter.py` | `md_image_filter` | valid/invalid image rules, pruning, report |
+| `test_llm_image_input.py` | `encode_image_data_url`, `QwenLLM` `images` key | vision request assembly, no network |
+| `test_reviews_to_meta_reviews_inputs.py` | meta-review input assembly + parsing | figure order, manuscript clean-up, upload limits, bullet-point lists, resume check |
+| `test_reviews_to_strengths_weakness.py` | `reviews_to_strengths_weakness.py` | JSONL-only review assembly, XML-tagged messages, strict-JSON schema validation (quotes prefix, stance enum, reviewer membership) |
 | `test_integration.py` | End-to-end pipeline | Factory, lens design, summarization, retrieval, model comparison |
+| `report_paper_review_filter.py` | — | Generates a Markdown stats report for `results/paper_review_filter.jsonl` |
 
 Note: Tests for deleted modules (cider, meteor, perplexity, edit_distance, jaccard, quick_llm_selector) remain as regression coverage.
 

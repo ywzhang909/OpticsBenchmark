@@ -1,7 +1,7 @@
 """
-OpenAI Provider - 封装 OpenAI AsyncOpenAI SDK
+OpenAI Provider - Wrapper around the OpenAI AsyncOpenAI SDK
 
-支持所有 OpenAI 兼容 API（OpenAI, DeepSeek, Qwen, Llama, Mistral 等）。
+Supports all OpenAI-compatible APIs (OpenAI, DeepSeek, Qwen, Llama, Mistral, etc.).
 """
 
 from __future__ import annotations
@@ -14,23 +14,23 @@ from openai import AsyncOpenAI
 
 
 class OpenAIProvider:
-    """封装 OpenAI AsyncOpenAI SDK，提供异步调用支持。"""
+    """Wraps the OpenAI AsyncOpenAI SDK and provides async call support."""
 
     def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1"):
         """
-        初始化 OpenAI Provider。
+        Initialize the OpenAI Provider.
 
         Args:
-            api_key: API 密钥
-            base_url: API 端点地址
+            api_key: API key
+            base_url: API endpoint URL
         """
         self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     @property
     def client(self):
-        """返回 AsyncOpenAI 客户端实例。"""
+        """Return the AsyncOpenAI client instance."""
         return self._client
 
     async def close(self) -> None:
-        """关闭 API 客户端连接。"""
+        """Close the API client connection."""
         await self._client.close()

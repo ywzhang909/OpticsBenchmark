@@ -1,7 +1,7 @@
 """
-TogetherAI Provider - 封装 Together AI 官方 Python SDK
+TogetherAI Provider - Wrapper around the official Together AI Python SDK
 
-通过 together.AsyncTogether 实现异步调用。
+Implements async calls via together.AsyncTogether.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from together import AsyncTogether
 
 
 class TogetherAIProvider:
-    """封装 Together AI 官方 SDK（AsyncTogether），提供异步调用支持。"""
+    """Wraps the official Together AI SDK (AsyncTogether) and provides async call support."""
 
     def __init__(
         self,
@@ -23,12 +23,12 @@ class TogetherAIProvider:
         timeout: float = 120.0,
     ):
         """
-        初始化 Together AI Provider。
+        Initialize the Together AI Provider.
 
         Args:
-            api_key: Together AI API 密钥
-            base_url: API 端点地址
-            timeout: 请求超时秒数
+            api_key: Together AI API key
+            base_url: API endpoint URL
+            timeout: Request timeout in seconds
         """
         self._client = AsyncTogether(
             api_key=api_key,
@@ -38,9 +38,9 @@ class TogetherAIProvider:
 
     @property
     def client(self) -> AsyncTogether:
-        """返回 Together 官方 SDK 异步客户端实例。"""
+        """Return the async client instance of the official Together SDK."""
         return self._client
 
     async def close(self) -> None:
-        """关闭官方 SDK 客户端连接。"""
+        """Close the official SDK client connection."""
         await self._client.close()

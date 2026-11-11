@@ -28,7 +28,7 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
-from src.utils.general import _dict_to_response_format
+from src.utils.general import _dict_to_response_format, read_text_file
 
 # Legacy models that do not support the Responses API
 _RESPONSES_UNSUPPORTED_MODELS: set[str] = {
@@ -142,13 +142,24 @@ class GPTLLM(BaseLLM):
                         content["prompt_cache_breakpoint"] = {"mode": "explicit"}
                     user_content.insert(0, content)
                 elif key == "location":
-                    file_object = await provider.client.files.create(
-                        file=open(value, "rb"),
-                        purpose="user_data"
-                    )
-                    user_content.append(
-                        {"type": "file", "file_id": file_object.id}
-                    )
+                    text = read_text_file(value)
+                    if text is not None:
+                        content = {"type": "text", "text": text}
+                        if self.prompt_cache_key:
+                            content["prompt_cache_breakpoint"] = {"mode": "explicit"}
+                        user_content.insert(0, content)
+                    else:
+                        # Read failed; fall back to uploading the file
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        file_object = await provider.client.files.create(
+                            file=open(value, "rb"),
+                            purpose="user_data"
+                        )
+                        user_content.append(
+                            {"type": "file", "file_id": file_object.id}
+                        )
         processed_messages.append({"role": "user", "content": user_content})
 
         request_kwargs: dict[str, Any] = {
@@ -229,17 +240,28 @@ class GPTLLM(BaseLLM):
                         content["prompt_cache_breakpoint"] = {"mode": "explicit"}
                     user_content.insert(0, content)
                 elif key == "location":
-                    file_object = await provider.client.files.create(
-                        file=open(value, "rb"),
-                        purpose="user_data"
-                    )
-                    user_content.append(
-                        {
-                            "type": "input_file",
-                            "file_id": file_object.id,
-                            "detail": "auto",
-                        }
-                    )
+                    text = read_text_file(value)
+                    if text is not None:
+                        content = {"type": "input_text", "text": text}
+                        if self.prompt_cache_key:
+                            content["prompt_cache_breakpoint"] = {"mode": "explicit"}
+                        user_content.insert(0, content)
+                    else:
+                        # Read failed; fall back to uploading the file
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        file_object = await provider.client.files.create(
+                            file=open(value, "rb"),
+                            purpose="user_data"
+                        )
+                        user_content.append(
+                            {
+                                "type": "input_file",
+                                "file_id": file_object.id,
+                                "detail": "auto",
+                            }
+                        )
                 elif key == "system":
                     instructions = value
         processed_messages.append({"role": "user", "content": user_content})

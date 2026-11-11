@@ -1,7 +1,7 @@
 """
-Mistral Provider - 封装 Mistral AI 官方 SDK
+Mistral Provider - Wrapper around the official Mistral AI SDK
 
-通过 mistralai.client.Mistral 实现异步调用。
+Implements async calls via mistralai.client.Mistral.
 """
 
 from __future__ import annotations
@@ -14,22 +14,22 @@ from mistralai.client import Mistral
 
 
 class MistralProvider:
-    """封装 Mistral AI 官方 SDK，提供异步调用支持。"""
+    """Wraps the official Mistral AI SDK and provides async call support."""
 
     def __init__(self, api_key: str):
         """
-        初始化 Mistral Provider。
+        Initialize the Mistral Provider.
 
         Args:
-            api_key: Mistral AI API 密钥
+            api_key: Mistral AI API key
         """
         self._client = Mistral(api_key=api_key)
 
     @property
     def client(self) -> Mistral:
-        """返回 Mistral 客户端实例。"""
+        """Return the Mistral client instance."""
         return self._client
 
     async def close(self) -> None:
-        """关闭客户端（mistralai SDK 无需显式关闭）。"""
+        """Close the client (the mistralai SDK requires no explicit close)."""
         pass

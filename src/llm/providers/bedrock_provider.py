@@ -1,7 +1,7 @@
 """
-Bedrock Provider - 封装 AWS Bedrock boto3 客户端
+Bedrock Provider - Wrapper around the AWS Bedrock boto3 client
 
-通过 asyncio.run_in_executor 将同步 boto3 调用包装为异步。
+Wraps the synchronous boto3 calls as async via asyncio.run_in_executor.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any
 
 
 class BedrockProvider:
-    """封装 AWS Bedrock boto3 客户端，通过线程池实现异步调用。"""
+    """Wraps the AWS Bedrock boto3 client, implementing async calls via a thread pool."""
 
     def __init__(
         self,
@@ -26,20 +26,20 @@ class BedrockProvider:
         aws_secret: str | None = None,
     ):
         """
-        初始化 Bedrock Provider。
+        Initialize the Bedrock Provider.
 
         Args:
-            region: AWS 区域
+            region: AWS region
             aws_key: AWS Access Key ID
             aws_secret: AWS Secret Access Key
         Raises:
-            ImportError: boto3 未安装时抛出
+            ImportError: Raised when boto3 is not installed
         """
         try:
             import boto3
         except ImportError:
             raise ImportError(
-                "boto3 未安装。请运行: pip install boto3 或 uv sync --extra providers"
+                "boto3 is not installed. Please run: pip install boto3 or uv sync --extra providers"
             )
         self._client = boto3.client(
             "bedrock-runtime",
@@ -50,7 +50,7 @@ class BedrockProvider:
 
     @property
     def client(self):
-        """返回 boto3 客户端实例。"""
+        """Return the boto3 client instance."""
         return self._client
 
     async def invoke_model_async(
@@ -60,15 +60,15 @@ class BedrockProvider:
         content_type: str = "application/json",
     ) -> dict[str, Any]:
         """
-        异步调用 Bedrock invoke_model。
+        Call Bedrock invoke_model asynchronously.
 
         Args:
-            model_id: 模型 ID
-            body: 请求体（会自动序列化为 JSON）
-            content_type: 内容类型
+            model_id: Model ID
+            body: Request body (automatically serialized to JSON)
+            content_type: Content type
 
         Returns:
-            响应体字典
+            The response body dict
         """
         loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(
@@ -84,5 +84,5 @@ class BedrockProvider:
         return response_body
 
     async def close(self) -> None:
-        """关闭客户端（boto3 无需显式关闭）。"""
+        """Close the client (boto3 requires no explicit close)."""
         pass

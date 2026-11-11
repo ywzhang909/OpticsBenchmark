@@ -1,18 +1,19 @@
 """
-GeminiLLM - Google Gemini 模型调用类
+GeminiLLM - Google Gemini model call class
 
-支持通过 GoogleProvider 调用 Google GenAI Interactions API。
+Calls the Google GenAI Interactions API through GoogleProvider.
 
-setup 参数说明：
+setup parameters:
   - max_completion_tokens             → max_output_tokens
   - response_format / gold_answer_path → response_format (JSON Schema)
   - thinking.thinking_level / thinking.thinking_budget
   - tools.web_search / code_execution / function_declarations
   - tools.tool_choice                 → generation_config.tool_choice
-  - api_params                        → 覆盖或扩展 generation_config
+  - api_params                        → override or extend generation_config
 
-消息处理：与 GPTLLM 相同，支持扁平消息字典，其中 prompt/record 为文本，
-location 为本地文件路径（通过 files.upload 上传），system 为系统指令。
+Message handling: same as GPTLLM, supports flat message dicts where prompt/record is
+text, location is a local markdown file path (read and inlined; falls back to file upload
+on read failure), and system is the system instruction.
 """
 
 from __future__ import annotations
@@ -26,9 +27,9 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.google_provider import GoogleProvider
 from src.utils import logger
-from src.utils.general import _dict_to_response_format
+from src.utils.general import _dict_to_response_format, read_text_file
 
-# 每百万 token 价格（input, output）
+# Price per million tokens (input, output)
 _GEMINI_PRICES: dict[str, tuple[float, float]] = {
     "gemini-1.5-pro": (1.25, 5.00),
     "gemini-1.5-flash": (0.075, 0.30),
@@ -46,7 +47,7 @@ _DEFAULT_PRICE: tuple[float, float] = (1.25, 5.00)
 # =============================================================================
 
 class GeminiLLM(BaseLLM):
-    """Google Gemini 模型，支持 GoogleProvider（Interactions API）。"""
+    """Google Gemini model, backed by GoogleProvider (Interactions API)."""
 
     def __init__(self, model_name: str = "gemini-1.5-pro"):
         super().__init__(model_name)
@@ -57,29 +58,30 @@ class GeminiLLM(BaseLLM):
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """发送聊天请求。
+        """Send a chat request.
 
-        根据 provider 类型分发到对应实现，仅支持 GoogleProvider。
+        Dispatches to the matching implementation based on the provider type;
+        only GoogleProvider is supported.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例（须为 GoogleProvider）
-            **kwargs: 额外参数:
-                - setup: API 调用参数字典（temperature、max_tokens 等）
-                - gold_answer_path: gold answer JSON 路径，用于结构化输出
-                - 其他透传给底层 API 的参数
+            messages: message list [{"role": "user", "content": "..."}]
+            provider: Provider instance (must be a GoogleProvider)
+            **kwargs: extra parameters:
+                - setup: API call parameter dict (temperature, max_tokens, etc.)
+                - gold_answer_path: gold answer JSON path, used for structured output
+                - other parameters passed through to the underlying API
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
 
         Raises:
-            ValueError: provider 类型不受支持时
+            ValueError: when the provider type is not supported
         """
         if isinstance(provider, GoogleProvider):
             return await self._chat_google(messages, provider, **kwargs)
         raise ValueError(
-            f"GeminiLLM 不支持 provider: {type(provider).__name__}，"
-            f"仅支持 GoogleProvider"
+            f"GeminiLLM does not support provider: {type(provider).__name__}, "
+            f"only GoogleProvider is supported"
         )
 
     async def _chat_google(
@@ -110,7 +112,7 @@ class GeminiLLM(BaseLLM):
             "webhook_config": setup.get("webhook_config", None),
         }
 
-        # 构建 structured output response_format
+        # Build the structured output response_format
         response_format = setup.get("response_format", None)
         if response_format:
             schema = response_format.get("schema", None)
@@ -173,7 +175,7 @@ class GeminiLLM(BaseLLM):
         provider: GoogleProvider,
         setup: dict[str, Any],
     ) -> tuple[list[dict[str, Any]], str]:
-        """将扁平消息列表转换为 Gemini contents，并提取 system 指令。"""
+        """Convert a flat message list into Gemini contents and extract the system instruction."""
         system_parts: list[str] = []
         user_parts: list[Any] = []
         model_parts: list[Any] = []
@@ -187,7 +189,15 @@ class GeminiLLM(BaseLLM):
                 elif key == "assistant":
                     model_parts.append({"type": "text", "text": value})
                 elif key == "location":
-                    user_parts.append(await self._build_document(value, provider))
+                    text = read_text_file(value)
+                    if text is not None:
+                        user_parts.append({"type": "text", "text": text})
+                    else:
+                        # Read failed; fall back to uploading the document
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        user_parts.append(await self._build_document(value, provider))
 
         contents: list[dict[str, Any]] = []
         if user_parts:
@@ -234,7 +244,7 @@ class GeminiLLM(BaseLLM):
     def _build_structured_output(
         self, gold_answer_path: str | None
     ) -> dict[str, Any] | None:
-        """从 gold_answer_path 构建 JSON Schema。"""
+        """Build a JSON Schema from gold_answer_path."""
         if not gold_answer_path:
             return None
         gold_path_obj = Path(gold_answer_path)
@@ -259,13 +269,13 @@ class GeminiLLM(BaseLLM):
         output_tokens = float(usage.get("completion_tokens", 0) or 0)
         thought_tokens = float(usage.get("total_thought_tokens", 0) or 0)
 
-        # Thinking tokens 按 output 价格计费
+        # Thinking tokens are billed at the output price
         return (
             input_tokens / 1_000_000 * input_cost_per_m
             + (output_tokens + thought_tokens) / 1_000_000 * output_cost_per_m
         )
 
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the provider connection."""
         if isinstance(provider, GoogleProvider):
             await provider.close()

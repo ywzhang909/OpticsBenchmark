@@ -24,7 +24,8 @@ llm:
     api_key: "${QWEN_API_KEY}"
 
     # API endpoint URL for Alibaba Cloud Qwen
-    base_url: "https://ws-aj78yn2iu5pmdg27.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    # base_url: "https://ws-aj78yn2iu5pmdg27.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    base_url: "http://127.0.0.1:8080/v1"
 
   # ── Model Configuration ──────────────────────────────────────────────────────
   model:
@@ -34,7 +35,7 @@ llm:
 
     # Model name, passed as the model parameter to the API
     # Commonly used: qwen3.7-max, qwen3.5-plus, qwen-max, qwen-plus
-    name: "qwen3.7-max"
+    name: "strata"
 
   # ── Request Parameters ──────────────────────────────────────────────────────
   setup:

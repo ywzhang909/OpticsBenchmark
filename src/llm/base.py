@@ -1,5 +1,5 @@
 """
-LLM Base - 抽象基类
+LLM Base - Abstract base class
 """
 
 from __future__ import annotations
@@ -13,15 +13,16 @@ from src.utils import logger
 
 
 def build_response_format(gold_answer_path: str | None) -> dict[str, Any] | None:
-    """从 gold_answer_path 构建 response_format schema。
+    """Build a response_format schema from gold_answer_path.
 
-    读取 gold answer JSON 文件，推断第一条数据的类型并生成 JSON schema。
+    Reads the gold answer JSON file, infers the type of the first record and
+    generates a JSON schema.
 
     Args:
-        gold_answer_path: gold answer JSON 文件路径。
+        gold_answer_path: Path to the gold answer JSON file.
 
     Returns:
-        OpenAI response_format 字典，失败时返回 None。
+        An OpenAI response_format dict, or None on failure.
     """
     if not gold_answer_path:
         return None
@@ -89,7 +90,7 @@ def build_response_format(gold_answer_path: str | None) -> dict[str, Any] | None
 # =============================================================================
 
 class BaseLLM(ABC):
-    """LLM 模型抽象基类，定义统一接口。"""
+    """Abstract base class for LLM models, defining a unified interface."""
 
     def __init__(self, model_name: str):
         self.model_name = model_name
@@ -97,17 +98,21 @@ class BaseLLM(ABC):
     @abstractmethod
     async def chat(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
-        发送聊天请求。
+        Send a chat completion request.
 
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            provider: Provider 实例
-            **kwargs: 额外参数 (temperature, max_tokens 等)
+            messages: Message list [{"role": "user", "content": "..."}].
+                OpenAI-compatible models additionally accept the input keys
+                "prompt" (text), "location" (path of a text file to inline)
+                and "images" (image paths, sent as base64 data URLs for
+                vision requests).
+            provider: Provider instance
+            **kwargs: Extra parameters (temperature, max_tokens, etc.)
 
         Returns:
             {"content": str, "usage": dict, "cost": float, "latency": float}
@@ -120,7 +125,7 @@ class BaseLLM(ABC):
         cost: float,
         latency: float,
     ) -> None:
-        """打印 Token 消耗信息。"""
+        """Log token consumption information."""
         input_tokens = usage.get("prompt_tokens") or usage.get("input_tokens", 0)
         output_tokens = usage.get("completion_tokens") or usage.get("output_tokens", 0)
         total_tokens = usage.get("total_tokens") or input_tokens + output_tokens
@@ -136,5 +141,5 @@ class BaseLLM(ABC):
 
     @abstractmethod
     async def close(self, provider: Any) -> None:
-        """关闭 Provider 连接。"""
+        """Close the Provider connection."""
         pass

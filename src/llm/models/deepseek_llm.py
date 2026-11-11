@@ -12,6 +12,8 @@ from typing import Any
 
 from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
+from src.utils import logger
+from src.utils.general import read_text_file
 
 # =============================================================================
 # Classes
@@ -71,11 +73,19 @@ class DeepSeekLLM(BaseLLM):
                 if key == "prompt":
                     processed_messages.append({"role": "user", "content": value})
                 elif key == "location":
-                    file_object = await provider.client.files.create(
-                        file=Path(value),
-                        purpose="file-extract"
-                    )
-                    processed_messages.append({"role": "system", "content": f'fileid://{file_object.id}'})
+                    text = read_text_file(value)
+                    if text is not None:
+                        processed_messages.append({"role": "user", "content": text})
+                    else:
+                        # Read failed; fall back to uploading the file
+                        logger.warning(
+                            f"Failed to read location file, falling back to upload: {value}"
+                        )
+                        file_object = await provider.client.files.create(
+                            file=Path(value),
+                            purpose="file-extract"
+                        )
+                        processed_messages.append({"role": "system", "content": f'fileid://{file_object.id}'})
 
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,

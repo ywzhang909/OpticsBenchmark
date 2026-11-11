@@ -22,7 +22,7 @@ from src.llm import create_llm, create_provider
 from src.utils import logger
 
 # ---------------------------------------------------------------------------
-# 环境变量展开
+# Environment variable expansion
 # ---------------------------------------------------------------------------
 
 
@@ -40,7 +40,7 @@ def _expand_env_vars(data: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# LLM 输出数据类（对齐 AgentOutput）
+# LLM output dataclass (aligns with AgentOutput)
 # ---------------------------------------------------------------------------
 
 
@@ -89,7 +89,7 @@ class LLMOutput:
 
 
 # ---------------------------------------------------------------------------
-# LLM Runner 配置（对齐 RunnerConfig）
+# LLM Runner configuration (aligns with RunnerConfig)
 # ---------------------------------------------------------------------------
 
 
@@ -133,7 +133,7 @@ class LLMRunnerConfig:
 
 
 # ---------------------------------------------------------------------------
-# LLM Prediction Runner（对齐 AgentRunner）
+# LLM Prediction Runner (aligns with AgentRunner)
 # ---------------------------------------------------------------------------
 
 

@@ -6,7 +6,6 @@ Supports OpenAI-compatible API calls through OpenAIProvider.
 
 from __future__ import annotations
 
-import base64
 import time
 from pathlib import Path
 from typing import Any
@@ -14,6 +13,7 @@ from typing import Any
 from src.llm.base import BaseLLM
 from src.llm.providers.openai_provider import OpenAIProvider
 from src.utils import logger
+from src.utils.general import encode_image_data_url, read_text_file
 
 # =============================================================================
 # Classes
@@ -31,7 +31,7 @@ class QwenLLM(BaseLLM):
 
     async def chat(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         provider: Any,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -41,7 +41,12 @@ class QwenLLM(BaseLLM):
         OpenAIProvider is supported.
 
         Args:
-            messages: List of messages [{"role": "user", "content": "..."}]
+            messages: List of message dicts; supported keys are merged into a
+                single user message:
+                - prompt: text content
+                - location: path of a text file to inline
+                - images: image paths (list or single path) sent as
+                  base64 data URLs for vision requests
             provider: Provider instance (must be an OpenAIProvider)
             **kwargs: Extra parameters:
                 - setup: API call parameter dict (temperature, max_tokens, etc.)
@@ -68,27 +73,35 @@ class QwenLLM(BaseLLM):
     ) -> dict[str, Any]:
         start_time = time.time()
         setup = kwargs.get("setup", {})
-
         # Process messages
-        processed_messages: list[dict[str, str]] = []
-        user_content: list[dict[str, str]] = []
+        processed_messages: list[dict[str, Any]] = []
+        user_content: list[dict[str, Any]] = []
         for message in messages:
             for key, value in message.items():
                 if key == "prompt":
                     user_content.append({"type": "text", "text": value})
                 elif key == "location":
-                    # file_object = await provider.client.files.create(
-                    #     file=Path(value),
-                    #     purpose="file-extract"
-                    # )
-                    with open(value, "rb") as f:
-                        pdf_base64 = base64.b64encode(f.read()).decode("utf-8")
-                    user_content.append({
-                        "type": "file",
-                        "file": {
-                            "file_data": f"data:application/pdf;base64,{pdf_base64}",
-                            "file_name": Path(value).name,
-                    }})
+                    text = read_text_file(value)
+                    if text is not None:
+                        user_content.append({"type": "text", "text": text})
+                    else:
+                        # Read failed; no upload capability, log a warning and skip
+                        logger.warning(
+                            f"Failed to read location file, skipping: {value}"
+                        )
+                elif key == "images":
+                    # Vision input: local image paths are sent in order as
+                    # base64 data URLs; unreadable ones are skipped
+                    for image in value or []:
+                        url = encode_image_data_url(image)
+                        if url is not None:
+                            user_content.append(
+                                {"type": "image_url", "image_url": {"url": url}}
+                            )
+                        else:
+                            logger.warning(
+                                f"Failed to read image file, skipping: {image}"
+                            )
         processed_messages.append({"role": "user", "content": user_content})
         request_kwargs: dict[str, Any] = {
             "model": self.model_name,
