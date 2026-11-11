@@ -143,14 +143,13 @@ Thumbs.db
 # Project specific
 results/
 logs/
+/models/
 *.log
 .checkpoints/
 data/raw/
 data/external/
-dataset/paper_info_extract/
-dataset/optics_question_answer/
-dataset/paper_review
-dataset/info_extraction
+dataset/*
+!dataset/README.md
 *.hdf5
 *.parquet
 .zemax/
@@ -166,11 +165,21 @@ opencode.json
 # Package info
 optis_benchmark.egg-info/
 
-# Lock files
-uv.lock
-
 # temp files
 .scrpts/citation_correctness_eval.py
 
+# temp translation work (never commit)
+.zh2en_tmp/
+
+# backup files
+*.bak
+*.bak-*
+
 # test files
 self_test
+
+# refenrence document
+ref_document/
+
+# local private tools and artifacts (never commit)
+local_tools/
