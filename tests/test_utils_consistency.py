@@ -23,10 +23,10 @@ def _judge_record(
     entry_id: int,
     score: float,
     output_model: str = "gpt-4o",
-    context: str = "薄透镜近轴成像",
+    context: str = "thin-lens paraxial imaging",
     judge_model: str = "gpt-4o",
 ) -> dict:
-    """构造一条规范裁判打分记录。"""
+    """Build one well-formed judge-score record."""
     return {
         "id": entry_id,
         "output_model": output_model,
@@ -340,7 +340,7 @@ class TestRecordsById:
 
     def test_keeps_full_record(self):
         """The index stores the whole record, not just id and score."""
-        record = _judge_record(3, 2.5, context="光栅衍射方程")
+        record = _judge_record(3, 2.5, context="grating diffraction equation")
 
         indexed = records_by_id([record])
 
@@ -386,7 +386,7 @@ class TestRecordsByKey:
 
     def test_keeps_full_record(self):
         """The index stores the whole record, not just the key and score."""
-        record = _judge_record(3, 2.5, context="光栅衍射方程")
+        record = _judge_record(3, 2.5, context="grating diffraction equation")
 
         indexed = records_by_key([record], "output_model")
 
@@ -551,12 +551,12 @@ class TestCrossCheck:
     def test_context_mismatch_detected(self):
         """Ids whose judges saw different material are listed."""
         list_a = [
-            _judge_record(1, 0.5, context="第一段材料", judge_model="judge-a"),
-            _judge_record(2, 0.6, context="第二段材料", judge_model="judge-a"),
+            _judge_record(1, 0.5, context="passage one", judge_model="judge-a"),
+            _judge_record(2, 0.6, context="passage two", judge_model="judge-a"),
         ]
         list_b = [
-            _judge_record(1, 0.5, context="第一段材料", judge_model="judge-b"),
-            _judge_record(2, 0.6, context="被改写的材料", judge_model="judge-b"),
+            _judge_record(1, 0.5, context="passage one", judge_model="judge-b"),
+            _judge_record(2, 0.6, context="a rewritten passage", judge_model="judge-b"),
         ]
 
         meta = _cross_check(list_a, list_b)

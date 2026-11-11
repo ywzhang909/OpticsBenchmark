@@ -1,16 +1,16 @@
 """
 Optis Benchmark - Fine-tune Runner Tests
 
-测试覆盖：
-    - YAML 配置加载与环境变量展开
-    - 配置校验（config.validate）
-    - JSONL 文件校验（validate_jsonl）
-    - 状态对象转换（from_dict_raw / to_dict / from_dict）
-    - create_job 全流程（含失败回收）
-    - wait_for_completion 状态机（成功 / 超时）
+Test coverage:
+    - YAML config loading and environment variable expansion
+    - Config validation (config.validate)
+    - JSONL file validation (validate_jsonl)
+    - Status object conversion (from_dict_raw / to_dict / from_dict)
+    - create_job full flow (including failure cleanup)
+    - wait_for_completion state machine (success / timeout)
     - cancel_job / list_jobs / get_events
-    - status 输出文件 读写往返
-    - Provider 工厂函数
+    - status output file read/write round-trip
+    - Provider factory function
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from src.llm import create_provider
 
 
 class _StubProvider:
-    """模拟 Provider，支持按序列返回状态。"""
+    """Fake provider that returns statuses from a scripted sequence."""
 
     def __init__(self, status_sequence: list[str] | None = None) -> None:
         self._sequence = status_sequence or ["queued", "running", "succeeded"]
@@ -52,7 +52,7 @@ class _StubProvider:
 
 
 class _StubFineTuneRunner(FineTuneRunner):
-    """注入 stub provider 的 FineTuneRunner。"""
+    """FineTuneRunner with a stub provider injected."""
 
     def __init__(self, config: FineTuneRunnerConfig, status_sequence: list[str] | None = None):
         super().__init__(config)
@@ -147,7 +147,7 @@ class _StubFineTuneRunner(FineTuneRunner):
 
 @pytest.fixture
 def sample_train_jsonl(tmp_path: Path) -> Path:
-    """有效的 train.jsonl 文件。"""
+    """A valid train.jsonl file."""
     path = tmp_path / "train.jsonl"
     samples = [
         {
@@ -180,7 +180,7 @@ def sample_train_jsonl(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def sample_val_jsonl(tmp_path: Path) -> Path:
-    """有效的 val.jsonl 文件。"""
+    """A valid val.jsonl file."""
     path = tmp_path / "val.jsonl"
     samples = [
         {
@@ -200,7 +200,7 @@ def sample_val_jsonl(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def valid_config(tmp_path, sample_train_jsonl) -> FineTuneRunnerConfig:
-    """合法配置。"""
+    """A valid configuration."""
     return FineTuneRunnerConfig(
         provider_config={
             "type": "openai",
@@ -231,7 +231,7 @@ def valid_config(tmp_path, sample_train_jsonl) -> FineTuneRunnerConfig:
 def _make_runner(
     config: FineTuneRunnerConfig, status_sequence: list[str] | None = None
 ) -> _StubFineTuneRunner:
-    """构造注入 stub provider 的 FineTuneRunner。"""
+    """Build a FineTuneRunner with a stub provider injected."""
     return _StubFineTuneRunner(config, status_sequence)
 
 
@@ -241,7 +241,7 @@ def _make_runner(
 
 
 class TestFineTuneJobStatus:
-    """FineTuneJobStatus 数据类测试。"""
+    """Tests for the FineTuneJobStatus dataclass."""
 
     def test_to_dict(self):
         status = FineTuneJobStatus(job_id="abc", status="succeeded", trained_tokens=100)
@@ -273,7 +273,7 @@ class TestFineTuneJobStatus:
 
 
 class TestFineTuneRunnerConfig:
-    """配置校验测试。"""
+    """Tests for config validation."""
 
     def test_from_yaml_roundtrip(self, tmp_path, sample_train_jsonl):
         yaml_path = tmp_path / "ft.yaml"
@@ -328,7 +328,7 @@ execution:
 
 
 class TestValidateJsonl:
-    """JSONL 文件校验测试。"""
+    """Tests for JSONL file validation."""
 
     def test_valid_file(self, sample_train_jsonl):
         errors = FineTuneRunner.validate_jsonl(str(sample_train_jsonl))
@@ -380,7 +380,7 @@ class TestValidateJsonl:
 
 
 class TestCreateJob:
-    """create_job 全流程测试。"""
+    """Tests for the create_job full flow."""
 
     async def test_create_success(self, valid_config, tmp_path):
         runner = _make_runner(valid_config)
@@ -414,7 +414,7 @@ class TestCreateJob:
 
 
 class TestWaitForCompletion:
-    """wait_for_completion 状态机测试。"""
+    """Tests for the wait_for_completion state machine."""
 
     async def test_wait_succeeds(self, valid_config):
         runner = _make_runner(valid_config, ["queued", "running", "succeeded"])
@@ -442,7 +442,7 @@ class TestWaitForCompletion:
 
 
 class TestJobOperations:
-    """cancel / list / events 操作测试。"""
+    """Tests for cancel / list / events operations."""
 
     async def test_cancel(self, valid_config):
         runner = _make_runner(valid_config)
@@ -464,7 +464,7 @@ class TestJobOperations:
 
 
 class TestStatusPersistence:
-    """status 文件写入 / 读取往返测试。"""
+    """Tests for status file write / read round-trips."""
 
     def test_save_and_load(self, valid_config):
         runner = _make_runner(valid_config)
@@ -486,7 +486,7 @@ class TestStatusPersistence:
 
 
 class TestProviderFactory:
-    """Provider 工厂函数测试。"""
+    """Tests for the provider factory function."""
 
     def test_create_openai_provider(self):
         provider = create_provider({

@@ -22,9 +22,9 @@ MODELS = ["gpt-4o", "qwen", "gemini"]
 def grid(
     sample_scores: dict[int, dict[str, float]],
     judge_model: str = "gpt-4o",
-    context: str = "薄透镜近轴成像",
+    context: str = "thin-lens paraxial imaging",
 ) -> list[dict]:
-    """把 ``{id: {output_model: score}}`` 展开成裁判打分记录列表。"""
+    """Expand ``{id: {output_model: score}}`` into a list of judge-score records."""
     return [
         {
             "id": entry_id,
@@ -39,14 +39,14 @@ def grid(
 
 
 def write_records(path, records: list[dict]) -> str:
-    """把记录写成 jsonl 并返回路径字符串。"""
+    """Write records to a jsonl file and return the path string."""
     body = "\n".join(json.dumps(record, ensure_ascii=False) for record in records)
     path.write_text(body + "\n", encoding="utf-8")
     return str(path)
 
 
 def symmetric_grid(offset: float = 0.0) -> dict[int, dict[str, float]]:
-    """构造自身输出与他人同分、或被抬高 ``offset`` 分的 n=2 网格。"""
+    """Build an n=2 grid where own output ties the others or is inflated by ``offset``."""
     return {
         1: {"gpt-4o": 3.0 + offset, "qwen": 3.0, "gemini": 3.0},
         2: {"gpt-4o": 4.0 + offset, "qwen": 4.0, "gemini": 4.0},
