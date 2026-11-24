@@ -32,16 +32,25 @@ def ensure_nltk_resources():
                     pass
 
 
+DEFAULT_METRICS = ["rouge1", "rouge2", "rougeL"]
+
+
 def compute_rouge(pred_answer, gold_answer, metrics=None):
     """Main function for rouge scoring.
-    If two references are provided,
-    the best score is chosen for each instance.
+
+    Accepts a single reference or a list of references; when multiple
+    references are given, the best score across references is chosen.
+
     Args:
         pred_answer: predicted text
         gold_answer: reference text (string or list of strings)
-        metrics: list of evaluation metrics, e.g. ["rouge1", "rouge2", "rougeL"]
+        metrics: list of evaluation metrics, e.g. ["rouge1", "rouge2", "rougeL"].
+            When omitted, the function returns a single best ROUGE-L F-score
+            float; when provided, it returns a per-metric breakdown dict.
     Returns:
-        dictionary of rouge scores with keys like rouge_1_precision, rouge_1_recall, rouge_1_f_score, etc.
+        float (best ROUGE-L F-score) when ``metrics`` is None, otherwise a
+        dictionary of rouge scores with keys like rouge_1_precision,
+        rouge_1_recall, rouge_1_f_score, etc.
     """
     # Ensure required NLTK resources are available
     try:
@@ -49,24 +58,41 @@ def compute_rouge(pred_answer, gold_answer, metrics=None):
     except Exception:
         pass
 
-    # document evaluation
-    h = normalize_text(pred_answer)
-    g = normalize_text(gold_answer)
+    references = gold_answer if isinstance(gold_answer, list) else [gold_answer]
 
-    return _rouge_calculation(h, g, metrics)
+    if metrics is None:
+        return _best_rouge_l_f(pred_answer, references)
+    return _rouge_calculation(pred_answer, references, metrics)
 
 
-def _rouge_calculation(hypothese, reference, metrics=None):
+def _best_rouge_l_f(pred_answer, references):
+    """Return the best ROUGE-L F-score across all references."""
+    ensure_nltk_resources()
+    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
+    hypothesis = normalize_text(pred_answer)
+    best = 0.0
+    for reference in references:
+        score = scorer.score(normalize_text(reference), hypothesis)["rougeL"].fmeasure
+        best = max(best, score)
+    return best
+
+
+def _rouge_calculation(hypothese, references, metrics=None):
+    metrics = metrics or DEFAULT_METRICS
     scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
     LABEL_MAP = {"rouge1": "rouge_1", "rouge2": "rouge_2", "rougeL": "rouge_l"}
-    result = {}
-    scores = scorer.score(reference, hypothese)
-    for m in metrics:
-        label = LABEL_MAP.get(m, m)
-        for attr, suffix in [("precision", "precision"), ("recall", "recall"), ("fmeasure", "f_score")]:
-            key = f"{label}_{suffix}"
-            val = getattr(scores[m], attr)
-            result[key] = val
+    hypothesis = normalize_text(hypothese)
+    attrs = [("precision", "precision"), ("recall", "recall"), ("fmeasure", "f_score")]
+
+    result: dict[str, float] = {}
+    for reference in references:
+        scores = scorer.score(normalize_text(reference), hypothesis)
+        for m in metrics:
+            label = LABEL_MAP.get(m, m)
+            for attr, suffix in attrs:
+                key = f"{label}_{suffix}"
+                val = getattr(scores[m], attr)
+                result[key] = max(result.get(key, 0.0), val)
     return result
 
 
