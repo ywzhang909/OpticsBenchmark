@@ -130,9 +130,17 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
 addopts = "-v --tb=short"
+markers = [
+    "online: marks tests that require a live LLM endpoint. Use -m online to run, -m 'not online' to skip.",
+]
 
 [tool.coverage.run]
 source = ["src"]
